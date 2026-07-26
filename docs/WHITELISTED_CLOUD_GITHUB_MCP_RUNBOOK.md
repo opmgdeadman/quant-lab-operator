@@ -55,8 +55,8 @@ Latest known good state:
 - Commit with consolidated authenticated MCP: `415a6d6017e22db4e76ba1929b5818bb138e04ae`
 - Documentation commit after connector setup: `5050d4e`
 - Documentation/assets cleanup commit: `605ef228763ae934f59eabf994e016a069c02a3b`
-- Remote-first documentation cleanup commit: `941f19ecb90b9329e4c5171bc81c6d8f85b675bb`
-- Latest GitHub Actions run: `30222197370` passed on commit `941f19ecb90b9329e4c5171bc81c6d8f85b675bb`
+- Known passing GitHub Actions run after remote-first documentation cleanup: `30222233018`
+- Do not treat this section as a live "latest commit" ledger; use GitHub Actions for the current source of truth.
 - Worker deploy version after MCP secret alignment: `f847112c-8f94-444e-873f-3c5f32f39e32`
 - Earlier cleanup deploy version: `c0ddbf85-c22c-4a64-a746-813202a9154e`
 

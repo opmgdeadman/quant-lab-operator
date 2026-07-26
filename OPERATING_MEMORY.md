@@ -49,8 +49,8 @@ The earlier private-operator/public-runner split is obsolete. The former `opmgde
 - Official validation is GitHub Actions on the public repository, not a required local startup path.
 - CI installs dependencies on a clean runner, runs Worker tests, runs Python `quant_core` tests, and performs a Wrangler dry-run.
 - Cloudflare is the runtime target; localhost and local Python/Node are diagnostics only.
-- Known passing CI: run `30222197370` on commit `941f19ecb90b9329e4c5171bc81c6d8f85b675bb`.
-- Latest pushed repo commit after remote-first cleanup: `941f19ecb90b9329e4c5171bc81c6d8f85b675bb`.
+- Known passing CI after remote-first cleanup: run `30222233018`.
+- Do not store a "latest commit" value here for docs-only commits; it becomes stale immediately after memory updates.
 - Latest deployed Worker version ID after MCP secret alignment: `f847112c-8f94-444e-873f-3c5f32f39e32`.
 
 ## Secrets
