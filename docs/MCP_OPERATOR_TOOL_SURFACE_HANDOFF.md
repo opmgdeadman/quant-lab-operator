@@ -4,11 +4,12 @@ Last updated: 2026-07-26
 
 ## Why This Exists
 
-The ChatGPT Quant Lab connector is authenticated and connected, but it currently exposes only:
+The ChatGPT Quant Lab connector is authenticated and connected. The current public MCP tool surface exposes:
 
 - `get_quant_lab_status`
+- `execute_quant_lab_intent`
 
-That proves the MCP shell works. It does not yet let GPT operate Quant Lab. GPT needs a bounded direct typed operator surface so it can run the build through the Quant Lab MCP instead of depending on Codex or ad hoc shell access.
+GPT operates Quant Lab through bounded source-defined intents behind `execute_quant_lab_intent`, not through Codex, ad hoc shell access, arbitrary SQL, or raw GitHub/Cloudflare tools.
 
 ## Current Baseline
 
@@ -207,11 +208,11 @@ Recommended structure:
   - `writeOperationReceipt(env, receipt)`
   - `latestBtcUsdHourlyCandle(env)`
 
-Do not add a generic router, prompt interpreter, shell runner, repository mutation tool, Cloudflare deploy tool, or D1 SQL tool in this slice.
+Do not add a generic router, prompt interpreter, shell runner, arbitrary repository mutation tool, direct Cloudflare API tool, or D1 SQL tool in this slice.
 
 ## Validation
 
-Run locally as diagnostics:
+Remote validation is GitHub Actions. Local commands below are diagnostics only when debugging a failing CI or Worker change:
 
 ```powershell
 npm test

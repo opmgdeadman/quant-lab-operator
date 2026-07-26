@@ -38,7 +38,9 @@ The earlier private-operator/public-runner split is obsolete. The former `opmgde
 - `tools/list`, `tools/call`, and `ping` require auth plus valid session.
 - Current advertised tools are `get_quant_lab_status` and `execute_quant_lab_intent`.
 - `execute_quant_lab_intent` is the Lensically-style control-plane entrypoint. It dispatches only source-defined intents through the execution kernel, capability directory, client-safety registry, lifecycle manifest, and durable receipts/audit logging.
-- Initial supported intents are `operator_status`, `read_continuation`, `write_continuation`, `inspect_repository`, `read_repo_file`, `run_validation`, and `validate_production_sha`.
+- Supported intents are `operator_status`, `read_continuation`, `write_continuation`, `inspect_repository`, `read_repo_file`, `run_validation`, `list_github_actions_runs`, `trigger_github_workflow`, `monitor_github_workflow`, `deploy_cloudflare_worker`, and `validate_production_sha`.
+- GitHub/Cloudflare control follows the Lensically pattern: GPT calls `execute_quant_lab_intent`; the Worker validates source-defined closed schemas, writes durable receipts, and uses server-side GitHub credentials to call GitHub REST or dispatch allowlisted GitHub Actions.
+- Cloudflare deployment is controlled through the fixed `quant-lab-deploy.yml` workflow, not direct GPT-to-Cloudflare API access.
 - No shell, arbitrary SQL, arbitrary GitHub, arbitrary Cloudflare, generic router, or arbitrary code execution tools are present.
 - D1 migration `0002_market_candles_and_operator_receipts.sql` has been applied remotely.
 - Pending deploy for operator-control-plane migration `0003_operator_control_plane.sql`.
@@ -68,6 +70,9 @@ The earlier private-operator/public-runner split is obsolete. The former `opmgde
 - First candle MCP slice CI passed: run `30223013815` on commit `b3032a9041109395ea4bf65898a286880af2f10a`.
 - Operator control-plane local diagnostics passed: `npm test` 25 tests; `npm run check` Wrangler dry-run.
 - Operator control-plane CI passed: run `30223591985` on commit `c2b9e3982056f96681a8a0b70a3d137d08a33778`.
+- The bounded GitHub/Actions operator intents require Cloudflare Worker secret `GITHUB_TOKEN` and vars `GITHUB_OWNER`, `GITHUB_REPO`, `GITHUB_BRANCH`, `GITHUB_DEPLOY_WORKFLOW_ID`.
+- The deploy workflow requires GitHub Actions secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`.
+- On 2026-07-26, Cloudflare Worker secret `GITHUB_TOKEN` was configured from the existing local profile, and GitHub Actions secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` were set for `opmgdeadman/quant-lab-operator`.
 - Do not store a "latest commit" value here for docs-only commits; it becomes stale immediately after memory updates.
 - Latest deployed Worker version ID after MCP secret alignment: `f847112c-8f94-444e-873f-3c5f32f39e32`.
 - Failed: PowerShell `Invoke-WebRequest` hit `Object reference not set to an instance of an object` while reading live MCP response headers. Use: a short Node `fetch` script to call OAuth token, `initialize`, read `mcp-session-id`, then call `tools/list` or `tools/call`. Applies when: verifying live MCP headers from this Windows shell.
@@ -82,4 +87,4 @@ The earlier private-operator/public-runner split is obsolete. The former `opmgde
 
 ## Next Action
 
-Current GPT-requested milestone is complete: authenticated Lensically-style operator control plane exists, ChatGPT sees `execute_quant_lab_intent`, and ChatGPT invoked `operator_status`, `read_repo_file`, `run_validation`, and `validate_production_sha` with durable receipts. Next action: deploy the commit that contains `scripts/deploy-worker.mjs`, then invoke `validate_production_sha` again and confirm `aligned: true`.
+Current GPT-requested milestone is being extended with bounded GitHub Actions control behind `execute_quant_lab_intent`. Next action after this deploy: use the authenticated MCP to call `list_github_actions_runs`, dispatch `ci.yml`, monitor the resulting run, then dispatch `quant-lab-deploy.yml` with an exact SHA when validation is green.

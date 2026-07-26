@@ -103,7 +103,7 @@ Why it failed:
 
 - The local shell did not have the Cloudflare token loaded.
 
-Working deploy path:
+Historical local deploy path that worked before the GitHub Actions deploy workflow existed:
 
 ```powershell
 C:\Users\brian\.codex\scripts\Invoke-CodexDefaultProfile.ps1 'wrangler deploy --config C:\Users\brian\Documents\quant-lab-operator\wrangler.jsonc'
@@ -184,7 +184,7 @@ Reason:
 
 - `python` on PATH pointed at a Hermes embedded environment without normal `pip`/`pytest`.
 
-Use only when debugging locally on this Windows machine:
+Use only when debugging locally on this Windows machine. Do not treat this as project setup or the official operating path:
 
 ```powershell
 C:\Users\brian\AppData\Local\Programs\Python\Python313\python.exe -m pytest

@@ -17,7 +17,10 @@
     { "id": "engineering.repository_inspection.lifecycle", "intent": "inspect_repository" },
     { "id": "engineering.repo_file_read.lifecycle", "intent": "read_repo_file" },
     { "id": "engineering.validation.lifecycle", "intent": "run_validation" },
+    { "id": "engineering.github_actions_runs_list.lifecycle", "intent": "list_github_actions_runs" },
+    { "id": "engineering.github_workflow_dispatch.lifecycle", "intent": "trigger_github_workflow" },
+    { "id": "engineering.github_workflow_monitor.lifecycle", "intent": "monitor_github_workflow" },
+    { "id": "deployment.cloudflare_worker_dispatch.lifecycle", "intent": "deploy_cloudflare_worker" },
     { "id": "deployment.production_alignment.lifecycle", "intent": "validate_production_sha" }
   ]
 }
-

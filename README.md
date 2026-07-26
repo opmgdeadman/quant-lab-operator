@@ -48,11 +48,18 @@ Advertised tools:
 
 There are no shell, arbitrary SQL, arbitrary GitHub, arbitrary Cloudflare, generic router, or arbitrary code execution tools.
 
-Initial supported intents are `operator_status`, `read_continuation`, `write_continuation`, `inspect_repository`, `read_repo_file`, `run_validation`, and `validate_production_sha`.
+Supported intents are `operator_status`, `read_continuation`, `write_continuation`, `inspect_repository`, `read_repo_file`, `run_validation`, `list_github_actions_runs`, `trigger_github_workflow`, `monitor_github_workflow`, `deploy_cloudflare_worker`, and `validate_production_sha`.
+
+GitHub and Cloudflare control uses the Lensically pattern: GPT calls `execute_quant_lab_intent`; the Worker validates the source-defined intent, writes durable receipts, and then calls GitHub REST or dispatches GitHub Actions using server-side secrets. GPT never receives raw tokens, shell, arbitrary SQL, arbitrary GitHub APIs, or direct Cloudflare credentials.
 
 ## Remote Validation
 
 Official validation is GitHub Actions on the public repository. CI installs dependencies from a clean runner, runs Worker tests, runs Python `quant_core` tests, and performs a Wrangler dry-run.
+
+The authenticated operator can dispatch allowlisted workflows:
+
+- `ci.yml`: validates the repository.
+- `quant-lab-deploy.yml`: validates an exact commit SHA, applies D1 migrations, and deploys the Cloudflare Worker.
 
 Cloudflare is the runtime target. Local commands are only developer diagnostics for debugging CI or Worker behavior; they are not the operating path for Quant Lab.
 

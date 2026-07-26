@@ -229,6 +229,115 @@ test("validate_production_sha returns compact alignment fields", async () => {
   assert.equal(body.result.structuredContent.result.deployment_sha, "test-sha");
 });
 
+test("list_github_actions_runs reports missing server-side token without exposing secrets", async () => {
+  const env = createEnv();
+  const body = await executeIntent(env, "op-actions-no-token", "list_github_actions_runs", {
+    workflow_id: "ci.yml",
+    limit: 2,
+  });
+
+  assert.equal(body.result.structuredContent.ok, false);
+  assert.equal(body.result.structuredContent.result.status, "github_token_not_configured");
+  assert.equal(body.result.structuredContent.result.config.token_configured, false);
+  assert.doesNotMatch(JSON.stringify(body), /test-client-secret|test-token/);
+});
+
+test("GitHub Actions intents call bounded GitHub API routes", async () => {
+  const env = { ...createEnv(), GITHUB_TOKEN: "server-side-test-token" };
+  const calls = [];
+  const restore = mockFetch(async (url, options) => {
+    calls.push({ url, options });
+    if (url.includes("/actions/workflows/ci.yml/runs")) {
+      return jsonResponse({
+        workflow_runs: [{
+          id: 101,
+          name: "CI",
+          workflow_id: 7,
+          status: "completed",
+          conclusion: "success",
+          event: "push",
+          head_branch: "main",
+          head_sha: "a".repeat(40),
+          created_at: "2026-07-26T00:00:00Z",
+          updated_at: "2026-07-26T00:01:00Z",
+          html_url: "https://github.com/opmgdeadman/quant-lab-operator/actions/runs/101",
+        }],
+      });
+    }
+    if (url.includes("/actions/workflows/ci.yml/dispatches")) {
+      assert.equal(options.method, "POST");
+      assert.deepEqual(JSON.parse(options.body), { ref: "main", inputs: {} });
+      return new Response(null, { status: 204 });
+    }
+    if (url.includes("/actions/runs/101/jobs")) {
+      return jsonResponse({ jobs: [{ id: 201, name: "validate", status: "completed", conclusion: "success" }] });
+    }
+    if (url.includes("/actions/runs/101")) {
+      return jsonResponse({
+        id: 101,
+        name: "CI",
+        workflow_id: 7,
+        status: "completed",
+        conclusion: "success",
+        event: "push",
+        head_branch: "main",
+        head_sha: "a".repeat(40),
+        created_at: "2026-07-26T00:00:00Z",
+        updated_at: "2026-07-26T00:01:00Z",
+        html_url: "https://github.com/opmgdeadman/quant-lab-operator/actions/runs/101",
+      });
+    }
+    throw new Error(`unexpected fetch URL: ${url}`);
+  });
+
+  try {
+    const runs = await executeIntent(env, "op-list-actions", "list_github_actions_runs", {
+      workflow_id: "ci.yml",
+      limit: 1,
+    });
+    const dispatch = await executeIntent(env, "op-dispatch-ci", "trigger_github_workflow", {
+      workflow_id: "ci.yml",
+    });
+    const monitor = await executeIntent(env, "op-monitor-ci", "monitor_github_workflow", {
+      run_id: "101",
+    });
+
+    assert.equal(runs.result.structuredContent.result.runs.length, 1);
+    assert.equal(dispatch.result.structuredContent.result.status, "dispatched");
+    assert.equal(monitor.result.structuredContent.result.jobs[0].name, "validate");
+    assert.equal(calls.every((call) => call.options.headers.Authorization === "Bearer server-side-test-token"), true);
+    assert.doesNotMatch(JSON.stringify(runs), /server-side-test-token/);
+  } finally {
+    restore();
+  }
+});
+
+test("deploy_cloudflare_worker dispatches fixed deploy workflow with exact SHA only", async () => {
+  const env = { ...createEnv(), GITHUB_TOKEN: "server-side-test-token" };
+  const exactSha = "b".repeat(40);
+  const restore = mockFetch(async (url, options) => {
+    assert.match(url, /\/actions\/workflows\/quant-lab-deploy\.yml\/dispatches$/);
+    assert.deepEqual(JSON.parse(options.body), { ref: "main", inputs: { deploy_sha: exactSha } });
+    return new Response(null, { status: 204 });
+  });
+
+  try {
+    const invalid = await executeIntent(env, "op-deploy-invalid", "deploy_cloudflare_worker", {
+      deploy_sha: "main",
+    });
+    const valid = await executeIntent(env, "op-deploy-valid", "deploy_cloudflare_worker", {
+      deploy_sha: exactSha,
+    });
+
+    assert.equal(invalid.result.structuredContent.ok, false);
+    assert.equal(invalid.result.structuredContent.result.status, "invalid_exact_sha");
+    assert.equal(valid.result.structuredContent.result.status, "deployment_workflow_dispatched");
+    assert.equal(valid.result.structuredContent.result.workflow_id, "quant-lab-deploy.yml");
+  } finally {
+    restore();
+  }
+});
+
 test("oauth metadata and token endpoint support connector auth", async () => {
   const env = createEnv();
   const metadata = await handleRequest(new Request("https://example.com/.well-known/oauth-authorization-server"), env);
@@ -296,6 +405,21 @@ async function executeIntent(env, operationId, intent, inputs) {
     operation_id: operationId,
     intent,
     inputs,
+  });
+}
+
+function mockFetch(handler) {
+  const previous = globalThis.fetch;
+  globalThis.fetch = handler;
+  return () => {
+    globalThis.fetch = previous;
+  };
+}
+
+function jsonResponse(body, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "content-type": "application/json" },
   });
 }
 

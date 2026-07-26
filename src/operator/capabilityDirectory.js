@@ -1,5 +1,6 @@
 import lifecycle from "./capabilityLifecycle.json" with { type: "json" };
 import { allowedRepoPaths } from "./clientSafeRequests.js";
+import { allowedWorkflowIds } from "./githubApi.js";
 import { objectSchema } from "./schemas.js";
 
 export const supportedIntents = [
@@ -9,6 +10,10 @@ export const supportedIntents = [
   "inspect_repository",
   "read_repo_file",
   "run_validation",
+  "list_github_actions_runs",
+  "trigger_github_workflow",
+  "monitor_github_workflow",
+  "deploy_cloudflare_worker",
   "validate_production_sha",
 ];
 
@@ -97,6 +102,68 @@ export const capabilityDirectory = [
     external_systems: ["github_actions"],
     risk_gates: ["auth_required", "session_required", "idempotency_required", "no_arbitrary_shell"],
     tests: ["run_validation returns explicit not_available_in_worker_runtime", "repeating same operation_id replays receipt"],
+  }),
+  capability({
+    id: "engineering.github_actions_runs_list",
+    intent: "list_github_actions_runs",
+    title: "List GitHub Actions Runs",
+    operation_class: "read",
+    handler_id: "list_github_actions_runs",
+    input_schema: objectSchema({
+      workflow_id: { type: "string", enum: allowedWorkflowIds },
+      limit: { type: "number", minimum: 1, maximum: 20 },
+    }, []),
+    output_schema: objectSchema({ ok: { type: "boolean" } }, ["ok"]),
+    allowed_actions: allowedWorkflowIds,
+    external_systems: ["github_actions"],
+    risk_gates: ["auth_required", "session_required", "github_token_server_side", "bounded_output"],
+    tests: ["list_github_actions_runs returns compact run metadata", "missing GitHub token is reported without exposing secrets"],
+  }),
+  capability({
+    id: "engineering.github_workflow_dispatch",
+    intent: "trigger_github_workflow",
+    title: "Trigger GitHub Workflow",
+    operation_class: "mutation",
+    handler_id: "trigger_github_workflow",
+    input_schema: objectSchema({
+      workflow_id: { type: "string", enum: allowedWorkflowIds },
+      ref: { type: "string", maxLength: 80 },
+      deploy_sha: { type: "string", maxLength: 40 },
+    }, ["workflow_id"]),
+    output_schema: objectSchema({ ok: { type: "boolean" } }, ["ok"]),
+    allowed_actions: allowedWorkflowIds,
+    external_systems: ["github_actions"],
+    risk_gates: ["auth_required", "session_required", "idempotency_required", "workflow_allowlist", "no_arbitrary_shell"],
+    tests: ["trigger_github_workflow dispatches only allowlisted workflows", "repeating same operation_id replays receipt"],
+  }),
+  capability({
+    id: "engineering.github_workflow_monitor",
+    intent: "monitor_github_workflow",
+    title: "Monitor GitHub Workflow",
+    operation_class: "read",
+    handler_id: "monitor_github_workflow",
+    input_schema: objectSchema({
+      run_id: { type: "string", maxLength: 30 },
+    }, ["run_id"]),
+    output_schema: objectSchema({ ok: { type: "boolean" } }, ["ok"]),
+    external_systems: ["github_actions"],
+    risk_gates: ["auth_required", "session_required", "bounded_output"],
+    tests: ["monitor_github_workflow returns compact run and job state"],
+  }),
+  capability({
+    id: "deployment.cloudflare_worker_dispatch",
+    intent: "deploy_cloudflare_worker",
+    title: "Deploy Cloudflare Worker",
+    operation_class: "mutation",
+    handler_id: "deploy_cloudflare_worker",
+    input_schema: objectSchema({
+      deploy_sha: { type: "string", maxLength: 40 },
+    }, ["deploy_sha"]),
+    output_schema: objectSchema({ ok: { type: "boolean" } }, ["ok"]),
+    allowed_actions: ["quant-lab-deploy.yml"],
+    external_systems: ["github_actions", "cloudflare"],
+    risk_gates: ["auth_required", "session_required", "idempotency_required", "exact_sha_required", "cloudflare_secret_stays_in_github_actions"],
+    tests: ["deploy_cloudflare_worker dispatches the fixed deploy workflow with an exact SHA", "repeating same operation_id replays receipt"],
   }),
   capability({
     id: "deployment.production_alignment",

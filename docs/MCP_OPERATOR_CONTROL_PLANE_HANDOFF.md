@@ -2,31 +2,28 @@
 
 Last updated: 2026-07-26
 
-## Current Blocker
+## Current State
 
-ChatGPT refreshed the Quant Lab connector action registry and still sees only:
-
-- `get_quant_lab_status`
-
-That means the currently deployed Worker and/or ChatGPT action registry does not expose any new operator tools. Do not claim a tool exists until the live ChatGPT connector sees and invokes it.
-
-The previous candle-ingestion slice is valid future functionality, but it is not the current milestone.
-
-## Why ChatGPT Still Sees One Tool
-
-At the time of this handoff, `src/index.js` still hardcodes one public MCP tool in `tools/list`:
+ChatGPT refreshed the Quant Lab connector action registry and now sees:
 
 - `get_quant_lab_status`
+- `execute_quant_lab_intent`
 
-If a local branch or documentation says candle tools exist but ChatGPT sees only status, the likely causes are:
+`execute_quant_lab_intent` is the control-plane entrypoint. New capabilities must be added as source-defined intents behind that tool, not as separate raw tools.
 
-1. the tools were documented but not implemented in `src/index.js`;
-2. the tools were implemented locally but not committed and pushed;
-3. CI/deploy did not publish the new Worker;
-4. ChatGPT connector actions were not refreshed after deployment;
-5. the live Worker is still returning the older one-tool registry.
+The previous candle-ingestion slice is valid future functionality, but the current milestone is bounded GitHub Actions and Cloudflare deployment control through the authenticated operator MCP.
 
-First fix the live registry discrepancy. Verify against the deployed endpoint and the ChatGPT connector path.
+## GitHub And Cloudflare Control
+
+The operator MCP must follow the Lensically pattern:
+
+- GPT calls `execute_quant_lab_intent`.
+- The Worker validates the closed intent schema.
+- The Worker writes durable receipts and audit rows.
+- The Worker calls GitHub REST using `GITHUB_TOKEN` from Worker secrets.
+- Cloudflare deployment happens by dispatching a fixed GitHub Actions workflow that owns Cloudflare credentials through GitHub secrets.
+
+Do not expose raw shell, arbitrary SQL, arbitrary GitHub/Cloudflare APIs, generic routers, or secret values.
 
 ## Required Milestone
 
@@ -234,20 +231,11 @@ Suggested input schema:
         "write_continuation",
         "inspect_repository",
         "read_repo_file",
-        "list_repo_files",
-        "apply_repo_patch",
-        "delete_repo_file",
         "run_validation",
-        "commit_and_push",
         "list_github_actions_runs",
         "trigger_github_workflow",
         "monitor_github_workflow",
         "deploy_cloudflare_worker",
-        "inspect_cloudflare_worker",
-        "apply_d1_migrations",
-        "inspect_d1_state",
-        "read_runtime_incidents",
-        "repair_failed_operation",
         "validate_production_sha"
       ]
     },

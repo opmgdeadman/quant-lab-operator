@@ -1,5 +1,6 @@
 import { capabilityDirectory, supportedIntents } from "../capabilityDirectory.js";
 import { allowedRepoPaths, assertAllowedRepoPath } from "../clientSafeRequests.js";
+import { isAllowedWorkflowId, isExactSha, githubConfig, githubRequest, repoApiPath } from "../githubApi.js";
 import { repoSnapshots } from "../repoSnapshots.js";
 
 export const handlers = {
@@ -9,6 +10,10 @@ export const handlers = {
   inspect_repository,
   read_repo_file,
   run_validation,
+  list_github_actions_runs,
+  trigger_github_workflow,
+  monitor_github_workflow,
+  deploy_cloudflare_worker,
   validate_production_sha,
 };
 
@@ -79,13 +84,19 @@ async function write_continuation(inputs, context) {
 }
 
 async function inspect_repository(inputs, context) {
+  const config = githubConfig(context.env);
+  const remote = await githubRequest(context.env, repoApiPath(context.env, ""));
   return {
     ok: true,
-    owner: context.env.GITHUB_OWNER || "opmgdeadman",
-    repo: context.env.GITHUB_REPO || "quant-lab-operator",
-    branch: context.env.GITHUB_BRANCH || "main",
+    owner: config.owner,
+    repo: config.repo,
+    branch: config.branch,
     latest_sha: context.env.REPOSITORY_SHA || "unknown",
     deployment_sha: context.env.DEPLOYMENT_SHA || "unknown",
+    github_token_configured: config.tokenConfigured,
+    github_remote_reachable: remote.ok,
+    default_branch: remote.ok ? remote.body.default_branch : config.branch,
+    visibility: remote.ok ? remote.body.visibility : "unknown",
     dirty_state_available: false,
   };
 }
@@ -112,7 +123,103 @@ async function run_validation(inputs) {
     ok: false,
     validation: inputs.validation,
     status: "not_available_in_worker_runtime",
-    supported_alternate_path: "GitHub Actions CI validates npm test, Python quant_core tests, and npm run check on push.",
+    supported_alternate_path: "Use trigger_github_workflow with ci.yml, then monitor_github_workflow for the run status.",
+  };
+}
+
+async function list_github_actions_runs(inputs, context) {
+  const workflowId = inputs.workflow_id || "";
+  if (workflowId && !isAllowedWorkflowId(workflowId)) {
+    return { ok: false, status: "unsupported_workflow_id" };
+  }
+  const limit = normalizeLimit(inputs.limit, 10);
+  const config = githubConfig(context.env);
+  const suffix = workflowId
+    ? `/actions/workflows/${encodeURIComponent(workflowId)}/runs?branch=${encodeURIComponent(config.branch)}&per_page=${limit}`
+    : `/actions/runs?branch=${encodeURIComponent(config.branch)}&per_page=${limit}`;
+  const remote = await githubRequest(context.env, repoApiPath(context.env, suffix));
+  if (!remote.ok) {
+    return { ok: false, status: remote.status || "github_request_failed", status_code: remote.status_code, config: remote.config };
+  }
+  return {
+    ok: true,
+    workflow_id: workflowId || null,
+    branch: config.branch,
+    runs: (remote.body.workflow_runs || []).slice(0, limit).map(compactRun),
+  };
+}
+
+async function trigger_github_workflow(inputs, context) {
+  if (!isAllowedWorkflowId(inputs.workflow_id)) {
+    return { ok: false, status: "unsupported_workflow_id" };
+  }
+  const config = githubConfig(context.env);
+  const ref = inputs.ref || config.branch;
+  const workflowInputs = {};
+  if (inputs.deploy_sha) {
+    if (!isExactSha(inputs.deploy_sha)) {
+      return { ok: false, status: "invalid_exact_sha" };
+    }
+    workflowInputs.deploy_sha = inputs.deploy_sha;
+  }
+  const remote = await githubRequest(
+    context.env,
+    repoApiPath(context.env, `/actions/workflows/${encodeURIComponent(inputs.workflow_id)}/dispatches`),
+    { method: "POST", body: { ref, inputs: workflowInputs } },
+  );
+  if (!remote.ok) {
+    return { ok: false, status: remote.status || "github_dispatch_failed", status_code: remote.status_code, config: remote.config };
+  }
+  return {
+    ok: true,
+    status: "dispatched",
+    workflow_id: inputs.workflow_id,
+    ref,
+    inputs: Object.keys(workflowInputs),
+  };
+}
+
+async function monitor_github_workflow(inputs, context) {
+  const runId = String(inputs.run_id || "");
+  if (!/^[0-9]{1,30}$/.test(runId)) {
+    throw new Error("invalid_run_id");
+  }
+  const run = await githubRequest(context.env, repoApiPath(context.env, `/actions/runs/${runId}`));
+  if (!run.ok) {
+    return { ok: false, status: run.status || "github_run_lookup_failed", status_code: run.status_code, config: run.config };
+  }
+  const jobs = await githubRequest(context.env, repoApiPath(context.env, `/actions/runs/${runId}/jobs?per_page=20`));
+  return {
+    ok: true,
+    run: compactRun(run.body),
+    jobs_available: jobs.ok,
+    jobs: jobs.ok ? (jobs.body.jobs || []).map(compactJob) : [],
+  };
+}
+
+async function deploy_cloudflare_worker(inputs, context) {
+  if (!isExactSha(inputs.deploy_sha)) {
+    return { ok: false, status: "invalid_exact_sha" };
+  }
+  const config = githubConfig(context.env);
+  const workflowId = config.deployWorkflowId;
+  if (!isAllowedWorkflowId(workflowId)) {
+    return { ok: false, status: "unsupported_workflow_id" };
+  }
+  const remote = await githubRequest(
+    context.env,
+    repoApiPath(context.env, `/actions/workflows/${encodeURIComponent(workflowId)}/dispatches`),
+    { method: "POST", body: { ref: config.branch, inputs: { deploy_sha: inputs.deploy_sha } } },
+  );
+  if (!remote.ok) {
+    return { ok: false, status: remote.status || "github_deploy_dispatch_failed", status_code: remote.status_code, config: remote.config };
+  }
+  return {
+    ok: true,
+    status: "deployment_workflow_dispatched",
+    workflow_id: workflowId,
+    ref: config.branch,
+    deploy_sha: inputs.deploy_sha,
   };
 }
 
@@ -129,3 +236,34 @@ async function validate_production_sha(inputs, context) {
   };
 }
 
+function normalizeLimit(value, fallback) {
+  const numeric = Number(value || fallback);
+  return Math.min(20, Math.max(1, Number.isFinite(numeric) ? Math.floor(numeric) : fallback));
+}
+
+function compactRun(run) {
+  return {
+    id: run.id,
+    name: run.name,
+    workflow_id: run.workflow_id,
+    status: run.status,
+    conclusion: run.conclusion,
+    event: run.event,
+    head_branch: run.head_branch,
+    head_sha: run.head_sha,
+    created_at: run.created_at,
+    updated_at: run.updated_at,
+    html_url: run.html_url,
+  };
+}
+
+function compactJob(job) {
+  return {
+    id: job.id,
+    name: job.name,
+    status: job.status,
+    conclusion: job.conclusion,
+    started_at: job.started_at,
+    completed_at: job.completed_at,
+  };
+}
