@@ -40,7 +40,7 @@ test("internal status requires bearer token", async () => {
 
   const allowed = await handleRequest(
     new Request("https://example.com/internal/status", {
-      headers: { authorization: "Bearer test-token" },
+      headers: { "x-internal-token": "test-token" },
     }),
     env,
   );

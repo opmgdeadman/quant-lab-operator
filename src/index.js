@@ -82,8 +82,9 @@ async function isAuthorized(request, env) {
   if (!expected) {
     return false;
   }
-  const header = request.headers.get("authorization") || "";
-  const supplied = header.startsWith("Bearer ") ? header.slice(7) : "";
+  const internalHeader = request.headers.get("x-internal-token") || "";
+  const authorization = request.headers.get("authorization") || "";
+  const supplied = internalHeader || (authorization.startsWith("Bearer ") ? authorization.slice(7) : "");
   if (!supplied) {
     return false;
   }

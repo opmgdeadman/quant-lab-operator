@@ -22,7 +22,7 @@ The Worker exposes:
 
 - `GET /`: minimal public website.
 - `GET /status`: public read-only status JSON.
-- `GET /internal/status`: authenticated internal status JSON using `Authorization: Bearer <INTERNAL_API_TOKEN>`.
+- `GET /internal/status`: authenticated internal status JSON using `X-Internal-Token: <INTERNAL_API_TOKEN>` or `Authorization: Bearer <INTERNAL_API_TOKEN>`.
 
 No trading cycle, scheduled task, backtesting dispatch, full schema, MCP contract, or market ingestion exists yet.
 
