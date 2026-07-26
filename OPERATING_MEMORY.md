@@ -73,6 +73,7 @@ The earlier private-operator/public-runner split is obsolete. The former `opmgde
 - The bounded GitHub/Actions operator intents require Cloudflare Worker secret `GITHUB_TOKEN` and vars `GITHUB_OWNER`, `GITHUB_REPO`, `GITHUB_BRANCH`, `GITHUB_DEPLOY_WORKFLOW_ID`.
 - The deploy workflow requires GitHub Actions secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`.
 - On 2026-07-26, Cloudflare Worker secret `GITHUB_TOKEN` was configured from the existing local profile, and GitHub Actions secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` were set for `opmgdeadman/quant-lab-operator`.
+- `ci.yml` includes `workflow_dispatch` so the authenticated operator can trigger validation through GitHub Actions.
 - Do not store a "latest commit" value here for docs-only commits; it becomes stale immediately after memory updates.
 - Latest deployed Worker version ID after MCP secret alignment: `f847112c-8f94-444e-873f-3c5f32f39e32`.
 - Failed: PowerShell `Invoke-WebRequest` hit `Object reference not set to an instance of an object` while reading live MCP response headers. Use: a short Node `fetch` script to call OAuth token, `initialize`, read `mcp-session-id`, then call `tools/list` or `tools/call`. Applies when: verifying live MCP headers from this Windows shell.
