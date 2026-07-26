@@ -4,13 +4,14 @@ Last updated: 2026-07-26
 
 ## Architecture Decision
 
-Quant Lab is consolidating into one public GitHub repository: `opmgdeadman/quant-lab-operator`.
+Quant Lab is consolidated into one public GitHub repository: `opmgdeadman/quant-lab-operator`.
 
-The earlier private-operator/public-runner split is obsolete. `quant-core-runner` is retained only as a temporary source/backup until this repository is verified public, CI passes, and no unique files remain there.
+The earlier private-operator/public-runner split is obsolete. The former `opmgdeadman/quant-core-runner` GitHub repository was deleted after its deterministic core files were copied into this repository and CI passed here.
 
 ## Live Infrastructure
 
 - Worker URL: `https://quant-lab-operator.briangriffin355.workers.dev`
+- Public repo URL: `https://github.com/opmgdeadman/quant-lab-operator`
 - Authenticated MCP endpoint: `POST /api/operator/mcp`
 - OAuth metadata endpoint: `GET /.well-known/oauth-authorization-server`
 - OAuth authorize endpoint: `GET /api/operator/oauth/authorize`
@@ -40,9 +41,11 @@ The earlier private-operator/public-runner split is obsolete. `quant-core-runner
 
 ## Validation
 
-- Worker tests: `npm test` passed, 11 tests.
+- Worker tests: `npm test` passed, 10 tests.
 - Quant core tests: `C:\Users\brian\AppData\Local\Programs\Python\Python313\python.exe -m pytest` passed, 22 tests.
 - Wrangler dry-run: `npm run check` passed.
+- GitHub Actions CI passed for commit `415a6d6017e22db4e76ba1929b5818bb138e04ae`, run `30221363658`.
+- Latest deployed Worker version ID after authenticated MCP cleanup: `c0ddbf85-c22c-4a64-a746-813202a9154e`.
 
 ## Secrets
 
@@ -53,4 +56,4 @@ The earlier private-operator/public-runner split is obsolete. `quant-core-runner
 
 ## Next Action
 
-Update the ChatGPT dev connector to `https://quant-lab-operator.briangriffin355.workers.dev/api/operator/mcp`, verify authenticated connection, then make `opmgdeadman/quant-lab-operator` public after final working-tree and Git-history checks.
+Update the ChatGPT dev connector to `https://quant-lab-operator.briangriffin355.workers.dev/api/operator/mcp` with OAuth/client-secret auth, then verify authenticated MCP connection from ChatGPT.
