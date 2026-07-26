@@ -42,6 +42,7 @@ The earlier private-operator/public-runner split is obsolete. The former `opmgde
 - Connector App ID: `asdk_app_6a667ec3d25c8191920959f517984266`
 - Connector Version ID: `asdk_app_v_6a667ec4c9608191b07d4cf48962f3ed`
 - ChatGPT action refresh shows `get_quant_lab_status` as `READ` / `OPEN WORLD`.
+- Full cloud/GitHub/Cloudflare/site/MCP creation runbook: `docs/WHITELISTED_CLOUD_GITHUB_MCP_RUNBOOK.md`.
 
 ## Validation
 
