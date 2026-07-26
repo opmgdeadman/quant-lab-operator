@@ -44,10 +44,11 @@ Only advertised direct typed tools with closed schemas may execute. Unknown or i
 Advertised tools:
 
 - `get_quant_lab_status`: read-only authenticated infrastructure status.
-- `ingest_btc_usd_hourly_candle`: idempotently inserts one closed `BTC-USD` 1h candle into D1.
-- `get_latest_btc_usd_hourly_candle`: reads the latest stored `BTC-USD` 1h candle.
+- `execute_quant_lab_intent`: idempotent execution kernel entrypoint for source-defined bounded operator intents.
 
 There are no shell, arbitrary SQL, arbitrary GitHub, arbitrary Cloudflare, generic router, or arbitrary code execution tools.
+
+Initial supported intents are `operator_status`, `read_continuation`, `write_continuation`, `inspect_repository`, `read_repo_file`, `run_validation`, and `validate_production_sha`.
 
 ## Remote Validation
 

@@ -36,12 +36,13 @@ The earlier private-operator/public-runner split is obsolete. The former `opmgde
 - Added Lensically-style authenticated route skeleton at `/api/operator/mcp`.
 - `initialize` returns a deployment-scoped signed `Mcp-Session-Id`.
 - `tools/list`, `tools/call`, and `ping` require auth plus valid session.
-- Current advertised tools are `get_quant_lab_status`, `ingest_btc_usd_hourly_candle`, and `get_latest_btc_usd_hourly_candle`.
-- `ingest_btc_usd_hourly_candle` is the first bounded mutation tool. It only accepts one closed `BTC-USD` 1h candle, validates OHLC, stores operation receipts, and rejects conflicting operation IDs or conflicting candle values.
+- Current advertised tools are `get_quant_lab_status` and `execute_quant_lab_intent`.
+- `execute_quant_lab_intent` is the Lensically-style control-plane entrypoint. It dispatches only source-defined intents through the execution kernel, capability directory, client-safety registry, lifecycle manifest, and durable receipts/audit logging.
+- Initial supported intents are `operator_status`, `read_continuation`, `write_continuation`, `inspect_repository`, `read_repo_file`, `run_validation`, and `validate_production_sha`.
 - No shell, arbitrary SQL, arbitrary GitHub, arbitrary Cloudflare, generic router, or arbitrary code execution tools are present.
 - D1 migration `0002_market_candles_and_operator_receipts.sql` has been applied remotely.
-- Latest deployed Worker version after the first candle MCP slice: `a745b82c-383b-4e5f-99a2-704360a3c33d`.
-- Live OAuth/MCP verification passed after deploy: `tools/list` returned `get_quant_lab_status`, `ingest_btc_usd_hourly_candle`, and `get_latest_btc_usd_hourly_candle`; `get_latest_btc_usd_hourly_candle` returned `ok: true`, `pair: BTC-USD`, and no candle yet.
+- Pending deploy for operator-control-plane migration `0003_operator_control_plane.sql`.
+- Previous deployed Worker version after the first candle MCP slice: `a745b82c-383b-4e5f-99a2-704360a3c33d`.
 - ChatGPT dev connector is installed and OAuth-connected.
 - Connector App ID: `asdk_app_6a667ec3d25c8191920959f517984266`
 - Connector Version ID: `asdk_app_v_6a667ec4c9608191b07d4cf48962f3ed`
@@ -55,6 +56,7 @@ The earlier private-operator/public-runner split is obsolete. The former `opmgde
 - Cloudflare is the runtime target; localhost and local Python/Node are diagnostics only.
 - Known passing CI after remote-first cleanup: run `30222233018`.
 - First candle MCP slice CI passed: run `30223013815` on commit `b3032a9041109395ea4bf65898a286880af2f10a`.
+- Operator control-plane local diagnostics passed: `npm test` 25 tests; `npm run check` Wrangler dry-run.
 - Do not store a "latest commit" value here for docs-only commits; it becomes stale immediately after memory updates.
 - Latest deployed Worker version ID after MCP secret alignment: `f847112c-8f94-444e-873f-3c5f32f39e32`.
 - Failed: PowerShell `Invoke-WebRequest` hit `Object reference not set to an instance of an object` while reading live MCP response headers. Use: a short Node `fetch` script to call OAuth token, `initialize`, read `mcp-session-id`, then call `tools/list` or `tools/call`. Applies when: verifying live MCP headers from this Windows shell.
@@ -69,4 +71,4 @@ The earlier private-operator/public-runner split is obsolete. The former `opmgde
 
 ## Next Action
 
-Next functional implementation slice: refresh the ChatGPT connector action list, then use `ingest_btc_usd_hourly_candle` to store one real closed `BTC-USD` hourly candle and verify it through `get_latest_btc_usd_hourly_candle` and the public website.
+Current GPT-requested milestone: diagnose why ChatGPT still sees only `get_quant_lab_status` after the live MCP reportedly lists candle tools, then implement the authenticated Lensically-style operator control plane before adding more trading functionality. Read `docs/LENSICALLY_STYLE_MCP_ARCHITECTURE.md` and `docs/MCP_OPERATOR_CONTROL_PLANE_HANDOFF.md`; build the execution kernel, capability directory, client-safety registry, lifecycle manifest, receipt/audit persistence, and `execute_quant_lab_intent`. Verify ChatGPT can see/invoke it, perform a harmless repo read, run validation, report production alignment, and return durable operation receipts. Candle ingestion is a later vertical slice, not the current milestone.

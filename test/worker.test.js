@@ -6,8 +6,9 @@ import { handleRequest } from "../src/index.js";
 function createEnv() {
   return {
     ENVIRONMENT: "test",
-    CURRENT_PHASE: "infrastructure-shell",
+    CURRENT_PHASE: "operator-control-plane",
     DEPLOYMENT_SHA: "test-sha",
+    REPOSITORY_SHA: "test-sha",
     INTERNAL_API_TOKEN: "test-token",
     MCP_CLIENT_ID: "test-client",
     MCP_CLIENT_SECRET: "test-client-secret",
@@ -43,24 +44,15 @@ test("home renders no trading claims or fake metrics", async () => {
   assert.doesNotMatch(body, /profit/i);
 });
 
-test("public status and openapi proof routes are removed", async () => {
+test("legacy public proof routes are removed", async () => {
   const env = createEnv();
   const status = await handleRequest(new Request("https://example.com/status"), env);
-  const statusBody = await status.json();
   const openapi = await handleRequest(new Request("https://example.com/openapi.json"), env);
+  const mcp = await handleRequest(new Request("https://example.com/mcp"), env);
 
   assert.equal(status.status, 404);
-  assert.equal(statusBody.error, "not_found");
   assert.equal(openapi.status, 404);
-});
-
-test("legacy public mcp route is removed", async () => {
-  const env = createEnv();
-  const response = await handleRequest(new Request("https://example.com/mcp"), env);
-  const body = await response.json();
-
-  assert.equal(response.status, 404);
-  assert.equal(body.error, "not_found");
+  assert.equal(mcp.status, 404);
 });
 
 test("operator mcp rejects unauthenticated requests before parsing", async () => {
@@ -80,14 +72,7 @@ test("operator mcp rejects unauthenticated requests before parsing", async () =>
 
 test("operator mcp initialize requires auth and returns a session id", async () => {
   const env = createEnv();
-  const initialize = await handleRequest(
-    new Request("https://example.com/api/operator/mcp", {
-      method: "POST",
-      headers: { authorization: "Bearer test-token" },
-      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "initialize", params: {} }),
-    }),
-    env,
-  );
+  const initialize = await initializeMcpSession(env);
   const initializeBody = await initialize.json();
 
   assert.equal(initialize.status, 200);
@@ -95,7 +80,7 @@ test("operator mcp initialize requires auth and returns a session id", async () 
   assert.match(initialize.headers.get("mcp-session-id"), /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/);
 });
 
-test("operator mcp tools require valid session and expose typed direct tools", async () => {
+test("operator mcp tools require valid session and expose status plus execute intent", async () => {
   const env = createEnv();
   const initialize = await initializeMcpSession(env);
   const sessionId = initialize.headers.get("mcp-session-id");
@@ -110,64 +95,29 @@ test("operator mcp tools require valid session and expose typed direct tools", a
   );
   const noSessionBody = await noSession.json();
 
-  assert.equal(noSession.status, 200);
   assert.equal(noSessionBody.error.message, "valid_mcp_session_required");
 
-  const tools = await handleRequest(
-    new Request("https://example.com/api/operator/mcp", {
-      method: "POST",
-      headers: {
-        authorization: "Bearer test-token",
-        "mcp-session-id": sessionId,
-      },
-      body: JSON.stringify({ jsonrpc: "2.0", id: 3, method: "tools/list" }),
-    }),
-    env,
-  );
-  const toolsBody = await tools.json();
-
+  const toolsBody = await mcp(env, sessionId, { jsonrpc: "2.0", id: 3, method: "tools/list" });
   assert.deepEqual(
     toolsBody.result.tools.map((tool) => tool.name),
-    ["get_quant_lab_status", "ingest_btc_usd_hourly_candle", "get_latest_btc_usd_hourly_candle"],
+    ["get_quant_lab_status", "execute_quant_lab_intent"],
   );
   for (const tool of toolsBody.result.tools) {
     assert.equal(tool.inputSchema.additionalProperties, false);
     assert.ok(tool.outputSchema);
   }
   const statusTool = toolsBody.result.tools.find((tool) => tool.name === "get_quant_lab_status");
-  const latestTool = toolsBody.result.tools.find((tool) => tool.name === "get_latest_btc_usd_hourly_candle");
-  const ingestTool = toolsBody.result.tools.find((tool) => tool.name === "ingest_btc_usd_hourly_candle");
+  const executeTool = toolsBody.result.tools.find((tool) => tool.name === "execute_quant_lab_intent");
   assert.equal(statusTool.annotations.readOnlyHint, true);
-  assert.equal(latestTool.annotations.readOnlyHint, true);
-  assert.equal(ingestTool.annotations.readOnlyHint, false);
-  assert.equal(ingestTool.annotations.destructiveHint, false);
-  assert.equal(ingestTool.annotations.idempotentHint, true);
+  assert.equal(executeTool.annotations.readOnlyHint, false);
+  assert.equal(executeTool.annotations.destructiveHint, false);
+  assert.equal(executeTool.annotations.idempotentHint, true);
 });
 
 test("operator mcp status tool returns bounded status only", async () => {
   const env = createEnv();
-  const initialize = await initializeMcpSession(env);
-  const sessionId = initialize.headers.get("mcp-session-id");
+  const body = await callTool(env, "get_quant_lab_status", {});
 
-  const response = await handleRequest(
-    new Request("https://example.com/api/operator/mcp", {
-      method: "POST",
-      headers: {
-        authorization: "Bearer test-token",
-        "mcp-session-id": sessionId,
-      },
-      body: JSON.stringify({
-        jsonrpc: "2.0",
-        id: 4,
-        method: "tools/call",
-        params: { name: "get_quant_lab_status", arguments: {} },
-      }),
-    }),
-    env,
-  );
-  const body = await response.json();
-
-  assert.equal(response.status, 200);
   assert.equal(body.result.structuredContent.system, "Quant Lab");
   assert.equal(body.result.structuredContent.databaseConnected, true);
   assert.equal(body.result.structuredContent.databaseProbe, undefined);
@@ -175,29 +125,108 @@ test("operator mcp status tool returns bounded status only", async () => {
 
 test("operator mcp rejects unadvertised tools", async () => {
   const env = createEnv();
-  const initialize = await initializeMcpSession(env);
-  const sessionId = initialize.headers.get("mcp-session-id");
-
-  const response = await handleRequest(
-    new Request("https://example.com/api/operator/mcp", {
-      method: "POST",
-      headers: {
-        authorization: "Bearer test-token",
-        "mcp-session-id": sessionId,
-      },
-      body: JSON.stringify({
-        jsonrpc: "2.0",
-        id: 5,
-        method: "tools/call",
-        params: { name: "internal_admin_shell", arguments: {} },
-      }),
-    }),
-    env,
-  );
-  const body = await response.json();
-
-  assert.equal(response.status, 200);
+  const body = await callTool(env, "internal_admin_shell", {});
   assert.equal(body.error.message, "public_direct_tool_required");
+});
+
+test("execute_quant_lab_intent rejects missing or unknown intent", async () => {
+  const env = createEnv();
+  const missing = await callTool(env, "execute_quant_lab_intent", { operation_id: "op-missing", inputs: {} });
+  const unknown = await callTool(env, "execute_quant_lab_intent", {
+    operation_id: "op-unknown",
+    intent: "unknown_intent",
+    inputs: {},
+  });
+
+  assert.equal(missing.error.message, "unknown_intent");
+  assert.equal(unknown.error.message, "unknown_intent");
+});
+
+test("execute_quant_lab_intent operator_status succeeds with durable receipt", async () => {
+  const env = createEnv();
+  const body = await executeIntent(env, "op-status", "operator_status", {});
+  const content = body.result.structuredContent;
+
+  assert.equal(content.ok, true);
+  assert.equal(content.intent, "operator_status");
+  assert.equal(content.receipt.receipt_id, "operator_receipt_op-status");
+  assert.equal(content.execution_kernel.arbitrary_shell_allowed, false);
+  assert.equal(env.DB.receipts.has("op-status"), true);
+  assert.equal(env.DB.audit.length, 1);
+});
+
+test("read_continuation returns idle and write_continuation persists bounded state", async () => {
+  const env = createEnv();
+  const idle = await executeIntent(env, "op-read-continuation", "read_continuation", {});
+  assert.equal(idle.result.structuredContent.result.state, "idle");
+
+  const written = await executeIntent(env, "op-write-continuation", "write_continuation", {
+    active_objective: "Build operator control plane",
+    current_phase: "mcp-control-plane",
+    completed_evidence: ["registry", "kernel"],
+    next_action: "live connector verification",
+  });
+  assert.equal(written.result.structuredContent.ok, true);
+
+  const read = await executeIntent(env, "op-read-continuation-2", "read_continuation", {});
+  assert.equal(read.result.structuredContent.result.state, "active");
+  assert.equal(read.result.structuredContent.result.current_phase, "mcp-control-plane");
+});
+
+test("execute_quant_lab_intent replays same operation id and rejects changed payload", async () => {
+  const env = createEnv();
+  const first = await executeIntent(env, "op-replay", "operator_status", {});
+  const second = await executeIntent(env, "op-replay", "operator_status", {});
+  const conflict = await executeIntent(env, "op-replay", "read_continuation", {});
+
+  assert.equal(first.result.structuredContent.receipt.replayed, false);
+  assert.equal(second.result.structuredContent.receipt.replayed, true);
+  assert.equal(conflict.error.message, "idempotency_key_payload_mismatch");
+});
+
+test("read_repo_file only reads allowed paths and rejects traversal", async () => {
+  const env = createEnv();
+  const readme = await executeIntent(env, "op-read-readme", "read_repo_file", {
+    path: "README.md",
+    max_lines: 20,
+  });
+  const forbidden = await executeIntent(env, "op-read-secret", "read_repo_file", {
+    path: "../.env",
+  });
+
+  assert.equal(readme.result.structuredContent.result.path, "README.md");
+  assert.match(readme.result.structuredContent.result.returned_lines.join("\n"), /Quant Lab/);
+  assert.equal(forbidden.result.structuredContent.ok, false);
+  assert.equal(forbidden.result.structuredContent.error, "forbidden_path");
+});
+
+test("forbidden public input keys reject before handler dispatch", async () => {
+  const env = createEnv();
+  const body = await executeIntent(env, "op-forbidden-key", "operator_status", {
+    token: "not-a-real-token",
+  });
+
+  assert.equal(body.result.structuredContent.ok, false);
+  assert.equal(body.result.structuredContent.error, "forbidden_public_input_key");
+});
+
+test("run_validation returns explicit worker runtime limitation", async () => {
+  const env = createEnv();
+  const body = await executeIntent(env, "op-validation", "run_validation", {
+    validation: "npm test",
+  });
+
+  assert.equal(body.result.structuredContent.ok, false);
+  assert.equal(body.result.structuredContent.result.status, "not_available_in_worker_runtime");
+});
+
+test("validate_production_sha returns compact alignment fields", async () => {
+  const env = createEnv();
+  const body = await executeIntent(env, "op-sha", "validate_production_sha", {});
+
+  assert.equal(body.result.structuredContent.result.aligned, true);
+  assert.equal(body.result.structuredContent.result.repository_sha, "test-sha");
+  assert.equal(body.result.structuredContent.result.deployment_sha, "test-sha");
 });
 
 test("oauth metadata and token endpoint support connector auth", async () => {
@@ -226,88 +255,6 @@ test("oauth metadata and token endpoint support connector auth", async () => {
   assert.match(tokenBody.access_token, /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/);
 });
 
-test("ingest rejects invalid OHLC", async () => {
-  const env = createEnv();
-  const body = await callTool(env, "ingest_btc_usd_hourly_candle", {
-    ...validCandleArgs(),
-    high: 99,
-  });
-
-  assert.equal(body.error.message, "invalid_ohlc");
-});
-
-test("ingest rejects future or incomplete candle", async () => {
-  const env = createEnv();
-  const future = new Date(Date.now() + 3_600_000);
-  future.setUTCMinutes(0, 0, 0);
-  const body = await callTool(env, "ingest_btc_usd_hourly_candle", {
-    ...validCandleArgs(),
-    closed_at: future.toISOString(),
-  });
-
-  assert.equal(body.error.message, "closed_candle_required");
-});
-
-test("ingest inserts one valid closed candle and latest returns it", async () => {
-  const env = createEnv();
-  const inserted = await callTool(env, "ingest_btc_usd_hourly_candle", validCandleArgs());
-
-  assert.equal(inserted.result.structuredContent.ok, true);
-  assert.equal(inserted.result.structuredContent.inserted, true);
-  assert.equal(inserted.result.structuredContent.replayed, false);
-  assert.equal(inserted.result.structuredContent.pair, "BTC-USD");
-
-  const latest = await callTool(env, "get_latest_btc_usd_hourly_candle", {});
-  assert.equal(latest.result.structuredContent.candle.closed_at, validCandleArgs().closed_at);
-  assert.equal(latest.result.structuredContent.candle.close, 101);
-});
-
-test("ingest replay with same operation id returns existing result", async () => {
-  const env = createEnv();
-  await callTool(env, "ingest_btc_usd_hourly_candle", validCandleArgs());
-  const replayed = await callTool(env, "ingest_btc_usd_hourly_candle", validCandleArgs());
-
-  assert.equal(replayed.result.structuredContent.inserted, false);
-  assert.equal(replayed.result.structuredContent.replayed, true);
-  assert.equal(env.DB.candles.size, 1);
-});
-
-test("ingest same operation id with different payload rejects", async () => {
-  const env = createEnv();
-  await callTool(env, "ingest_btc_usd_hourly_candle", validCandleArgs());
-  const conflict = await callTool(env, "ingest_btc_usd_hourly_candle", {
-    ...validCandleArgs(),
-    close: 102,
-  });
-
-  assert.equal(conflict.error.message, "operation_id_conflict");
-});
-
-test("ingest rejects same candle timestamp with different values", async () => {
-  const env = createEnv();
-  await callTool(env, "ingest_btc_usd_hourly_candle", validCandleArgs());
-  const conflict = await callTool(env, "ingest_btc_usd_hourly_candle", {
-    ...validCandleArgs(),
-    operation_id: "different-operation",
-    close: 102,
-  });
-
-  assert.equal(conflict.error.message, "candle_conflict");
-});
-
-test("public homepage includes stored latest candle after insertion", async () => {
-  const env = createEnv();
-  await callTool(env, "ingest_btc_usd_hourly_candle", validCandleArgs());
-
-  const response = await handleRequest(new Request("https://example.com/"), env);
-  const body = await response.text();
-
-  assert.equal(response.status, 200);
-  assert.match(body, /Latest Stored BTC-USD 1h Candle/);
-  assert.match(body, /2026-07-25T12:00:00.000Z/);
-  assert.match(body, /101/);
-});
-
 async function initializeMcpSession(env) {
   return handleRequest(
     new Request("https://example.com/api/operator/mcp", {
@@ -319,44 +266,44 @@ async function initializeMcpSession(env) {
   );
 }
 
-async function callTool(env, name, args) {
-  const initialize = await initializeMcpSession(env);
+async function mcp(env, sessionId, payload) {
   const response = await handleRequest(
     new Request("https://example.com/api/operator/mcp", {
       method: "POST",
       headers: {
         authorization: "Bearer test-token",
-        "mcp-session-id": initialize.headers.get("mcp-session-id"),
+        "mcp-session-id": sessionId,
       },
-      body: JSON.stringify({
-        jsonrpc: "2.0",
-        id: 20,
-        method: "tools/call",
-        params: { name, arguments: args },
-      }),
+      body: JSON.stringify(payload),
     }),
     env,
   );
   return response.json();
 }
 
-function validCandleArgs() {
-  return {
-    operation_id: "op-2026-07-25T12",
-    closed_at: "2026-07-25T12:00:00.000Z",
-    open: 100,
-    high: 105,
-    low: 95,
-    close: 101,
-    volume: 12.5,
-    source: "test",
-  };
+async function callTool(env, name, args) {
+  const initialize = await initializeMcpSession(env);
+  return mcp(env, initialize.headers.get("mcp-session-id"), {
+    jsonrpc: "2.0",
+    id: 20,
+    method: "tools/call",
+    params: { name, arguments: args },
+  });
+}
+
+async function executeIntent(env, operationId, intent, inputs) {
+  return callTool(env, "execute_quant_lab_intent", {
+    operation_id: operationId,
+    intent,
+    inputs,
+  });
 }
 
 class MemoryD1 {
   constructor() {
-    this.candles = new Map();
     this.receipts = new Map();
+    this.continuation = null;
+    this.audit = [];
   }
 
   prepare(sql) {
@@ -383,60 +330,44 @@ class MemoryStatement {
     if (this.sql.includes("FROM operator_operation_receipts")) {
       return this.db.receipts.get(this.values[0]) || null;
     }
-    if (this.sql.includes("FROM market_candles") && this.sql.includes("closed_at = ?")) {
-      return [...this.db.candles.values()].find((row) => (
-        row.pair === this.values[0] && row.interval === this.values[1] && row.closed_at === this.values[2]
-      )) || null;
+    if (this.sql.includes("FROM operator_continuation_state")) {
+      return this.db.continuation;
     }
-    if (this.sql.includes("FROM market_candles") && this.sql.includes("ORDER BY closed_at DESC")) {
-      return [...this.db.candles.values()].sort((left, right) => right.closed_at.localeCompare(left.closed_at))[0] || null;
+    if (this.sql.includes("FROM market_candles")) {
+      return null;
     }
     throw new Error(`unhandled first SQL: ${this.sql}`);
   }
 
   async run() {
-    if (this.sql.includes("INSERT INTO market_candles")) {
-      const [
-        id,
-        pair,
-        interval,
-        closed_at,
-        open,
-        high,
-        low,
-        close,
-        volume,
-        source,
-        created_at,
-        updated_at,
-      ] = this.values;
-      this.db.candles.set(id, {
-        id,
-        pair,
-        interval,
-        closed_at,
-        open,
-        high,
-        low,
-        close,
-        volume,
-        source,
+    if (this.sql.includes("INSERT INTO operator_operation_receipts")) {
+      const [operation_id, tool_name, intent, request_fingerprint, status, result_json, created_at, updated_at] = this.values;
+      this.db.receipts.set(operation_id, {
+        operation_id,
+        tool_name,
+        intent,
+        request_fingerprint,
+        status,
+        result_json,
         created_at,
         updated_at,
       });
       return { success: true };
     }
-    if (this.sql.includes("INSERT INTO operator_operation_receipts")) {
-      const [operation_id, tool_name, request_fingerprint, result_json, created_at, updated_at] = this.values;
-      const existing = this.db.receipts.get(operation_id);
-      this.db.receipts.set(operation_id, {
-        operation_id,
-        tool_name,
-        request_fingerprint,
-        result_json,
-        created_at: existing?.created_at || created_at,
+    if (this.sql.includes("INSERT INTO operator_audit_log")) {
+      const [id, operation_id, intent, status, summary, created_at] = this.values;
+      this.db.audit.push({ id, operation_id, intent, status, summary, created_at });
+      return { success: true };
+    }
+    if (this.sql.includes("INSERT INTO operator_continuation_state")) {
+      const [, active_objective, current_phase, completed_evidence_json, next_action, updated_at] = this.values;
+      this.db.continuation = {
+        active_objective,
+        current_phase,
+        completed_evidence_json,
+        next_action,
         updated_at,
-      });
+      };
       return { success: true };
     }
     throw new Error(`unhandled run SQL: ${this.sql}`);

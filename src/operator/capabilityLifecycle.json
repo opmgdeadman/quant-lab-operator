@@ -1,0 +1,23 @@
+{
+  "version": "quant-lab-capability-lifecycle-v1",
+  "mandatory_sequence": [
+    "declaration",
+    "directory_entry",
+    "strict_schema",
+    "canonical_handler",
+    "tests",
+    "migration_when_needed",
+    "validation_command",
+    "deploy_live_verification_contract"
+  ],
+  "declarations": [
+    { "id": "operating.operator_status.lifecycle", "intent": "operator_status" },
+    { "id": "operating.continuation_read.lifecycle", "intent": "read_continuation" },
+    { "id": "operating.continuation_write.lifecycle", "intent": "write_continuation" },
+    { "id": "engineering.repository_inspection.lifecycle", "intent": "inspect_repository" },
+    { "id": "engineering.repo_file_read.lifecycle", "intent": "read_repo_file" },
+    { "id": "engineering.validation.lifecycle", "intent": "run_validation" },
+    { "id": "deployment.production_alignment.lifecycle", "intent": "validate_production_sha" }
+  ]
+}
+

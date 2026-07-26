@@ -1,3 +1,6 @@
+import { executeQuantLabIntent } from "./operator/executionKernel.js";
+import { publicTools as operatorPublicTools } from "./operator/toolRegistry.js";
+
 const SYSTEM_NAME = "Quant Lab";
 const MCP_PATH = "/api/operator/mcp";
 const OAUTH_METADATA_PATH = "/.well-known/oauth-authorization-server";
@@ -136,7 +139,7 @@ async function mcpResponseFor(message, request, env) {
         jsonrpc: "2.0",
         id,
         result: {
-          tools: publicTools(),
+          tools: operatorPublicTools(publicStatusSchema(), executeIntentOutputSchema()),
         },
       },
     };
@@ -151,7 +154,7 @@ async function mcpResponseFor(message, request, env) {
     }
     const name = message.params?.name;
     const args = message.params?.arguments || {};
-    if (!publicTools().some((tool) => tool.name === name)) {
+    if (!operatorPublicTools(publicStatusSchema(), executeIntentOutputSchema()).some((tool) => tool.name === name)) {
       return { body: mcpErrorObject(id, -32602, "public_direct_tool_required") };
     }
     let structuredContent;
@@ -162,7 +165,7 @@ async function mcpResponseFor(message, request, env) {
         body: mcpErrorObject(
           id,
           -32602,
-          error instanceof ToolInputError ? error.message : "tool_execution_failed",
+          error instanceof Error ? error.message : "tool_execution_failed",
         ),
       };
     }
@@ -205,254 +208,17 @@ async function mcpResponseFor(message, request, env) {
   return { body: mcpErrorObject(id ?? null, -32601, "Method not found") };
 }
 
-function publicTools() {
-  return [
-    {
-      name: "get_quant_lab_status",
-      title: "Get Quant Lab Status",
-      description: "Return authenticated Quant Lab infrastructure status. No trading actions or private strategy data.",
-      annotations: {
-        readOnlyHint: true,
-        destructiveHint: false,
-        idempotentHint: true,
-        openWorldHint: true,
-      },
-      inputSchema: {
-        type: "object",
-        additionalProperties: false,
-        properties: {},
-      },
-      outputSchema: publicStatusSchema(),
-    },
-    {
-      name: "ingest_btc_usd_hourly_candle",
-      title: "Ingest BTC-USD Hourly Candle",
-      description: "Insert or idempotently replay one closed BTC-USD 1h candle into D1.",
-      annotations: {
-        readOnlyHint: false,
-        destructiveHint: false,
-        idempotentHint: true,
-        openWorldHint: false,
-      },
-      inputSchema: {
-        type: "object",
-        additionalProperties: false,
-        properties: {
-          operation_id: { type: "string", minLength: 1, maxLength: 120 },
-          closed_at: { type: "string", format: "date-time" },
-          open: { type: "number" },
-          high: { type: "number" },
-          low: { type: "number" },
-          close: { type: "number" },
-          volume: { type: "number" },
-          source: { type: "string", minLength: 1, maxLength: 80 },
-        },
-        required: ["operation_id", "closed_at", "open", "high", "low", "close", "volume", "source"],
-      },
-      outputSchema: ingestCandleOutputSchema(),
-    },
-    {
-      name: "get_latest_btc_usd_hourly_candle",
-      title: "Get Latest BTC-USD Hourly Candle",
-      description: "Return the latest stored BTC-USD 1h candle from D1.",
-      annotations: {
-        readOnlyHint: true,
-        destructiveHint: false,
-        idempotentHint: true,
-        openWorldHint: true,
-      },
-      inputSchema: {
-        type: "object",
-        additionalProperties: false,
-        properties: {},
-      },
-      outputSchema: latestCandleOutputSchema(),
-    },
-  ];
-}
-
 async function callPublicTool(name, args, env) {
   if (name === "get_quant_lab_status") {
     return publicStatusPayload(env);
   }
-  if (name === "ingest_btc_usd_hourly_candle") {
-    return handleIngestBtcUsdHourlyCandle(args, env);
-  }
-  if (name === "get_latest_btc_usd_hourly_candle") {
-    return handleGetLatestBtcUsdHourlyCandle(env);
+  if (name === "execute_quant_lab_intent") {
+    return executeQuantLabIntent(args, {
+      env,
+      databaseProbe,
+    });
   }
   throw new ToolInputError("public_direct_tool_required");
-}
-
-async function handleIngestBtcUsdHourlyCandle(args, env) {
-  const candle = validateClosedBtcHourlyCandle(args, new Date());
-  const fingerprint = await fingerprintJson({ tool: "ingest_btc_usd_hourly_candle", candle });
-  const receipt = await readOperationReceipt(env, candle.operation_id);
-  if (receipt) {
-    if (receipt.tool_name !== "ingest_btc_usd_hourly_candle" || receipt.request_fingerprint !== fingerprint) {
-      throw new ToolInputError("operation_id_conflict");
-    }
-    const replayed = JSON.parse(receipt.result_json);
-    return { ...replayed, inserted: false, replayed: true };
-  }
-
-  const existing = await findCandleByClosedAt(env, candle.closed_at);
-  if (existing && !sameCandleValues(existing, candle)) {
-    throw new ToolInputError("candle_conflict");
-  }
-
-  const now = new Date().toISOString();
-  const result = {
-    ok: true,
-    tool: "ingest_btc_usd_hourly_candle",
-    pair: "BTC-USD",
-    closed_at: candle.closed_at,
-    inserted: !existing,
-    replayed: false,
-    candle_id: candleId(candle.closed_at),
-    database_connected: true,
-  };
-
-  if (!existing) {
-    await env.DB.prepare(
-      `INSERT INTO market_candles (
-        id, pair, interval, closed_at, open, high, low, close, volume, source, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    ).bind(
-      result.candle_id,
-      "BTC-USD",
-      "1h",
-      candle.closed_at,
-      candle.open,
-      candle.high,
-      candle.low,
-      candle.close,
-      candle.volume,
-      candle.source,
-      now,
-      now,
-    ).run();
-  }
-  await writeOperationReceipt(env, {
-    operation_id: candle.operation_id,
-    tool_name: "ingest_btc_usd_hourly_candle",
-    request_fingerprint: fingerprint,
-    result_json: JSON.stringify(result),
-    now,
-  });
-  return result;
-}
-
-async function handleGetLatestBtcUsdHourlyCandle(env) {
-  return {
-    ok: true,
-    pair: "BTC-USD",
-    candle: await latestBtcUsdHourlyCandle(env),
-    database_connected: true,
-  };
-}
-
-function validateClosedBtcHourlyCandle(args, now) {
-  const allowed = new Set(["operation_id", "closed_at", "open", "high", "low", "close", "volume", "source"]);
-  for (const key of Object.keys(args || {})) {
-    if (!allowed.has(key)) {
-      throw new ToolInputError("unknown_field");
-    }
-  }
-  const operationId = requireBoundedString(args?.operation_id, "operation_id", 120);
-  const source = requireBoundedString(args?.source, "source", 80);
-  const closedAt = normalizeIsoHour(args?.closed_at);
-  const open = requireFiniteNumber(args?.open, "open");
-  const high = requireFiniteNumber(args?.high, "high");
-  const low = requireFiniteNumber(args?.low, "low");
-  const close = requireFiniteNumber(args?.close, "close");
-  const volume = requireFiniteNumber(args?.volume, "volume");
-  if (open < 0 || high < 0 || low < 0 || close < 0 || volume < 0) {
-    throw new ToolInputError("nonnegative_values_required");
-  }
-  if (high < open || high < close || low > open || low > close || high < low) {
-    throw new ToolInputError("invalid_ohlc");
-  }
-  if (new Date(closedAt).getTime() > now.getTime()) {
-    throw new ToolInputError("closed_candle_required");
-  }
-  return {
-    operation_id: operationId,
-    closed_at: closedAt,
-    open,
-    high,
-    low,
-    close,
-    volume,
-    source,
-  };
-}
-
-function requireBoundedString(value, field, maxLength) {
-  if (typeof value !== "string" || value.length < 1 || value.length > maxLength) {
-    throw new ToolInputError(`invalid_${field}`);
-  }
-  return value;
-}
-
-function requireFiniteNumber(value, field) {
-  if (typeof value !== "number" || !Number.isFinite(value)) {
-    throw new ToolInputError(`invalid_${field}`);
-  }
-  return value;
-}
-
-function normalizeIsoHour(value) {
-  if (typeof value !== "string") {
-    throw new ToolInputError("invalid_closed_at");
-  }
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime()) || date.toISOString() !== value) {
-    throw new ToolInputError("invalid_closed_at");
-  }
-  if (date.getUTCMinutes() !== 0 || date.getUTCSeconds() !== 0 || date.getUTCMilliseconds() !== 0) {
-    throw new ToolInputError("hour_boundary_required");
-  }
-  return date.toISOString();
-}
-
-async function fingerprintJson(value) {
-  const encoded = new TextEncoder().encode(stableJson(value));
-  const digest = await crypto.subtle.digest("SHA-256", encoded);
-  return base64UrlEncode(new Uint8Array(digest));
-}
-
-function stableJson(value) {
-  if (Array.isArray(value)) {
-    return `[${value.map((item) => stableJson(item)).join(",")}]`;
-  }
-  if (value && typeof value === "object") {
-    return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${stableJson(value[key])}`).join(",")}}`;
-  }
-  return JSON.stringify(value);
-}
-
-async function readOperationReceipt(env, operationId) {
-  return env.DB.prepare(
-    "SELECT operation_id, tool_name, request_fingerprint, result_json FROM operator_operation_receipts WHERE operation_id = ?",
-  ).bind(operationId).first();
-}
-
-async function writeOperationReceipt(env, receipt) {
-  await env.DB.prepare(
-    `INSERT INTO operator_operation_receipts (
-      operation_id, tool_name, request_fingerprint, result_json, created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?)
-    ON CONFLICT(operation_id) DO UPDATE SET
-      updated_at = excluded.updated_at`,
-  ).bind(
-    receipt.operation_id,
-    receipt.tool_name,
-    receipt.request_fingerprint,
-    receipt.result_json,
-    receipt.now,
-    receipt.now,
-  ).run();
 }
 
 async function findCandleByClosedAt(env, closedAt) {
@@ -926,6 +692,23 @@ function latestCandleOutputSchema() {
       database_connected: { type: "boolean" },
     },
     required: ["ok", "pair", "candle", "database_connected"],
+  };
+}
+
+function executeIntentOutputSchema() {
+  return {
+    type: "object",
+    additionalProperties: true,
+    properties: {
+      ok: { type: "boolean" },
+      intent: { type: "string" },
+      operation_id: { type: "string" },
+      receipt: { type: "object", additionalProperties: true },
+      execution_kernel: { type: "object", additionalProperties: true },
+      operator_action_closure: { type: "object", additionalProperties: true },
+      result: { type: "object", additionalProperties: true },
+    },
+    required: ["ok", "intent", "operation_id", "receipt", "execution_kernel", "operator_action_closure", "result"],
   };
 }
 
