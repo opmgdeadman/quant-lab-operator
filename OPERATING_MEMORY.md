@@ -44,13 +44,14 @@ The earlier private-operator/public-runner split is obsolete. The former `opmgde
 - ChatGPT action refresh shows `get_quant_lab_status` as `READ` / `OPEN WORLD`.
 - Full cloud/GitHub/Cloudflare/site/MCP creation runbook: `docs/WHITELISTED_CLOUD_GITHUB_MCP_RUNBOOK.md`.
 
-## Validation
+## Remote Validation
 
-- Worker tests: `npm test` passed, 10 tests.
-- Quant core tests: `C:\Users\brian\AppData\Local\Programs\Python\Python313\python.exe -m pytest` passed, 22 tests.
-- Wrangler dry-run: `npm run check` passed.
-- GitHub Actions CI passed for commit `415a6d6017e22db4e76ba1929b5818bb138e04ae`, run `30221363658`.
-- Latest deployed Worker version ID after authenticated MCP cleanup: `c0ddbf85-c22c-4a64-a746-813202a9154e`.
+- Official validation is GitHub Actions on the public repository, not a required local startup path.
+- CI installs dependencies on a clean runner, runs Worker tests, runs Python `quant_core` tests, and performs a Wrangler dry-run.
+- Cloudflare is the runtime target; localhost and local Python/Node are diagnostics only.
+- Known passing CI: run `30221421928` on commit `0b68b7f`.
+- Latest pushed repo commit after documentation/assets cleanup: `605ef228763ae934f59eabf994e016a069c02a3b`.
+- Latest deployed Worker version ID after MCP secret alignment: `f847112c-8f94-444e-873f-3c5f32f39e32`.
 
 ## Secrets
 

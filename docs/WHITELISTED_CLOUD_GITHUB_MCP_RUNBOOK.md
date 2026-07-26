@@ -48,30 +48,31 @@ gh repo delete opmgdeadman/quant-core-runner --yes
 
 Before making a repo public, scan both the working tree and Git history for secrets, private account data, local runtime data, databases, logs, and generated artifacts.
 
-## Current Validation Signals
+## Current Remote Validation Signals
 
 Latest known good state:
 
 - Commit with consolidated authenticated MCP: `415a6d6017e22db4e76ba1929b5818bb138e04ae`
 - Documentation commit after connector setup: `5050d4e`
+- Documentation/assets cleanup commit: `605ef228763ae934f59eabf994e016a069c02a3b`
 - GitHub Actions run: `30221421928` passed on commit `0b68b7f`
 - Worker deploy version after MCP secret alignment: `f847112c-8f94-444e-873f-3c5f32f39e32`
 - Earlier cleanup deploy version: `c0ddbf85-c22c-4a64-a746-813202a9154e`
 
-Validation commands:
+Official validation path:
 
-```powershell
-npm test
-C:\Users\brian\AppData\Local\Programs\Python\Python313\python.exe -m pytest
-npm run check
-```
+- Push to GitHub.
+- GitHub Actions installs dependencies on a clean runner.
+- CI runs Worker tests, Python `quant_core` tests, and a Wrangler dry-run.
+- Cloudflare is the deployment/runtime target.
+- Verify the live Worker, website, D1 binding, and authenticated MCP after deploy.
 
-Expected results:
+Local commands are diagnostics only. They are useful when debugging a failed CI run or Worker dry-run, but they are not the Quant Lab operating path.
 
-- `npm test` passes Worker tests.
-- Python pytest passes deterministic `quant_core` tests.
-- `npm run check` runs `wrangler deploy --dry-run` successfully.
-- GitHub Actions CI passes on push.
+Expected remote results:
+
+- GitHub Actions CI passes on the pushed commit.
+- Wrangler dry-run passes in CI.
 - Direct MCP OAuth token request succeeds with configured client credentials.
 - Authenticated JSON-RPC `initialize` returns `Mcp-Session-Id`.
 - Authenticated `tools/list` returns only public typed tools.
@@ -169,7 +170,7 @@ $rng.GetBytes($bytes)
 $rng.Dispose()
 ```
 
-## Python Test Pattern
+## Historical Local Python Diagnostic Pitfall
 
 Failed path:
 
@@ -182,13 +183,13 @@ Reason:
 
 - `python` on PATH pointed at a Hermes embedded environment without normal `pip`/`pytest`.
 
-Use locally:
+Use only when debugging locally on this Windows machine:
 
 ```powershell
 C:\Users\brian\AppData\Local\Programs\Python\Python313\python.exe -m pytest
 ```
 
-CI uses `actions/setup-python`, so `python` is fine in GitHub Actions.
+CI uses `actions/setup-python`, so `python` is fine in GitHub Actions. Do not present the Windows Python path as the official project operating path.
 
 ## Authenticated MCP Pattern
 
@@ -378,7 +379,7 @@ Completed:
 - Actions refreshed.
 - Status tool visible as read/open-world.
 - Permission mode set to allow all actions.
-- CI and local validation passed.
+- CI passed and live remote MCP validation succeeded.
 
 Not yet built:
 

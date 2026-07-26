@@ -5,8 +5,6 @@
   "type": "module",
   "scripts": {
     "test": "node --test",
-    "test:python": "python -m pytest",
-    "validate": "npm test && python -m pytest",
     "check": "wrangler deploy --dry-run",
     "deploy": "wrangler deploy"
   },
