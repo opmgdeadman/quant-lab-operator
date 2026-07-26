@@ -62,19 +62,29 @@ Tables:
 - `test/operator-client-safety.test.js`
   Forbidden keys, path traversal, allowlists, redaction, result bounds.
 
-## First Intents
+## Engineering-Control Intents
 
-Implement only control-plane intents first:
+Current Quant-native control-plane intents:
 
+- `get_engineering_access_state`
 - `operator_status`
 - `read_continuation`
 - `write_continuation`
 - `inspect_repository`
 - `read_repo_file`
+- `list_repo_files`
+- `apply_repo_patch_set`
+- `create_repo_file`
+- `delete_repo_file`
 - `run_validation`
+- `list_github_actions_runs`
+- `trigger_github_workflow`
+- `monitor_github_workflow`
+- `deploy_cloudflare_worker`
+- `apply_d1_migrations`
 - `validate_production_sha`
 
-Do not add more trading functionality until ChatGPT can see and invoke `execute_quant_lab_intent`, perform a harmless repo read, run validation, report production alignment, and return durable receipts.
+Do not add more trading functionality until ChatGPT can see and invoke `execute_quant_lab_intent`, perform a repo read, dry-run a bounded patch set, run validation through GitHub Actions, monitor the workflow, dispatch an exact-SHA deploy or migrations workflow, report production alignment, and return durable receipts.
 
 ## Completion Bar
 
@@ -83,7 +93,10 @@ Completion means live ChatGPT connector evidence, not local claims:
 - ChatGPT action registry sees `execute_quant_lab_intent`.
 - ChatGPT invokes `operator_status`.
 - ChatGPT invokes `read_repo_file` for `README.md`.
-- ChatGPT invokes `run_validation`.
+- ChatGPT invokes `apply_repo_patch_set` in dry-run mode.
+- ChatGPT invokes `trigger_github_workflow`.
+- ChatGPT invokes `monitor_github_workflow`.
+- ChatGPT invokes `deploy_cloudflare_worker` or `apply_d1_migrations` with an exact SHA, or reports a source-controlled reason deployment is blocked.
 - ChatGPT invokes `validate_production_sha`.
 - Each invocation returns a durable receipt.
 - The final response includes commit SHA, deployed Worker version, receipt IDs, and exact next action.

@@ -242,6 +242,144 @@ test("list_github_actions_runs reports missing server-side token without exposin
   assert.doesNotMatch(JSON.stringify(body), /test-client-secret|test-token/);
 });
 
+test("engineering access state reports bounded controls without secrets", async () => {
+  const env = { ...createEnv(), GITHUB_TOKEN: "server-side-test-token" };
+  const body = await executeIntent(env, "op-engineering-access", "get_engineering_access_state", {});
+  const result = body.result.structuredContent.result;
+
+  assert.equal(result.github.token_configured, true);
+  assert.equal(result.repository_controls.arbitrary_shell_allowed, false);
+  assert.equal(result.repository_controls.arbitrary_sql_allowed, false);
+  assert.equal(result.repository_controls.exact_patch_required, true);
+  assert.doesNotMatch(JSON.stringify(body), /server-side-test-token/);
+});
+
+test("repo file list and read use bounded GitHub contents API paths", async () => {
+  const env = { ...createEnv(), GITHUB_TOKEN: "server-side-test-token" };
+  const restore = mockFetch(async (url) => {
+    if (url.endsWith("/contents/docs?ref=main")) {
+      return jsonResponse([
+        { path: "docs/MCP_OPERATOR_CONTROL_PLANE_HANDOFF.md", type: "file", size: 100, sha: "doc-sha" },
+        { path: ".env", type: "file", size: 10, sha: "secret-sha" },
+      ]);
+    }
+    if (url.endsWith("/contents/README.md?ref=main")) {
+      return jsonResponse({
+        path: "README.md",
+        sha: "readme-sha",
+        content: btoa("Line 1\nQuant Lab remote read\nLine 3"),
+      });
+    }
+    throw new Error(`unexpected fetch URL: ${url}`);
+  });
+
+  try {
+    const listed = await executeIntent(env, "op-list-files", "list_repo_files", { path: "docs" });
+    const read = await executeIntent(env, "op-read-remote-readme", "read_repo_file", { path: "README.md", max_lines: 2 });
+
+    assert.deepEqual(listed.result.structuredContent.result.entries.map((entry) => entry.path), ["docs/MCP_OPERATOR_CONTROL_PLANE_HANDOFF.md"]);
+    assert.equal(read.result.structuredContent.result.source, "github");
+    assert.match(read.result.structuredContent.result.returned_lines.join("\n"), /Quant Lab remote read/);
+  } finally {
+    restore();
+  }
+});
+
+test("apply_repo_patch_set dry-runs exact replacements and rejects non-unique matches", async () => {
+  const env = { ...createEnv(), GITHUB_TOKEN: "server-side-test-token" };
+  const restore = mockFetch(async (url) => {
+    if (url.endsWith("/contents/README.md?ref=main")) {
+      return jsonResponse({
+        path: "README.md",
+        sha: "readme-sha",
+        content: btoa("alpha\nunique text\nomega\n"),
+      });
+    }
+    if (url.endsWith("/contents/package.json?ref=main")) {
+      return jsonResponse({
+        path: "package.json",
+        sha: "package-sha",
+        content: btoa("dup dup"),
+      });
+    }
+    throw new Error(`unexpected fetch URL: ${url}`);
+  });
+
+  try {
+    const ok = await executeIntent(env, "op-patch-dry-run", "apply_repo_patch_set", {
+      dry_run: true,
+      replacements: [{ path: "README.md", find: "unique text", replace: "changed text" }],
+    });
+    const duplicate = await executeIntent(env, "op-patch-duplicate", "apply_repo_patch_set", {
+      dry_run: true,
+      replacements: [{ path: "package.json", find: "dup", replace: "changed" }],
+    });
+    const forbidden = await executeIntent(env, "op-patch-forbidden", "apply_repo_patch_set", {
+      dry_run: true,
+      replacements: [{ path: ".env", find: "A", replace: "B" }],
+    });
+
+    assert.equal(ok.result.structuredContent.result.status, "dry_run_passed");
+    assert.equal(duplicate.result.structuredContent.ok, false);
+    assert.equal(duplicate.result.structuredContent.result.status, "exact_match_count_not_one");
+    assert.equal(forbidden.result.structuredContent.result.status, "forbidden_path");
+  } finally {
+    restore();
+  }
+});
+
+test("create_repo_file and delete_repo_file use one bounded Git data commit", async () => {
+  const env = { ...createEnv(), GITHUB_TOKEN: "server-side-test-token" };
+  const calls = [];
+  const restore = mockFetch(async (url, options = {}) => {
+    calls.push({ url, options });
+    if (url.endsWith("/contents/docs/test.md?ref=main")) {
+      return jsonResponse({ message: "Not Found" }, 404);
+    }
+    if (url.endsWith("/contents/docs/remove.md?ref=main")) {
+      return jsonResponse({ path: "docs/remove.md", sha: "remove-sha", content: btoa("remove me") });
+    }
+    if (url.endsWith("/git/ref/heads/main")) {
+      if (options.method === "PATCH") {
+        return jsonResponse({ object: { sha: "new-commit-sha" } });
+      }
+      return jsonResponse({ object: { sha: "head-sha" } });
+    }
+    if (url.endsWith("/git/commits/head-sha")) {
+      return jsonResponse({ tree: { sha: "base-tree-sha" } });
+    }
+    if (url.endsWith("/git/blobs")) {
+      return jsonResponse({ sha: "blob-sha" }, 201);
+    }
+    if (url.endsWith("/git/trees")) {
+      return jsonResponse({ sha: "tree-sha" }, 201);
+    }
+    if (url.endsWith("/git/commits")) {
+      return jsonResponse({ sha: "commit-sha" }, 201);
+    }
+    throw new Error(`unexpected fetch URL: ${url}`);
+  });
+
+  try {
+    const created = await executeIntent(env, "op-create-file", "create_repo_file", {
+      path: "docs/test.md",
+      content: "# Test\n",
+      commit_message: "Create test doc",
+    });
+    const deleted = await executeIntent(env, "op-delete-file", "delete_repo_file", {
+      path: "docs/remove.md",
+      commit_message: "Delete test doc",
+    });
+
+    assert.equal(created.result.structuredContent.result.status, "file_created");
+    assert.equal(deleted.result.structuredContent.result.status, "file_deleted");
+    assert.equal(calls.some((call) => call.url.endsWith("/git/trees")), true);
+    assert.equal(calls.some((call) => call.url.endsWith("/git/ref/heads/main") && call.options.method === "PATCH"), true);
+  } finally {
+    restore();
+  }
+});
+
 test("GitHub Actions intents call bounded GitHub API routes", async () => {
   const env = { ...createEnv(), GITHUB_TOKEN: "server-side-test-token" };
   const calls = [];
@@ -312,12 +450,14 @@ test("GitHub Actions intents call bounded GitHub API routes", async () => {
   }
 });
 
-test("deploy_cloudflare_worker dispatches fixed deploy workflow with exact SHA only", async () => {
+test("deploy_cloudflare_worker and apply_d1_migrations dispatch fixed workflow with exact SHA only", async () => {
   const env = { ...createEnv(), GITHUB_TOKEN: "server-side-test-token" };
   const exactSha = "b".repeat(40);
   const restore = mockFetch(async (url, options) => {
     assert.match(url, /\/actions\/workflows\/quant-lab-deploy\.yml\/dispatches$/);
-    assert.deepEqual(JSON.parse(options.body), { ref: "main", inputs: { deploy_sha: exactSha } });
+    const body = JSON.parse(options.body);
+    assert.equal(body.ref, "main");
+    assert.equal(body.inputs.deploy_sha, exactSha);
     return new Response(null, { status: 204 });
   });
 
@@ -328,11 +468,15 @@ test("deploy_cloudflare_worker dispatches fixed deploy workflow with exact SHA o
     const valid = await executeIntent(env, "op-deploy-valid", "deploy_cloudflare_worker", {
       deploy_sha: exactSha,
     });
+    const migrations = await executeIntent(env, "op-migrations-valid", "apply_d1_migrations", {
+      deploy_sha: exactSha,
+    });
 
     assert.equal(invalid.result.structuredContent.ok, false);
     assert.equal(invalid.result.structuredContent.result.status, "invalid_exact_sha");
     assert.equal(valid.result.structuredContent.result.status, "deployment_workflow_dispatched");
     assert.equal(valid.result.structuredContent.result.workflow_id, "quant-lab-deploy.yml");
+    assert.equal(migrations.result.structuredContent.result.status, "migration_workflow_dispatched");
   } finally {
     restore();
   }

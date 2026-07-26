@@ -15,8 +15,10 @@ test("forbidden public input keys reject", () => {
 
 test("path traversal and unallowlisted files reject", () => {
   assert.doesNotThrow(() => assertAllowedRepoPath("README.md"));
+  assert.doesNotThrow(() => assertAllowedRepoPath("migrations/0001_infrastructure_shell.sql"));
   assert.throws(() => assertAllowedRepoPath("../.env"), /forbidden_path/);
-  assert.throws(() => assertAllowedRepoPath("migrations/0001_infrastructure_shell.sql"), /forbidden_path/);
+  assert.throws(() => assertAllowedRepoPath(".env"), /forbidden_path/);
+  assert.throws(() => assertAllowedRepoPath("runtime/state.sqlite"), /forbidden_path/);
 });
 
 test("secret-like outputs are redacted", () => {

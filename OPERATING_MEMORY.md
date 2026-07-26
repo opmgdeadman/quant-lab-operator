@@ -38,9 +38,10 @@ The earlier private-operator/public-runner split is obsolete. The former `opmgde
 - `tools/list`, `tools/call`, and `ping` require auth plus valid session.
 - Current advertised tools are `get_quant_lab_status` and `execute_quant_lab_intent`.
 - `execute_quant_lab_intent` is the Lensically-style control-plane entrypoint. It dispatches only source-defined intents through the execution kernel, capability directory, client-safety registry, lifecycle manifest, and durable receipts/audit logging.
-- Supported intents are `operator_status`, `read_continuation`, `write_continuation`, `inspect_repository`, `read_repo_file`, `run_validation`, `list_github_actions_runs`, `trigger_github_workflow`, `monitor_github_workflow`, `deploy_cloudflare_worker`, and `validate_production_sha`.
+- Supported intents are `get_engineering_access_state`, `operator_status`, `read_continuation`, `write_continuation`, `inspect_repository`, `read_repo_file`, `list_repo_files`, `apply_repo_patch_set`, `create_repo_file`, `delete_repo_file`, `run_validation`, `list_github_actions_runs`, `trigger_github_workflow`, `monitor_github_workflow`, `deploy_cloudflare_worker`, `apply_d1_migrations`, and `validate_production_sha`.
 - GitHub/Cloudflare control follows the Lensically pattern: GPT calls `execute_quant_lab_intent`; the Worker validates source-defined closed schemas, writes durable receipts, and uses server-side GitHub credentials to call GitHub REST or dispatch allowlisted GitHub Actions.
 - Cloudflare deployment is controlled through the fixed `quant-lab-deploy.yml` workflow, not direct GPT-to-Cloudflare API access.
+- Repository mutation is controlled through allowlisted paths, exact find/replace patch sets, one non-forced Git data API commit per mutation intent, and durable idempotency receipts. No raw patch, arbitrary shell, arbitrary SQL, or unrestricted provider passthrough is exposed.
 - No shell, arbitrary SQL, arbitrary GitHub, arbitrary Cloudflare, generic router, or arbitrary code execution tools are present.
 - D1 migration `0002_market_candles_and_operator_receipts.sql` has been applied remotely.
 - Pending deploy for operator-control-plane migration `0003_operator_control_plane.sql`.
@@ -88,4 +89,4 @@ The earlier private-operator/public-runner split is obsolete. The former `opmgde
 
 ## Next Action
 
-Current GPT-requested milestone is being extended with bounded GitHub Actions control behind `execute_quant_lab_intent`. Next action after this deploy: use the authenticated MCP to call `list_github_actions_runs`, dispatch `ci.yml`, monitor the resulting run, then dispatch `quant-lab-deploy.yml` with an exact SHA when validation is green.
+Current GPT-requested milestone is being extended with the missing Lensically-style engineering controls behind `execute_quant_lab_intent`. Next action after this deploy: live MCP proof for `read_repo_file`, `apply_repo_patch_set` dry-run, `trigger_github_workflow`, `monitor_github_workflow`, `deploy_cloudflare_worker` or `apply_d1_migrations`, and `validate_production_sha`.

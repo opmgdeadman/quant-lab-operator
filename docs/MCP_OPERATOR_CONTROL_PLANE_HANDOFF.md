@@ -226,16 +226,22 @@ Suggested input schema:
     "intent": {
       "type": "string",
       "enum": [
+        "get_engineering_access_state",
         "operator_status",
         "read_continuation",
         "write_continuation",
         "inspect_repository",
         "read_repo_file",
+        "list_repo_files",
+        "apply_repo_patch_set",
+        "create_repo_file",
+        "delete_repo_file",
         "run_validation",
         "list_github_actions_runs",
         "trigger_github_workflow",
         "monitor_github_workflow",
         "deploy_cloudflare_worker",
+        "apply_d1_migrations",
         "validate_production_sha"
       ]
     },

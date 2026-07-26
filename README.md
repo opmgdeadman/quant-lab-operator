@@ -48,9 +48,11 @@ Advertised tools:
 
 There are no shell, arbitrary SQL, arbitrary GitHub, arbitrary Cloudflare, generic router, or arbitrary code execution tools.
 
-Supported intents are `operator_status`, `read_continuation`, `write_continuation`, `inspect_repository`, `read_repo_file`, `run_validation`, `list_github_actions_runs`, `trigger_github_workflow`, `monitor_github_workflow`, `deploy_cloudflare_worker`, and `validate_production_sha`.
+Supported intents are `get_engineering_access_state`, `operator_status`, `read_continuation`, `write_continuation`, `inspect_repository`, `read_repo_file`, `list_repo_files`, `apply_repo_patch_set`, `create_repo_file`, `delete_repo_file`, `run_validation`, `list_github_actions_runs`, `trigger_github_workflow`, `monitor_github_workflow`, `deploy_cloudflare_worker`, `apply_d1_migrations`, and `validate_production_sha`.
 
 GitHub and Cloudflare control uses the Lensically pattern: GPT calls `execute_quant_lab_intent`; the Worker validates the source-defined intent, writes durable receipts, and then calls GitHub REST or dispatches GitHub Actions using server-side secrets. GPT never receives raw tokens, shell, arbitrary SQL, arbitrary GitHub APIs, or direct Cloudflare credentials.
+
+Repository mutation is bounded. File paths must pass the source-controlled allowlist, patch sets use exact find/replace only, each `find` must match exactly once, and a live patch set commits through GitHub's Git data API without force-updating the branch. The operator can dry-run patches before committing.
 
 ## Remote Validation
 
@@ -59,7 +61,7 @@ Official validation is GitHub Actions on the public repository. CI installs depe
 The authenticated operator can dispatch allowlisted workflows:
 
 - `ci.yml`: validates the repository.
-- `quant-lab-deploy.yml`: validates an exact commit SHA, applies D1 migrations, and deploys the Cloudflare Worker.
+- `quant-lab-deploy.yml`: validates an exact commit SHA, applies D1 migrations, and optionally deploys the Cloudflare Worker.
 
 Cloudflare is the runtime target. Local commands are only developer diagnostics for debugging CI or Worker behavior; they are not the operating path for Quant Lab.
 

@@ -15,11 +15,64 @@ export const allowedRepoPaths = [
   "README.md",
   "OPERATING_MEMORY.md",
   "docs/WHITELISTED_CLOUD_GITHUB_MCP_RUNBOOK.md",
+  "docs/LENSICALLY_STYLE_MCP_ARCHITECTURE.md",
   "docs/MCP_OPERATOR_CONTROL_PLANE_HANDOFF.md",
+  "docs/MCP_OPERATOR_TOOL_SURFACE_HANDOFF.md",
   "src/index.js",
+  "src/operator/capabilityDirectory.js",
+  "src/operator/capabilityLifecycle.json",
+  "src/operator/clientSafeRequests.js",
+  "src/operator/executionKernel.js",
+  "src/operator/githubApi.js",
+  "src/operator/handlers/controlPlane.js",
+  "src/operator/receipts.js",
+  "src/operator/repoSnapshots.js",
+  "src/operator/schemas.js",
+  "src/operator/toolRegistry.js",
   "test/worker.test.js",
+  "test/operator-capability-directory.test.js",
+  "test/operator-client-safety.test.js",
+  ".github/workflows/ci.yml",
+  ".github/workflows/quant-lab-deploy.yml",
   "wrangler.jsonc",
   "package.json",
+];
+
+export const allowedRepoDirectories = [
+  ".github/workflows",
+  "docs",
+  "migrations",
+  "quant_core",
+  "src",
+  "test",
+  "tests",
+];
+
+const blockedPathSegments = [
+  ".env",
+  ".git",
+  ".wrangler",
+  "__pycache__",
+  "node_modules",
+  ".venv",
+  "venv",
+  "dist",
+  "build",
+  "coverage",
+];
+
+const blockedFileExtensions = [
+  ".db",
+  ".sqlite",
+  ".sqlite3",
+  ".log",
+  ".pem",
+  ".key",
+  ".p12",
+  ".bin",
+  ".zip",
+  ".tar",
+  ".gz",
 ];
 
 const redactionPatterns = [
@@ -37,10 +90,22 @@ export function assertClientSafeInputs(value) {
 }
 
 export function assertAllowedRepoPath(path) {
-  if (typeof path !== "string" || path.includes("..") || path.startsWith("/") || path.includes("\\")
-    || !allowedRepoPaths.includes(path)) {
+  if (!isAllowedRepoPath(path)) {
     throw new ClientSafetyError("forbidden_path");
   }
+}
+
+export function isAllowedRepoPath(path) {
+  if (typeof path !== "string" || !path || path.length > 220 || path.includes("..") || path.startsWith("/") || path.includes("\\")) {
+    return false;
+  }
+  if (path.split("/").some((segment) => blockedPathSegments.includes(segment))) {
+    return false;
+  }
+  if (blockedFileExtensions.some((extension) => path.toLowerCase().endsWith(extension))) {
+    return false;
+  }
+  return allowedRepoPaths.includes(path) || allowedRepoDirectories.some((directory) => path === directory || path.startsWith(`${directory}/`));
 }
 
 export function redactSecrets(value) {
@@ -82,4 +147,3 @@ function visit(value, path) {
 }
 
 export class ClientSafetyError extends Error {}
-

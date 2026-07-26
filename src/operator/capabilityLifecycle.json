@@ -11,16 +11,22 @@
     "deploy_live_verification_contract"
   ],
   "declarations": [
+    { "id": "engineering.access_state.lifecycle", "intent": "get_engineering_access_state" },
     { "id": "operating.operator_status.lifecycle", "intent": "operator_status" },
     { "id": "operating.continuation_read.lifecycle", "intent": "read_continuation" },
     { "id": "operating.continuation_write.lifecycle", "intent": "write_continuation" },
     { "id": "engineering.repository_inspection.lifecycle", "intent": "inspect_repository" },
     { "id": "engineering.repo_file_read.lifecycle", "intent": "read_repo_file" },
+    { "id": "engineering.repo_files_list.lifecycle", "intent": "list_repo_files" },
+    { "id": "engineering.repo_patch_set.lifecycle", "intent": "apply_repo_patch_set" },
+    { "id": "engineering.repo_file_create.lifecycle", "intent": "create_repo_file" },
+    { "id": "engineering.repo_file_delete.lifecycle", "intent": "delete_repo_file" },
     { "id": "engineering.validation.lifecycle", "intent": "run_validation" },
     { "id": "engineering.github_actions_runs_list.lifecycle", "intent": "list_github_actions_runs" },
     { "id": "engineering.github_workflow_dispatch.lifecycle", "intent": "trigger_github_workflow" },
     { "id": "engineering.github_workflow_monitor.lifecycle", "intent": "monitor_github_workflow" },
     { "id": "deployment.cloudflare_worker_dispatch.lifecycle", "intent": "deploy_cloudflare_worker" },
+    { "id": "deployment.d1_migrations_dispatch.lifecycle", "intent": "apply_d1_migrations" },
     { "id": "deployment.production_alignment.lifecycle", "intent": "validate_production_sha" }
   ]
 }

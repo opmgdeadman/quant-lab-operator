@@ -1,21 +1,53 @@
 import { capabilityDirectory, supportedIntents } from "../capabilityDirectory.js";
-import { allowedRepoPaths, assertAllowedRepoPath } from "../clientSafeRequests.js";
-import { isAllowedWorkflowId, isExactSha, githubConfig, githubRequest, repoApiPath } from "../githubApi.js";
+import { allowedRepoDirectories, allowedRepoPaths, assertAllowedRepoPath, isAllowedRepoPath } from "../clientSafeRequests.js";
+import { commitRepoChanges, isAllowedWorkflowId, isExactSha, githubConfig, githubRequest, readRepoContent, repoApiPath } from "../githubApi.js";
 import { repoSnapshots } from "../repoSnapshots.js";
 
 export const handlers = {
+  get_engineering_access_state,
   operator_status,
   read_continuation,
   write_continuation,
   inspect_repository,
+  list_repo_files,
   read_repo_file,
+  apply_repo_patch_set,
+  create_repo_file,
+  delete_repo_file,
   run_validation,
   list_github_actions_runs,
   trigger_github_workflow,
   monitor_github_workflow,
   deploy_cloudflare_worker,
+  apply_d1_migrations,
   validate_production_sha,
 };
+
+async function get_engineering_access_state(inputs, context) {
+  const config = githubConfig(context.env);
+  return {
+    ok: true,
+    github: {
+      owner: config.owner,
+      repo: config.repo,
+      branch: config.branch,
+      token_configured: config.tokenConfigured,
+      allowed_workflows: ["ci.yml", config.deployWorkflowId],
+    },
+    cloudflare: {
+      deployment_workflow: config.deployWorkflowId,
+      credentials_location: "github_actions_secrets",
+      direct_cloudflare_api_passthrough: false,
+    },
+    repository_controls: {
+      allowed_paths: allowedRepoPaths,
+      allowed_directories: allowedRepoDirectories,
+      exact_patch_required: true,
+      arbitrary_shell_allowed: false,
+      arbitrary_sql_allowed: false,
+    },
+  };
+}
 
 async function operator_status(inputs, context) {
   const dbProbe = await context.databaseProbe(context.env);
@@ -86,6 +118,7 @@ async function write_continuation(inputs, context) {
 async function inspect_repository(inputs, context) {
   const config = githubConfig(context.env);
   const remote = await githubRequest(context.env, repoApiPath(context.env, ""));
+  const ref = await githubRequest(context.env, repoApiPath(context.env, `/git/ref/heads/${encodeURIComponent(config.branch)}`));
   return {
     ok: true,
     owner: config.owner,
@@ -95,15 +128,43 @@ async function inspect_repository(inputs, context) {
     deployment_sha: context.env.DEPLOYMENT_SHA || "unknown",
     github_token_configured: config.tokenConfigured,
     github_remote_reachable: remote.ok,
+    head_sha: ref.ok ? ref.body.object.sha : null,
     default_branch: remote.ok ? remote.body.default_branch : config.branch,
     visibility: remote.ok ? remote.body.visibility : "unknown",
     dirty_state_available: false,
   };
 }
 
-async function read_repo_file(inputs) {
+async function list_repo_files(inputs, context) {
+  const path = inputs.path || "";
+  if (path && !isAllowedRepoPath(path)) {
+    return { ok: false, status: "forbidden_path" };
+  }
+  const remote = await readRepoContent(context.env, path, inputs.ref || githubConfig(context.env).branch);
+  if (!remote.ok) {
+    return { ok: false, status: remote.status || "github_contents_lookup_failed", status_code: remote.status_code, config: remote.config };
+  }
+  const entries = Array.isArray(remote.body) ? remote.body : [];
+  return {
+    ok: true,
+    path,
+    entries: entries
+      .filter((entry) => isAllowedRepoPath(entry.path))
+      .slice(0, 100)
+      .map((entry) => ({
+        path: entry.path,
+        type: entry.type,
+        size: entry.size,
+        sha: entry.sha,
+      })),
+    truncated: entries.length > 100,
+  };
+}
+
+async function read_repo_file(inputs, context) {
   assertAllowedRepoPath(inputs.path);
-  const content = repoSnapshots[inputs.path] || "";
+  const remote = await readRepoContent(context.env, inputs.path, inputs.ref || githubConfig(context.env).branch);
+  const content = remote.ok && !Array.isArray(remote.body) ? remote.body.decoded_content : repoSnapshots[inputs.path] || "";
   const lines = content.split(/\r?\n/);
   const start = Math.max(1, Number(inputs.start_line || 1));
   const max = Math.min(120, Math.max(1, Number(inputs.max_lines || 80)));
@@ -111,11 +172,114 @@ async function read_repo_file(inputs) {
     ok: true,
     path: inputs.path,
     allowed_path: allowedRepoPaths.includes(inputs.path),
+    source: remote.ok ? "github" : "bundled_snapshot",
+    sha: remote.ok && !Array.isArray(remote.body) ? remote.body.sha : null,
     start_line: start,
     returned_lines: lines.slice(start - 1, start - 1 + max),
     total_lines: lines.length,
     truncated: start - 1 + max < lines.length,
   };
+}
+
+async function apply_repo_patch_set(inputs, context) {
+  const replacements = inputs.replacements || [];
+  if (!Array.isArray(replacements) || replacements.length < 1 || replacements.length > 20) {
+    return { ok: false, status: "invalid_replacement_count" };
+  }
+  const grouped = new Map();
+  for (const replacement of replacements) {
+    if (!isAllowedRepoPath(replacement.path)) {
+      return { ok: false, status: "forbidden_path", path: replacement.path };
+    }
+    if (typeof replacement.find !== "string" || replacement.find.length < 1 || replacement.find.length > 12000
+      || typeof replacement.replace !== "string" || replacement.replace.length > 12000) {
+      return { ok: false, status: "invalid_replacement_shape", path: replacement.path };
+    }
+    grouped.set(replacement.path, [...(grouped.get(replacement.path) || []), replacement]);
+  }
+  if (grouped.size > 12) {
+    return { ok: false, status: "too_many_files" };
+  }
+
+  const changes = [];
+  const summaries = [];
+  for (const [path, pathReplacements] of grouped.entries()) {
+    const remote = await readRepoContent(context.env, path, githubConfig(context.env).branch);
+    if (!remote.ok || Array.isArray(remote.body)) {
+      return { ok: false, status: remote.status || "github_file_read_failed", status_code: remote.status_code, path, config: remote.config };
+    }
+    let content = remote.body.decoded_content;
+    for (const replacement of pathReplacements) {
+      const count = countOccurrences(content, replacement.find);
+      if (count !== 1) {
+        return { ok: false, status: "exact_match_count_not_one", path, count };
+      }
+      content = content.replace(replacement.find, replacement.replace);
+    }
+    changes.push({ type: "upsert", path, content });
+    summaries.push({ path, replacements: pathReplacements.length });
+  }
+
+  if (inputs.dry_run === true) {
+    return { ok: true, status: "dry_run_passed", changed_files: summaries };
+  }
+
+  const commit = await commitRepoChanges(context.env, {
+    message: inputs.commit_message || "Apply bounded Quant Lab operator patch",
+    changes,
+    expectedHeadSha: inputs.expected_head_sha,
+  });
+  if (!commit.ok) {
+    return commit;
+  }
+  return {
+    ok: true,
+    status: "patch_committed",
+    commit_sha: commit.commit_sha,
+    previous_head_sha: commit.previous_head_sha,
+    changed_files: summaries,
+  };
+}
+
+async function create_repo_file(inputs, context) {
+  if (!isAllowedRepoPath(inputs.path)) {
+    return { ok: false, status: "forbidden_path", path: inputs.path };
+  }
+  if (typeof inputs.content !== "string" || inputs.content.length > 50000) {
+    return { ok: false, status: "invalid_content" };
+  }
+  const existing = await readRepoContent(context.env, inputs.path, githubConfig(context.env).branch);
+  if (existing.ok) {
+    return { ok: false, status: "file_already_exists", path: inputs.path };
+  }
+  const commit = await commitRepoChanges(context.env, {
+    message: inputs.commit_message || `Create ${inputs.path}`,
+    changes: [{ type: "upsert", path: inputs.path, content: inputs.content }],
+    expectedHeadSha: inputs.expected_head_sha,
+  });
+  if (!commit.ok) {
+    return commit;
+  }
+  return { ok: true, status: "file_created", path: inputs.path, commit_sha: commit.commit_sha };
+}
+
+async function delete_repo_file(inputs, context) {
+  if (!isAllowedRepoPath(inputs.path)) {
+    return { ok: false, status: "forbidden_path", path: inputs.path };
+  }
+  const existing = await readRepoContent(context.env, inputs.path, githubConfig(context.env).branch);
+  if (!existing.ok || Array.isArray(existing.body)) {
+    return { ok: false, status: existing.status || "file_not_found", path: inputs.path, status_code: existing.status_code };
+  }
+  const commit = await commitRepoChanges(context.env, {
+    message: inputs.commit_message || `Delete ${inputs.path}`,
+    changes: [{ type: "delete", path: inputs.path }],
+    expectedHeadSha: inputs.expected_head_sha,
+  });
+  if (!commit.ok) {
+    return commit;
+  }
+  return { ok: true, status: "file_deleted", path: inputs.path, commit_sha: commit.commit_sha };
 }
 
 async function run_validation(inputs) {
@@ -223,6 +387,29 @@ async function deploy_cloudflare_worker(inputs, context) {
   };
 }
 
+async function apply_d1_migrations(inputs, context) {
+  if (!isExactSha(inputs.deploy_sha)) {
+    return { ok: false, status: "invalid_exact_sha" };
+  }
+  const config = githubConfig(context.env);
+  const workflowId = config.deployWorkflowId;
+  const remote = await githubRequest(
+    context.env,
+    repoApiPath(context.env, `/actions/workflows/${encodeURIComponent(workflowId)}/dispatches`),
+    { method: "POST", body: { ref: config.branch, inputs: { deploy_sha: inputs.deploy_sha, mode: "migrations" } } },
+  );
+  if (!remote.ok) {
+    return { ok: false, status: remote.status || "github_migration_dispatch_failed", status_code: remote.status_code, config: remote.config };
+  }
+  return {
+    ok: true,
+    status: "migration_workflow_dispatched",
+    workflow_id: workflowId,
+    ref: config.branch,
+    deploy_sha: inputs.deploy_sha,
+  };
+}
+
 async function validate_production_sha(inputs, context) {
   const repositorySha = context.env.REPOSITORY_SHA || "unknown";
   const deploymentSha = context.env.DEPLOYMENT_SHA || "unknown";
@@ -266,4 +453,17 @@ function compactJob(job) {
     started_at: job.started_at,
     completed_at: job.completed_at,
   };
+}
+
+function countOccurrences(content, needle) {
+  let count = 0;
+  let index = 0;
+  while (true) {
+    const next = content.indexOf(needle, index);
+    if (next === -1) {
+      return count;
+    }
+    count += 1;
+    index = next + needle.length;
+  }
 }
