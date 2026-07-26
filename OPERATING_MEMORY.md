@@ -38,6 +38,10 @@ The earlier private-operator/public-runner split is obsolete. The former `opmgde
 - `tools/list`, `tools/call`, and `ping` require auth plus valid session.
 - Current advertised tool remains `get_quant_lab_status` for authenticated smoke testing only.
 - Real control tools are not added yet.
+- ChatGPT dev connector is installed and OAuth-connected.
+- Connector App ID: `asdk_app_6a667ec3d25c8191920959f517984266`
+- Connector Version ID: `asdk_app_v_6a667ec4c9608191b07d4cf48962f3ed`
+- ChatGPT action refresh shows `get_quant_lab_status` as `READ` / `OPEN WORLD`.
 
 ## Validation
 
@@ -51,9 +55,10 @@ The earlier private-operator/public-runner split is obsolete. The former `opmgde
 
 - Global GitHub and Cloudflare profile secrets were not modified.
 - `INTERNAL_API_TOKEN` is a Cloudflare Worker secret used for authenticated internal/MCP bearer checks.
-- `MCP_CLIENT_SECRET` should be stored as a Cloudflare Worker secret before connecting the ChatGPT dev MCP through OAuth.
+- `MCP_CLIENT_SECRET` is stored as a Cloudflare Worker secret and in the ChatGPT dev connector OAuth configuration.
+- A local temp copy exists at `C:\Users\brian\.codex\.tmp\quant-lab-mcp-client-secret.tmp`; remove it manually or with an approved cleanup command when no longer needed.
 - Do not commit local secret files, generated DBs, logs, caches, or runtime artifacts.
 
 ## Next Action
 
-Update the ChatGPT dev connector to `https://quant-lab-operator.briangriffin355.workers.dev/api/operator/mcp` with OAuth/client-secret auth, then verify authenticated MCP connection from ChatGPT.
+Next functional implementation slice: add the first authenticated vertical trading tool to ingest one closed `BTC-USD` hourly candle into D1 and display that stored candle on the public website.
