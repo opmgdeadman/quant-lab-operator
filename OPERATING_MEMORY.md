@@ -39,6 +39,9 @@ The earlier private-operator/public-runner split is obsolete. The former `opmgde
 - Current advertised tools are `get_quant_lab_status`, `ingest_btc_usd_hourly_candle`, and `get_latest_btc_usd_hourly_candle`.
 - `ingest_btc_usd_hourly_candle` is the first bounded mutation tool. It only accepts one closed `BTC-USD` 1h candle, validates OHLC, stores operation receipts, and rejects conflicting operation IDs or conflicting candle values.
 - No shell, arbitrary SQL, arbitrary GitHub, arbitrary Cloudflare, generic router, or arbitrary code execution tools are present.
+- D1 migration `0002_market_candles_and_operator_receipts.sql` has been applied remotely.
+- Latest deployed Worker version after the first candle MCP slice: `a745b82c-383b-4e5f-99a2-704360a3c33d`.
+- Live OAuth/MCP verification passed after deploy: `tools/list` returned `get_quant_lab_status`, `ingest_btc_usd_hourly_candle`, and `get_latest_btc_usd_hourly_candle`; `get_latest_btc_usd_hourly_candle` returned `ok: true`, `pair: BTC-USD`, and no candle yet.
 - ChatGPT dev connector is installed and OAuth-connected.
 - Connector App ID: `asdk_app_6a667ec3d25c8191920959f517984266`
 - Connector Version ID: `asdk_app_v_6a667ec4c9608191b07d4cf48962f3ed`
@@ -51,8 +54,10 @@ The earlier private-operator/public-runner split is obsolete. The former `opmgde
 - CI installs dependencies on a clean runner, runs Worker tests, runs Python `quant_core` tests, and performs a Wrangler dry-run.
 - Cloudflare is the runtime target; localhost and local Python/Node are diagnostics only.
 - Known passing CI after remote-first cleanup: run `30222233018`.
+- First candle MCP slice CI passed: run `30223013815` on commit `b3032a9041109395ea4bf65898a286880af2f10a`.
 - Do not store a "latest commit" value here for docs-only commits; it becomes stale immediately after memory updates.
 - Latest deployed Worker version ID after MCP secret alignment: `f847112c-8f94-444e-873f-3c5f32f39e32`.
+- Failed: PowerShell `Invoke-WebRequest` hit `Object reference not set to an instance of an object` while reading live MCP response headers. Use: a short Node `fetch` script to call OAuth token, `initialize`, read `mcp-session-id`, then call `tools/list` or `tools/call`. Applies when: verifying live MCP headers from this Windows shell.
 
 ## Secrets
 
@@ -64,4 +69,4 @@ The earlier private-operator/public-runner split is obsolete. The former `opmgde
 
 ## Next Action
 
-Next functional implementation slice: deploy/apply the D1 candle migration remotely, refresh the ChatGPT connector action list, then use `ingest_btc_usd_hourly_candle` to store one closed `BTC-USD` hourly candle and verify it through `get_latest_btc_usd_hourly_candle` and the public website.
+Next functional implementation slice: refresh the ChatGPT connector action list, then use `ingest_btc_usd_hourly_candle` to store one real closed `BTC-USD` hourly candle and verify it through `get_latest_btc_usd_hourly_candle` and the public website.
