@@ -59,3 +59,13 @@ test("home renders no trading claims or fake metrics", async () => {
   assert.doesNotMatch(body, /return/i);
   assert.doesNotMatch(body, /profit/i);
 });
+
+test("openapi schema exposes only public status action", async () => {
+  const response = await handleRequest(new Request("https://example.com/openapi.json"), env);
+  const body = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(body.openapi, "3.1.0");
+  assert.equal(body.paths["/status"].get.operationId, "getQuantLabStatus");
+  assert.equal(body.paths["/internal/status"], undefined);
+});

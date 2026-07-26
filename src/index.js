@@ -12,6 +12,9 @@ export async function handleRequest(request, env) {
   if (url.pathname === "/status") {
     return json(await publicStatusPayload(env));
   }
+  if (url.pathname === "/openapi.json") {
+    return json(openApiSpec(request));
+  }
   if (url.pathname === "/internal/status") {
     if (!(await isAuthorized(request, env))) {
       return json({ ok: false, error: "unauthorized" }, 401);
@@ -147,6 +150,59 @@ function renderHome(status) {
   </main>
 </body>
 </html>`;
+}
+
+function openApiSpec(request) {
+  const origin = new URL(request.url).origin;
+  return {
+    openapi: "3.1.0",
+    info: {
+      title: "Quant Lab Infrastructure Shell",
+      version: "0.1.0",
+      description: "Read-only public status for the Quant Lab infrastructure shell. No trading actions.",
+    },
+    servers: [{ url: origin }],
+    paths: {
+      "/status": {
+        get: {
+          operationId: "getQuantLabStatus",
+          summary: "Get Quant Lab infrastructure shell status",
+          description: "Returns public, read-only infrastructure status with no trading claims or private strategy data.",
+          responses: {
+            "200": {
+              description: "Current public infrastructure status",
+              content: {
+                "application/json": {
+                  schema: {
+                    type: "object",
+                    additionalProperties: false,
+                    properties: {
+                      ok: { type: "boolean" },
+                      system: { type: "string" },
+                      environment: { type: "string" },
+                      workerStatus: { type: "string" },
+                      databaseConnected: { type: "boolean" },
+                      latestDeploymentSha: { type: "string" },
+                      currentPhase: { type: "string" },
+                    },
+                    required: [
+                      "ok",
+                      "system",
+                      "environment",
+                      "workerStatus",
+                      "databaseConnected",
+                      "latestDeploymentSha",
+                      "currentPhase",
+                    ],
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  };
 }
 
 function escapeHtml(value) {
