@@ -2,6 +2,12 @@ const SYSTEM_NAME = "Quant Lab";
 
 export async function handleRequest(request, env) {
   const url = new URL(request.url);
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: corsHeaders() });
+  }
+  if (url.pathname === "/mcp") {
+    return handleMcpRequest(request, env);
+  }
   if (request.method !== "GET") {
     return json({ ok: false, error: "method_not_allowed" }, 405);
   }
@@ -40,6 +46,142 @@ async function publicStatusPayload(env) {
     databaseConnected: status.databaseConnected,
     latestDeploymentSha: status.latestDeploymentSha,
     currentPhase: status.currentPhase,
+  };
+}
+
+async function handleMcpRequest(request, env) {
+  if (request.method === "GET") {
+    return json({
+      ok: true,
+      protocol: "mcp",
+      transport: "streamable-http",
+      endpoint: "/mcp",
+      tools: ["get_quant_lab_status"],
+    });
+  }
+  if (request.method !== "POST") {
+    return mcpError(null, -32600, "Only GET and POST are supported for MCP");
+  }
+
+  let message;
+  try {
+    message = await request.json();
+  } catch {
+    return mcpError(null, -32700, "Invalid JSON");
+  }
+
+  if (Array.isArray(message)) {
+    const responses = [];
+    for (const item of message) {
+      const response = await mcpResponseFor(item, env);
+      if (response !== null) {
+        responses.push(response);
+      }
+    }
+    return mcpJson(responses);
+  }
+
+  const response = await mcpResponseFor(message, env);
+  if (response === null) {
+    return new Response(null, { status: 202, headers: corsHeaders() });
+  }
+  return mcpJson(response);
+}
+
+async function mcpResponseFor(message, env) {
+  if (!message || message.jsonrpc !== "2.0" || typeof message.method !== "string") {
+    return mcpErrorObject(message?.id ?? null, -32600, "Invalid JSON-RPC request");
+  }
+
+  const id = Object.hasOwn(message, "id") ? message.id : undefined;
+  const isNotification = id === undefined;
+
+  if (message.method === "initialize") {
+    if (isNotification) {
+      return null;
+    }
+    return {
+      jsonrpc: "2.0",
+      id,
+      result: {
+        protocolVersion: "2025-06-18",
+        capabilities: { tools: {} },
+        serverInfo: { name: "quant-lab", version: "0.1.0" },
+      },
+    };
+  }
+
+  if (message.method === "notifications/initialized") {
+    return null;
+  }
+
+  if (message.method === "tools/list") {
+    if (isNotification) {
+      return null;
+    }
+    return {
+      jsonrpc: "2.0",
+      id,
+      result: {
+        tools: [
+          {
+            name: "get_quant_lab_status",
+            title: "Get Quant Lab Status",
+            description: "Return public, read-only Quant Lab infrastructure status. No trading actions or private strategy data.",
+            annotations: {
+              readOnlyHint: true,
+              destructiveHint: false,
+              idempotentHint: true,
+              openWorldHint: true,
+            },
+            inputSchema: {
+              type: "object",
+              additionalProperties: false,
+              properties: {},
+            },
+            outputSchema: publicStatusSchema(),
+          },
+        ],
+      },
+    };
+  }
+
+  if (message.method === "tools/call") {
+    if (isNotification) {
+      return null;
+    }
+    const name = message.params?.name;
+    if (name !== "get_quant_lab_status") {
+      return mcpErrorObject(id, -32602, "Unknown tool");
+    }
+    const status = await publicStatusPayload(env);
+    return {
+      jsonrpc: "2.0",
+      id,
+      result: {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(status, null, 2),
+          },
+        ],
+        structuredContent: status,
+      },
+    };
+  }
+
+  return mcpErrorObject(id ?? null, -32601, "Method not found");
+}
+
+function mcpError(id, code, message) {
+  return mcpJson(mcpErrorObject(id, code, message));
+}
+
+function mcpErrorObject(id, code, message) {
+  return {
+    jsonrpc: "2.0",
+    id,
+    error: { code, message },
   };
 }
 
@@ -174,26 +316,7 @@ function openApiSpec(request) {
               content: {
                 "application/json": {
                   schema: {
-                    type: "object",
-                    additionalProperties: false,
-                    properties: {
-                      ok: { type: "boolean" },
-                      system: { type: "string" },
-                      environment: { type: "string" },
-                      workerStatus: { type: "string" },
-                      databaseConnected: { type: "boolean" },
-                      latestDeploymentSha: { type: "string" },
-                      currentPhase: { type: "string" },
-                    },
-                    required: [
-                      "ok",
-                      "system",
-                      "environment",
-                      "workerStatus",
-                      "databaseConnected",
-                      "latestDeploymentSha",
-                      "currentPhase",
-                    ],
+                    ...publicStatusSchema(),
                   },
                 },
               },
@@ -202,6 +325,31 @@ function openApiSpec(request) {
         },
       },
     },
+  };
+}
+
+function publicStatusSchema() {
+  return {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      ok: { type: "boolean" },
+      system: { type: "string" },
+      environment: { type: "string" },
+      workerStatus: { type: "string" },
+      databaseConnected: { type: "boolean" },
+      latestDeploymentSha: { type: "string" },
+      currentPhase: { type: "string" },
+    },
+    required: [
+      "ok",
+      "system",
+      "environment",
+      "workerStatus",
+      "databaseConnected",
+      "latestDeploymentSha",
+      "currentPhase",
+    ],
   };
 }
 
@@ -221,6 +369,7 @@ function json(body, status = 200) {
     headers: {
       "content-type": "application/json; charset=utf-8",
       "cache-control": "no-store",
+      ...corsHeaders(),
     },
   });
 }
@@ -232,4 +381,24 @@ function html(body) {
       "cache-control": "no-store",
     },
   });
+}
+
+function mcpJson(body, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: {
+      "content-type": "application/json; charset=utf-8",
+      "cache-control": "no-store",
+      ...corsHeaders(),
+    },
+  });
+}
+
+function corsHeaders() {
+  return {
+    "access-control-allow-origin": "*",
+    "access-control-allow-methods": "GET, POST, OPTIONS",
+    "access-control-allow-headers": "content-type, authorization, x-internal-token, mcp-session-id",
+    "access-control-expose-headers": "mcp-session-id",
+  };
 }

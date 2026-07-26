@@ -22,9 +22,10 @@ The Worker exposes:
 
 - `GET /`: minimal public website.
 - `GET /status`: public read-only status JSON.
+- `GET|POST /mcp`: development-mode MCP endpoint exposing one read-only status tool.
 - `GET /internal/status`: authenticated internal status JSON using `X-Internal-Token: <INTERNAL_API_TOKEN>` or `Authorization: Bearer <INTERNAL_API_TOKEN>`.
 
-No trading cycle, scheduled task, backtesting dispatch, full schema, MCP contract, or market ingestion exists yet.
+The MCP endpoint currently exposes only `get_quant_lab_status`. No trading cycle, scheduled task, backtesting dispatch, full schema, or market ingestion exists yet.
 
 ## Validation
 

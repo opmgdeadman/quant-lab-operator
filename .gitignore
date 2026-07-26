@@ -5,6 +5,7 @@ coverage/
 .env
 .env.*
 !.env.example
+.connector-secret.tmp
 *.log
 logs/
 tmp/
