@@ -1,0 +1,23 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "quant-lab-operator",
+  "main": "src/index.js",
+  "compatibility_date": "2026-07-26",
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  },
+  "vars": {
+    "ENVIRONMENT": "production",
+    "CURRENT_PHASE": "infrastructure-shell",
+    "DEPLOYMENT_SHA": "local"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "quant_lab_operator",
+      "database_id": "d9ac1f46-8251-4184-ad35-b87be4755917",
+      "migrations_dir": "migrations"
+    }
+  ]
+}
