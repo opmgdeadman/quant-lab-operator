@@ -1,38 +1,52 @@
-# Quant Lab Operator
+# Quant Lab
 
-Private operator repository for the paper-trading laboratory infrastructure shell.
+Single public repository for the Quant Lab paper-trading laboratory.
 
 ## Boundary
 
-This repository is private and owns:
+This repository is designed to become public and contain the full runnable system:
 
-- Cloudflare Worker source.
-- D1 migrations and binding config.
-- Deployment config.
-- Future MCP code.
-- Future private strategy state.
+- deterministic `quant_core` package and judge;
+- backtesting engine;
+- Cloudflare Worker and authenticated Operator MCP;
+- D1 migrations and binding config;
+- custom public website;
+- GitHub Actions tests and deployment workflows;
+- operational recovery and validation logic.
 
-This repository must not be made public without a complete Git-history audit.
+Public code does not mean public secrets or state. Credentials stay in GitHub and Cloudflare secret storage. Strategy specifications, research state, paper positions, decisions, and operational records belong in D1 or other private runtime storage. Public website routes expose only deliberately selected data.
 
-The public runner repository contains only generic deterministic `quant_core` code and tests. Proprietary strategy specifications, MCP credentials, Cloudflare config, and private state remain here.
-
-## Current Shell
-
-The Worker exposes:
+## Current Worker Surface
 
 - `GET /`: minimal public website.
-- `GET /status`: public read-only status JSON.
-- `GET|POST /mcp`: development-mode MCP endpoint exposing one read-only status tool.
+- `GET /.well-known/oauth-authorization-server`: OAuth metadata for the Operator MCP.
+- `GET /api/operator/oauth/authorize`: OAuth authorization endpoint.
+- `POST /api/operator/oauth/token`: OAuth token endpoint.
+- `POST /api/operator/mcp`: authenticated JSON-RPC MCP endpoint.
 - `GET /internal/status`: authenticated internal status JSON using `X-Internal-Token: <INTERNAL_API_TOKEN>` or `Authorization: Bearer <INTERNAL_API_TOKEN>`.
 
-The MCP endpoint currently exposes only `get_quant_lab_status`. No trading cycle, scheduled task, backtesting dispatch, full schema, or market ingestion exists yet.
+The legacy unauthenticated `/mcp`, `/status`, and `/openapi.json` proof surfaces have been removed. Tool discovery is protected.
+
+## MCP Semantics
+
+`POST /api/operator/mcp` supports:
+
+- `initialize`: requires auth and returns `Mcp-Session-Id`.
+- `tools/list`: requires auth and a valid session.
+- `tools/call`: requires auth and a valid session.
+- `ping`: requires auth and a valid session.
+- `notifications/initialized`: accepted as a notification.
+
+Only advertised direct typed tools with closed schemas may execute. Unknown or internal tool names are rejected.
 
 ## Validation
 
 ```powershell
 npm install
 npm test
+C:\Users\brian\AppData\Local\Programs\Python\Python313\python.exe -m pip install -r requirements.txt
+C:\Users\brian\AppData\Local\Programs\Python\Python313\python.exe -m pytest
 npm run check
 ```
 
-Deploy with Wrangler using the default Cloudflare profile.
+CI runs Node Worker tests, Python `quant_core` tests, and a Wrangler dry-run.

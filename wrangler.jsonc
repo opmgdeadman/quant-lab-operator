@@ -10,7 +10,8 @@
   "vars": {
     "ENVIRONMENT": "production",
     "CURRENT_PHASE": "infrastructure-shell",
-    "DEPLOYMENT_SHA": "local"
+    "DEPLOYMENT_SHA": "local",
+    "MCP_CLIENT_ID": "quant-lab-dev"
   },
   "d1_databases": [
     {

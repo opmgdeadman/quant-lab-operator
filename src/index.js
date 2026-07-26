@@ -1,25 +1,31 @@
 const SYSTEM_NAME = "Quant Lab";
+const MCP_PATH = "/api/operator/mcp";
+const OAUTH_METADATA_PATH = "/.well-known/oauth-authorization-server";
+const OAUTH_AUTHORIZE_PATH = "/api/operator/oauth/authorize";
+const OAUTH_TOKEN_PATH = "/api/operator/oauth/token";
 
 export async function handleRequest(request, env) {
   const url = new URL(request.url);
   if (request.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: corsHeaders() });
   }
-  if (url.pathname === "/mcp") {
-    return handleMcpRequest(request, env);
+  if (url.pathname === OAUTH_METADATA_PATH && request.method === "GET") {
+    return json(oauthMetadata(request));
+  }
+  if (url.pathname === OAUTH_AUTHORIZE_PATH && request.method === "GET") {
+    return handleOauthAuthorize(request, env);
+  }
+  if (url.pathname === OAUTH_TOKEN_PATH && request.method === "POST") {
+    return handleOauthToken(request, env);
+  }
+  if (url.pathname === MCP_PATH) {
+    return handleOperatorMcpRequest(request, env);
   }
   if (request.method !== "GET") {
     return json({ ok: false, error: "method_not_allowed" }, 405);
   }
   if (url.pathname === "/") {
-    const status = await statusPayload(env);
-    return html(renderHome(status));
-  }
-  if (url.pathname === "/status") {
-    return json(await publicStatusPayload(env));
-  }
-  if (url.pathname === "/openapi.json") {
-    return json(openApiSpec(request));
+    return html(renderHome(env));
   }
   if (url.pathname === "/internal/status") {
     if (!(await isAuthorized(request, env))) {
@@ -49,18 +55,12 @@ async function publicStatusPayload(env) {
   };
 }
 
-async function handleMcpRequest(request, env) {
-  if (request.method === "GET") {
-    return json({
-      ok: true,
-      protocol: "mcp",
-      transport: "streamable-http",
-      endpoint: "/mcp",
-      tools: ["get_quant_lab_status"],
-    });
-  }
+async function handleOperatorMcpRequest(request, env) {
   if (request.method !== "POST") {
-    return mcpError(null, -32600, "Only GET and POST are supported for MCP");
+    return json({ ok: false, error: "method_not_allowed" }, 405);
+  }
+  if (!(await isAnyOperatorRequestAuthorized(request, env))) {
+    return json({ ok: false, error: "unauthorized" }, 401);
   }
 
   let message;
@@ -73,7 +73,7 @@ async function handleMcpRequest(request, env) {
   if (Array.isArray(message)) {
     const responses = [];
     for (const item of message) {
-      const response = await mcpResponseFor(item, env);
+      const response = await mcpResponseFor(item, request, env);
       if (response !== null) {
         responses.push(response);
       }
@@ -81,16 +81,16 @@ async function handleMcpRequest(request, env) {
     return mcpJson(responses);
   }
 
-  const response = await mcpResponseFor(message, env);
+  const response = await mcpResponseFor(message, request, env);
   if (response === null) {
     return new Response(null, { status: 202, headers: corsHeaders() });
   }
-  return mcpJson(response);
+  return mcpJson(response.body, 200, response.headers);
 }
 
-async function mcpResponseFor(message, env) {
+async function mcpResponseFor(message, request, env) {
   if (!message || message.jsonrpc !== "2.0" || typeof message.method !== "string") {
-    return mcpErrorObject(message?.id ?? null, -32600, "Invalid JSON-RPC request");
+    return { body: mcpErrorObject(message?.id ?? null, -32600, "Invalid JSON-RPC request") };
   }
 
   const id = Object.hasOwn(message, "id") ? message.id : undefined;
@@ -100,13 +100,22 @@ async function mcpResponseFor(message, env) {
     if (isNotification) {
       return null;
     }
+    const sessionId = await createMcpSessionId(env);
     return {
-      jsonrpc: "2.0",
-      id,
-      result: {
-        protocolVersion: "2025-06-18",
-        capabilities: { tools: {} },
-        serverInfo: { name: "quant-lab", version: "0.1.0" },
+      headers: { "mcp-session-id": sessionId },
+      body: {
+        jsonrpc: "2.0",
+        id,
+        result: {
+          protocolVersion: "2025-06-18",
+          capabilities: { tools: {} },
+          serverInfo: {
+            name: "quant-lab",
+            version: "0.2.0",
+            deploymentSha: env.DEPLOYMENT_SHA || "unknown",
+          },
+          instructions: "Authenticated Quant Operator MCP. Use only advertised typed tools with closed schemas.",
+        },
       },
     };
   }
@@ -119,29 +128,34 @@ async function mcpResponseFor(message, env) {
     if (isNotification) {
       return null;
     }
+    if (!(await hasValidMcpSession(request, env))) {
+      return { body: mcpErrorObject(id, -32001, "valid_mcp_session_required") };
+    }
     return {
-      jsonrpc: "2.0",
-      id,
-      result: {
-        tools: [
-          {
-            name: "get_quant_lab_status",
-            title: "Get Quant Lab Status",
-            description: "Return public, read-only Quant Lab infrastructure status. No trading actions or private strategy data.",
-            annotations: {
-              readOnlyHint: true,
-              destructiveHint: false,
-              idempotentHint: true,
-              openWorldHint: true,
+      body: {
+        jsonrpc: "2.0",
+        id,
+        result: {
+          tools: [
+            {
+              name: "get_quant_lab_status",
+              title: "Get Quant Lab Status",
+              description: "Return authenticated Quant Lab infrastructure status. No trading actions or private strategy data.",
+              annotations: {
+                readOnlyHint: true,
+                destructiveHint: false,
+                idempotentHint: true,
+                openWorldHint: true,
+              },
+              inputSchema: {
+                type: "object",
+                additionalProperties: false,
+                properties: {},
+              },
+              outputSchema: publicStatusSchema(),
             },
-            inputSchema: {
-              type: "object",
-              additionalProperties: false,
-              properties: {},
-            },
-            outputSchema: publicStatusSchema(),
-          },
-        ],
+          ],
+        },
       },
     };
   }
@@ -150,27 +164,248 @@ async function mcpResponseFor(message, env) {
     if (isNotification) {
       return null;
     }
+    if (!(await hasValidMcpSession(request, env))) {
+      return { body: mcpErrorObject(id, -32001, "valid_mcp_session_required") };
+    }
     const name = message.params?.name;
     if (name !== "get_quant_lab_status") {
-      return mcpErrorObject(id, -32602, "Unknown tool");
+      return { body: mcpErrorObject(id, -32602, "public_direct_tool_required") };
     }
     const status = await publicStatusPayload(env);
     return {
-      jsonrpc: "2.0",
-      id,
-      result: {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(status, null, 2),
-          },
-        ],
-        structuredContent: status,
+      body: {
+        jsonrpc: "2.0",
+        id,
+        result: {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(status, null, 2),
+            },
+          ],
+          structuredContent: status,
+        },
       },
     };
   }
 
-  return mcpErrorObject(id ?? null, -32601, "Method not found");
+  if (message.method === "ping") {
+    if (isNotification) {
+      return null;
+    }
+    if (!(await hasValidMcpSession(request, env))) {
+      return { body: mcpErrorObject(id, -32001, "valid_mcp_session_required") };
+    }
+    return {
+      body: {
+        jsonrpc: "2.0",
+        id,
+        result: {
+          ok: true,
+          deploymentSha: env.DEPLOYMENT_SHA || "unknown",
+        },
+      },
+    };
+  }
+
+  return { body: mcpErrorObject(id ?? null, -32601, "Method not found") };
+}
+
+function oauthMetadata(request) {
+  const origin = new URL(request.url).origin;
+  return {
+    issuer: origin,
+    authorization_endpoint: `${origin}${OAUTH_AUTHORIZE_PATH}`,
+    token_endpoint: `${origin}${OAUTH_TOKEN_PATH}`,
+    response_types_supported: ["code"],
+    grant_types_supported: ["authorization_code", "client_credentials"],
+    token_endpoint_auth_methods_supported: ["client_secret_post"],
+    scopes_supported: ["quant.operator"],
+  };
+}
+
+async function handleOauthAuthorize(request, env) {
+  const url = new URL(request.url);
+  const redirectUri = url.searchParams.get("redirect_uri");
+  if (!redirectUri) {
+    return json({ ok: false, error: "missing_redirect_uri" }, 400);
+  }
+  const code = await createOauthCode(env);
+  const redirect = new URL(redirectUri);
+  redirect.searchParams.set("code", code);
+  const state = url.searchParams.get("state");
+  if (state) {
+    redirect.searchParams.set("state", state);
+  }
+  return Response.redirect(redirect.toString(), 302);
+}
+
+async function handleOauthToken(request, env) {
+  const form = await request.formData();
+  const clientId = String(form.get("client_id") || "");
+  const clientSecret = String(form.get("client_secret") || "");
+  const code = String(form.get("code") || "");
+  const grantType = String(form.get("grant_type") || "");
+  if (!(await isOauthClientAuthorized(clientId, clientSecret, env))) {
+    return json({ ok: false, error: "invalid_client" }, 401);
+  }
+  if (grantType === "authorization_code" && !(await verifyOauthCode(code, env))) {
+    return json({ ok: false, error: "invalid_grant" }, 400);
+  }
+  const accessToken = await createOperatorAccessToken(env);
+  return json({
+    access_token: accessToken,
+    token_type: "Bearer",
+    expires_in: 3600,
+    scope: "quant.operator",
+  });
+}
+
+async function isAnyOperatorRequestAuthorized(request, env) {
+  return (
+    await isGptRequestAuthorized(request, env)
+    || await isOperatorMcpRequestAuthorized(request, env)
+    || await isInternalRequestAuthorized(request, env)
+  );
+}
+
+async function isGptRequestAuthorized(request, env) {
+  return isBearerTokenAuthorized(request, env);
+}
+
+async function isOperatorMcpRequestAuthorized(request, env) {
+  return isBearerTokenAuthorized(request, env);
+}
+
+async function isInternalRequestAuthorized(request, env) {
+  return isAuthorized(request, env);
+}
+
+async function isBearerTokenAuthorized(request, env) {
+  const authorization = request.headers.get("authorization") || "";
+  if (!authorization.startsWith("Bearer ")) {
+    return false;
+  }
+  const supplied = authorization.slice(7);
+  const expected = env.INTERNAL_API_TOKEN;
+  if (!supplied || !expected) {
+    return false;
+  }
+  if (await timingSafeEqual(supplied, expected)) {
+    return true;
+  }
+  return verifyOperatorAccessToken(supplied, env);
+}
+
+async function isOauthClientAuthorized(clientId, clientSecret, env) {
+  const expectedId = env.MCP_CLIENT_ID || "quant-lab-dev";
+  const expectedSecret = env.MCP_CLIENT_SECRET;
+  if (!expectedSecret || !clientSecret || clientId !== expectedId) {
+    return false;
+  }
+  return timingSafeEqual(clientSecret, expectedSecret);
+}
+
+async function createOauthCode(env) {
+  const payload = {
+    type: "oauth_code",
+    exp: Math.floor(Date.now() / 1000) + 300,
+    deploymentSha: env.DEPLOYMENT_SHA || "unknown",
+  };
+  return signPayload(payload, env);
+}
+
+async function verifyOauthCode(code, env) {
+  const payload = await verifySignedPayload(code, env);
+  return payload?.type === "oauth_code";
+}
+
+async function createOperatorAccessToken(env) {
+  return signPayload({
+    type: "operator_access",
+    exp: Math.floor(Date.now() / 1000) + 3600,
+    deploymentSha: env.DEPLOYMENT_SHA || "unknown",
+  }, env);
+}
+
+async function verifyOperatorAccessToken(token, env) {
+  const payload = await verifySignedPayload(token, env);
+  return payload?.type === "operator_access";
+}
+
+async function createMcpSessionId(env) {
+  return signPayload({
+    type: "mcp_session",
+    exp: Math.floor(Date.now() / 1000) + 3600,
+    deploymentSha: env.DEPLOYMENT_SHA || "unknown",
+  }, env);
+}
+
+async function hasValidMcpSession(request, env) {
+  const sessionId = request.headers.get("mcp-session-id") || "";
+  const payload = await verifySignedPayload(sessionId, env);
+  return payload?.type === "mcp_session" && payload.deploymentSha === (env.DEPLOYMENT_SHA || "unknown");
+}
+
+async function signPayload(payload, env) {
+  const encodedPayload = base64UrlEncode(new TextEncoder().encode(JSON.stringify(payload)));
+  const signature = await hmacSha256(encodedPayload, env);
+  return `${encodedPayload}.${signature}`;
+}
+
+async function verifySignedPayload(token, env) {
+  const [encodedPayload, suppliedSignature] = String(token || "").split(".");
+  if (!encodedPayload || !suppliedSignature) {
+    return null;
+  }
+  const expectedSignature = await hmacSha256(encodedPayload, env);
+  if (!(await timingSafeEqual(suppliedSignature, expectedSignature))) {
+    return null;
+  }
+  let payload;
+  try {
+    payload = JSON.parse(new TextDecoder().decode(base64UrlDecode(encodedPayload)));
+  } catch {
+    return null;
+  }
+  if (typeof payload.exp === "number" && payload.exp < Math.floor(Date.now() / 1000)) {
+    return null;
+  }
+  return payload;
+}
+
+async function hmacSha256(value, env) {
+  const secret = env.INTERNAL_API_TOKEN;
+  if (!secret) {
+    throw new Error("missing_internal_api_token");
+  }
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const signature = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(value));
+  return base64UrlEncode(new Uint8Array(signature));
+}
+
+function base64UrlEncode(bytes) {
+  let binary = "";
+  for (const byte of bytes) {
+    binary += String.fromCharCode(byte);
+  }
+  return btoa(binary).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
+}
+
+function base64UrlDecode(value) {
+  const padded = value.replaceAll("-", "+").replaceAll("_", "/").padEnd(Math.ceil(value.length / 4) * 4, "=");
+  const binary = atob(padded);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+  return bytes;
 }
 
 function mcpError(id, code, message) {
@@ -259,7 +494,7 @@ function constantTimeBytesEqual(left, right) {
   return diff === 0;
 }
 
-function renderHome(status) {
+function renderHome(env) {
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -271,61 +506,21 @@ function renderHome(status) {
     main { max-width: 760px; margin: 0 auto; padding: 48px 20px; }
     h1 { margin: 0 0 8px; font-size: 34px; letter-spacing: 0; }
     p { color: #475467; line-height: 1.5; }
-    dl { display: grid; grid-template-columns: minmax(130px, 220px) 1fr; gap: 10px 16px; padding: 20px 0; border-top: 1px solid #d0d5dd; border-bottom: 1px solid #d0d5dd; }
-    dt { color: #667085; }
-    dd { margin: 0; font-weight: 700; overflow-wrap: anywhere; }
-    .ok { color: #067647; }
-    .bad { color: #b42318; }
+    .meta { display: flex; gap: 12px; flex-wrap: wrap; padding-top: 18px; border-top: 1px solid #d0d5dd; }
+    .pill { border: 1px solid #d0d5dd; border-radius: 999px; padding: 8px 12px; font-weight: 700; color: #344054; }
   </style>
 </head>
 <body>
   <main>
     <h1>${SYSTEM_NAME}</h1>
-    <p>Infrastructure shell. Paper-trading laboratory foundations only. No trading claims, fake metrics, or live strategy display.</p>
-    <dl>
-      <dt>Environment</dt><dd>${escapeHtml(status.environment)}</dd>
-      <dt>Worker status</dt><dd class="ok">${escapeHtml(status.workerStatus)}</dd>
-      <dt>Database connectivity</dt><dd class="${status.databaseConnected ? "ok" : "bad"}">${status.databaseConnected ? "connected" : "not connected"}</dd>
-      <dt>Latest deployment SHA</dt><dd>${escapeHtml(status.latestDeploymentSha)}</dd>
-      <dt>Current phase</dt><dd>${escapeHtml(status.currentPhase)}</dd>
-    </dl>
+    <p>Paper-trading laboratory. Public display is intentionally limited while authenticated operator controls and durable state are developed.</p>
+    <div class="meta">
+      <span class="pill">${escapeHtml(env.ENVIRONMENT || "unknown")}</span>
+      <span class="pill">${escapeHtml(env.CURRENT_PHASE || "unknown")}</span>
+    </div>
   </main>
 </body>
 </html>`;
-}
-
-function openApiSpec(request) {
-  const origin = new URL(request.url).origin;
-  return {
-    openapi: "3.1.0",
-    info: {
-      title: "Quant Lab Infrastructure Shell",
-      version: "0.1.0",
-      description: "Read-only public status for the Quant Lab infrastructure shell. No trading actions.",
-    },
-    servers: [{ url: origin }],
-    paths: {
-      "/status": {
-        get: {
-          operationId: "getQuantLabStatus",
-          summary: "Get Quant Lab infrastructure shell status",
-          description: "Returns public, read-only infrastructure status with no trading claims or private strategy data.",
-          responses: {
-            "200": {
-              description: "Current public infrastructure status",
-              content: {
-                "application/json": {
-                  schema: {
-                    ...publicStatusSchema(),
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-    },
-  };
 }
 
 function publicStatusSchema() {
@@ -383,13 +578,14 @@ function html(body) {
   });
 }
 
-function mcpJson(body, status = 200) {
+function mcpJson(body, status = 200, extraHeaders = {}) {
   return new Response(JSON.stringify(body), {
     status,
     headers: {
       "content-type": "application/json; charset=utf-8",
       "cache-control": "no-store",
       ...corsHeaders(),
+      ...extraHeaders,
     },
   });
 }
