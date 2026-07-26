@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "test": "node --test",
-    "check": "wrangler deploy --dry-run",
-    "deploy": "wrangler deploy"
+    "check": "node scripts/deploy-worker.mjs --dry-run",
+    "deploy": "node scripts/deploy-worker.mjs"
   },
   "devDependencies": {
     "wrangler": "4.71.0"

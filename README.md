@@ -55,3 +55,5 @@ Initial supported intents are `operator_status`, `read_continuation`, `write_con
 Official validation is GitHub Actions on the public repository. CI installs dependencies from a clean runner, runs Worker tests, runs Python `quant_core` tests, and performs a Wrangler dry-run.
 
 Cloudflare is the runtime target. Local commands are only developer diagnostics for debugging CI or Worker behavior; they are not the operating path for Quant Lab.
+
+Deploys must use `npm run deploy`, which injects the current Git commit SHA into Worker `DEPLOYMENT_SHA` and `REPOSITORY_SHA` metadata. `validate_production_sha` depends on that metadata and should not be evaluated from a raw `wrangler deploy` that leaves placeholder values in place.

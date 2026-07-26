@@ -51,7 +51,8 @@ The earlier private-operator/public-runner split is obsolete. The former `opmgde
   - `run_validation` for `npm test`: `operator_receipt_chatgpt-run-validation-20260726`
   - `validate_production_sha`: `operator_receipt_chatgpt-validate-production-sha-20260726`
 - `run_validation` was durably receipted but blocked as designed because `npm test` is unavailable inside the Worker runtime.
-- `validate_production_sha` completed but reported `aligned: false` because repository SHA was unknown and deployed Worker `DEPLOYMENT_SHA` was `local`.
+- `validate_production_sha` initially reported `aligned: false` because repository SHA was unknown and deployed Worker `DEPLOYMENT_SHA` was `local`.
+- Fix in progress: `npm run deploy` now uses `scripts/deploy-worker.mjs` to inject the current Git commit SHA into Worker `DEPLOYMENT_SHA` and `REPOSITORY_SHA`; `npm run check` uses the same wrapper with `--dry-run`.
 - ChatGPT dev connector is installed and OAuth-connected.
 - Connector App ID: `asdk_app_6a667ec3d25c8191920959f517984266`
 - Connector Version ID: `asdk_app_v_6a667ec4c9608191b07d4cf48962f3ed`
@@ -81,4 +82,4 @@ The earlier private-operator/public-runner split is obsolete. The former `opmgde
 
 ## Next Action
 
-Current GPT-requested milestone is complete: authenticated Lensically-style operator control plane exists, ChatGPT sees `execute_quant_lab_intent`, and ChatGPT invoked `operator_status`, `read_repo_file`, `run_validation`, and `validate_production_sha` with durable receipts. Next action: replace checked-in/deployed `DEPLOYMENT_SHA: "local"` with a real deployed commit SHA flow so `validate_production_sha` can report production alignment accurately.
+Current GPT-requested milestone is complete: authenticated Lensically-style operator control plane exists, ChatGPT sees `execute_quant_lab_intent`, and ChatGPT invoked `operator_status`, `read_repo_file`, `run_validation`, and `validate_production_sha` with durable receipts. Next action: deploy the commit that contains `scripts/deploy-worker.mjs`, then invoke `validate_production_sha` again and confirm `aligned: true`.
