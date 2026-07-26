@@ -36,8 +36,9 @@ The earlier private-operator/public-runner split is obsolete. The former `opmgde
 - Added Lensically-style authenticated route skeleton at `/api/operator/mcp`.
 - `initialize` returns a deployment-scoped signed `Mcp-Session-Id`.
 - `tools/list`, `tools/call`, and `ping` require auth plus valid session.
-- Current advertised tool remains `get_quant_lab_status` for authenticated smoke testing only.
-- Real control tools are not added yet.
+- Current advertised tools are `get_quant_lab_status`, `ingest_btc_usd_hourly_candle`, and `get_latest_btc_usd_hourly_candle`.
+- `ingest_btc_usd_hourly_candle` is the first bounded mutation tool. It only accepts one closed `BTC-USD` 1h candle, validates OHLC, stores operation receipts, and rejects conflicting operation IDs or conflicting candle values.
+- No shell, arbitrary SQL, arbitrary GitHub, arbitrary Cloudflare, generic router, or arbitrary code execution tools are present.
 - ChatGPT dev connector is installed and OAuth-connected.
 - Connector App ID: `asdk_app_6a667ec3d25c8191920959f517984266`
 - Connector Version ID: `asdk_app_v_6a667ec4c9608191b07d4cf48962f3ed`
@@ -63,4 +64,4 @@ The earlier private-operator/public-runner split is obsolete. The former `opmgde
 
 ## Next Action
 
-Next functional implementation slice: add the first authenticated vertical trading tool to ingest one closed `BTC-USD` hourly candle into D1 and display that stored candle on the public website.
+Next functional implementation slice: deploy/apply the D1 candle migration remotely, refresh the ChatGPT connector action list, then use `ingest_btc_usd_hourly_candle` to store one closed `BTC-USD` hourly candle and verify it through `get_latest_btc_usd_hourly_candle` and the public website.

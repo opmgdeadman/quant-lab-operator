@@ -41,6 +41,14 @@ The legacy unauthenticated `/mcp`, `/status`, and `/openapi.json` proof surfaces
 
 Only advertised direct typed tools with closed schemas may execute. Unknown or internal tool names are rejected.
 
+Advertised tools:
+
+- `get_quant_lab_status`: read-only authenticated infrastructure status.
+- `ingest_btc_usd_hourly_candle`: idempotently inserts one closed `BTC-USD` 1h candle into D1.
+- `get_latest_btc_usd_hourly_candle`: reads the latest stored `BTC-USD` 1h candle.
+
+There are no shell, arbitrary SQL, arbitrary GitHub, arbitrary Cloudflare, generic router, or arbitrary code execution tools.
+
 ## Remote Validation
 
 Official validation is GitHub Actions on the public repository. CI installs dependencies from a clean runner, runs Worker tests, runs Python `quant_core` tests, and performs a Wrangler dry-run.

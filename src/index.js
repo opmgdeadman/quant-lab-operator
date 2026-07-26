@@ -25,7 +25,7 @@ export async function handleRequest(request, env) {
     return json({ ok: false, error: "method_not_allowed" }, 405);
   }
   if (url.pathname === "/") {
-    return html(renderHome(env));
+    return html(await renderHome(env));
   }
   if (url.pathname === "/internal/status") {
     if (!(await isAuthorized(request, env))) {
@@ -136,25 +136,7 @@ async function mcpResponseFor(message, request, env) {
         jsonrpc: "2.0",
         id,
         result: {
-          tools: [
-            {
-              name: "get_quant_lab_status",
-              title: "Get Quant Lab Status",
-              description: "Return authenticated Quant Lab infrastructure status. No trading actions or private strategy data.",
-              annotations: {
-                readOnlyHint: true,
-                destructiveHint: false,
-                idempotentHint: true,
-                openWorldHint: true,
-              },
-              inputSchema: {
-                type: "object",
-                additionalProperties: false,
-                properties: {},
-              },
-              outputSchema: publicStatusSchema(),
-            },
-          ],
+          tools: publicTools(),
         },
       },
     };
@@ -168,10 +150,22 @@ async function mcpResponseFor(message, request, env) {
       return { body: mcpErrorObject(id, -32001, "valid_mcp_session_required") };
     }
     const name = message.params?.name;
-    if (name !== "get_quant_lab_status") {
+    const args = message.params?.arguments || {};
+    if (!publicTools().some((tool) => tool.name === name)) {
       return { body: mcpErrorObject(id, -32602, "public_direct_tool_required") };
     }
-    const status = await publicStatusPayload(env);
+    let structuredContent;
+    try {
+      structuredContent = await callPublicTool(name, args, env);
+    } catch (error) {
+      return {
+        body: mcpErrorObject(
+          id,
+          -32602,
+          error instanceof ToolInputError ? error.message : "tool_execution_failed",
+        ),
+      };
+    }
     return {
       body: {
         jsonrpc: "2.0",
@@ -180,10 +174,10 @@ async function mcpResponseFor(message, request, env) {
           content: [
             {
               type: "text",
-              text: JSON.stringify(status, null, 2),
+              text: JSON.stringify(structuredContent, null, 2),
             },
           ],
-          structuredContent: status,
+          structuredContent,
         },
       },
     };
@@ -210,6 +204,308 @@ async function mcpResponseFor(message, request, env) {
 
   return { body: mcpErrorObject(id ?? null, -32601, "Method not found") };
 }
+
+function publicTools() {
+  return [
+    {
+      name: "get_quant_lab_status",
+      title: "Get Quant Lab Status",
+      description: "Return authenticated Quant Lab infrastructure status. No trading actions or private strategy data.",
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: true,
+      },
+      inputSchema: {
+        type: "object",
+        additionalProperties: false,
+        properties: {},
+      },
+      outputSchema: publicStatusSchema(),
+    },
+    {
+      name: "ingest_btc_usd_hourly_candle",
+      title: "Ingest BTC-USD Hourly Candle",
+      description: "Insert or idempotently replay one closed BTC-USD 1h candle into D1.",
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+      inputSchema: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          operation_id: { type: "string", minLength: 1, maxLength: 120 },
+          closed_at: { type: "string", format: "date-time" },
+          open: { type: "number" },
+          high: { type: "number" },
+          low: { type: "number" },
+          close: { type: "number" },
+          volume: { type: "number" },
+          source: { type: "string", minLength: 1, maxLength: 80 },
+        },
+        required: ["operation_id", "closed_at", "open", "high", "low", "close", "volume", "source"],
+      },
+      outputSchema: ingestCandleOutputSchema(),
+    },
+    {
+      name: "get_latest_btc_usd_hourly_candle",
+      title: "Get Latest BTC-USD Hourly Candle",
+      description: "Return the latest stored BTC-USD 1h candle from D1.",
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: true,
+      },
+      inputSchema: {
+        type: "object",
+        additionalProperties: false,
+        properties: {},
+      },
+      outputSchema: latestCandleOutputSchema(),
+    },
+  ];
+}
+
+async function callPublicTool(name, args, env) {
+  if (name === "get_quant_lab_status") {
+    return publicStatusPayload(env);
+  }
+  if (name === "ingest_btc_usd_hourly_candle") {
+    return handleIngestBtcUsdHourlyCandle(args, env);
+  }
+  if (name === "get_latest_btc_usd_hourly_candle") {
+    return handleGetLatestBtcUsdHourlyCandle(env);
+  }
+  throw new ToolInputError("public_direct_tool_required");
+}
+
+async function handleIngestBtcUsdHourlyCandle(args, env) {
+  const candle = validateClosedBtcHourlyCandle(args, new Date());
+  const fingerprint = await fingerprintJson({ tool: "ingest_btc_usd_hourly_candle", candle });
+  const receipt = await readOperationReceipt(env, candle.operation_id);
+  if (receipt) {
+    if (receipt.tool_name !== "ingest_btc_usd_hourly_candle" || receipt.request_fingerprint !== fingerprint) {
+      throw new ToolInputError("operation_id_conflict");
+    }
+    const replayed = JSON.parse(receipt.result_json);
+    return { ...replayed, inserted: false, replayed: true };
+  }
+
+  const existing = await findCandleByClosedAt(env, candle.closed_at);
+  if (existing && !sameCandleValues(existing, candle)) {
+    throw new ToolInputError("candle_conflict");
+  }
+
+  const now = new Date().toISOString();
+  const result = {
+    ok: true,
+    tool: "ingest_btc_usd_hourly_candle",
+    pair: "BTC-USD",
+    closed_at: candle.closed_at,
+    inserted: !existing,
+    replayed: false,
+    candle_id: candleId(candle.closed_at),
+    database_connected: true,
+  };
+
+  if (!existing) {
+    await env.DB.prepare(
+      `INSERT INTO market_candles (
+        id, pair, interval, closed_at, open, high, low, close, volume, source, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ).bind(
+      result.candle_id,
+      "BTC-USD",
+      "1h",
+      candle.closed_at,
+      candle.open,
+      candle.high,
+      candle.low,
+      candle.close,
+      candle.volume,
+      candle.source,
+      now,
+      now,
+    ).run();
+  }
+  await writeOperationReceipt(env, {
+    operation_id: candle.operation_id,
+    tool_name: "ingest_btc_usd_hourly_candle",
+    request_fingerprint: fingerprint,
+    result_json: JSON.stringify(result),
+    now,
+  });
+  return result;
+}
+
+async function handleGetLatestBtcUsdHourlyCandle(env) {
+  return {
+    ok: true,
+    pair: "BTC-USD",
+    candle: await latestBtcUsdHourlyCandle(env),
+    database_connected: true,
+  };
+}
+
+function validateClosedBtcHourlyCandle(args, now) {
+  const allowed = new Set(["operation_id", "closed_at", "open", "high", "low", "close", "volume", "source"]);
+  for (const key of Object.keys(args || {})) {
+    if (!allowed.has(key)) {
+      throw new ToolInputError("unknown_field");
+    }
+  }
+  const operationId = requireBoundedString(args?.operation_id, "operation_id", 120);
+  const source = requireBoundedString(args?.source, "source", 80);
+  const closedAt = normalizeIsoHour(args?.closed_at);
+  const open = requireFiniteNumber(args?.open, "open");
+  const high = requireFiniteNumber(args?.high, "high");
+  const low = requireFiniteNumber(args?.low, "low");
+  const close = requireFiniteNumber(args?.close, "close");
+  const volume = requireFiniteNumber(args?.volume, "volume");
+  if (open < 0 || high < 0 || low < 0 || close < 0 || volume < 0) {
+    throw new ToolInputError("nonnegative_values_required");
+  }
+  if (high < open || high < close || low > open || low > close || high < low) {
+    throw new ToolInputError("invalid_ohlc");
+  }
+  if (new Date(closedAt).getTime() > now.getTime()) {
+    throw new ToolInputError("closed_candle_required");
+  }
+  return {
+    operation_id: operationId,
+    closed_at: closedAt,
+    open,
+    high,
+    low,
+    close,
+    volume,
+    source,
+  };
+}
+
+function requireBoundedString(value, field, maxLength) {
+  if (typeof value !== "string" || value.length < 1 || value.length > maxLength) {
+    throw new ToolInputError(`invalid_${field}`);
+  }
+  return value;
+}
+
+function requireFiniteNumber(value, field) {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    throw new ToolInputError(`invalid_${field}`);
+  }
+  return value;
+}
+
+function normalizeIsoHour(value) {
+  if (typeof value !== "string") {
+    throw new ToolInputError("invalid_closed_at");
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime()) || date.toISOString() !== value) {
+    throw new ToolInputError("invalid_closed_at");
+  }
+  if (date.getUTCMinutes() !== 0 || date.getUTCSeconds() !== 0 || date.getUTCMilliseconds() !== 0) {
+    throw new ToolInputError("hour_boundary_required");
+  }
+  return date.toISOString();
+}
+
+async function fingerprintJson(value) {
+  const encoded = new TextEncoder().encode(stableJson(value));
+  const digest = await crypto.subtle.digest("SHA-256", encoded);
+  return base64UrlEncode(new Uint8Array(digest));
+}
+
+function stableJson(value) {
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => stableJson(item)).join(",")}]`;
+  }
+  if (value && typeof value === "object") {
+    return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${stableJson(value[key])}`).join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
+
+async function readOperationReceipt(env, operationId) {
+  return env.DB.prepare(
+    "SELECT operation_id, tool_name, request_fingerprint, result_json FROM operator_operation_receipts WHERE operation_id = ?",
+  ).bind(operationId).first();
+}
+
+async function writeOperationReceipt(env, receipt) {
+  await env.DB.prepare(
+    `INSERT INTO operator_operation_receipts (
+      operation_id, tool_name, request_fingerprint, result_json, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?)
+    ON CONFLICT(operation_id) DO UPDATE SET
+      updated_at = excluded.updated_at`,
+  ).bind(
+    receipt.operation_id,
+    receipt.tool_name,
+    receipt.request_fingerprint,
+    receipt.result_json,
+    receipt.now,
+    receipt.now,
+  ).run();
+}
+
+async function findCandleByClosedAt(env, closedAt) {
+  return env.DB.prepare(
+    `SELECT id, pair, interval, closed_at, open, high, low, close, volume, source
+     FROM market_candles
+     WHERE pair = ? AND interval = ? AND closed_at = ?`,
+  ).bind("BTC-USD", "1h", closedAt).first();
+}
+
+async function latestBtcUsdHourlyCandle(env) {
+  const row = await env.DB.prepare(
+    `SELECT id, pair, interval, closed_at, open, high, low, close, volume, source
+     FROM market_candles
+     WHERE pair = ? AND interval = ?
+     ORDER BY closed_at DESC
+     LIMIT 1`,
+  ).bind("BTC-USD", "1h").first();
+  return row ? candlePublicRow(row) : null;
+}
+
+function sameCandleValues(row, candle) {
+  return row.pair === "BTC-USD"
+    && row.interval === "1h"
+    && row.closed_at === candle.closed_at
+    && Number(row.open) === candle.open
+    && Number(row.high) === candle.high
+    && Number(row.low) === candle.low
+    && Number(row.close) === candle.close
+    && Number(row.volume) === candle.volume
+    && row.source === candle.source;
+}
+
+function candlePublicRow(row) {
+  return {
+    id: row.id,
+    pair: row.pair,
+    interval: row.interval,
+    closed_at: row.closed_at,
+    open: Number(row.open),
+    high: Number(row.high),
+    low: Number(row.low),
+    close: Number(row.close),
+    volume: Number(row.volume),
+    source: row.source,
+  };
+}
+
+function candleId(closedAt) {
+  return `BTC-USD:1h:${closedAt}`;
+}
+
+class ToolInputError extends Error {}
 
 function oauthMetadata(request) {
   const origin = new URL(request.url).origin;
@@ -494,7 +790,25 @@ function constantTimeBytesEqual(left, right) {
   return diff === 0;
 }
 
-function renderHome(env) {
+async function renderHome(env) {
+  const latest = await latestCandleForHome(env);
+  const latestMarkup = latest ? `
+    <section>
+      <h2>Latest Stored BTC-USD 1h Candle</h2>
+      <dl>
+        <div><dt>Closed</dt><dd>${escapeHtml(latest.closed_at)}</dd></div>
+        <div><dt>Open</dt><dd>${escapeHtml(latest.open)}</dd></div>
+        <div><dt>High</dt><dd>${escapeHtml(latest.high)}</dd></div>
+        <div><dt>Low</dt><dd>${escapeHtml(latest.low)}</dd></div>
+        <div><dt>Close</dt><dd>${escapeHtml(latest.close)}</dd></div>
+        <div><dt>Volume</dt><dd>${escapeHtml(latest.volume)}</dd></div>
+        <div><dt>Source</dt><dd>${escapeHtml(latest.source)}</dd></div>
+      </dl>
+    </section>` : `
+    <section>
+      <h2>Latest Stored BTC-USD 1h Candle</h2>
+      <p>No stored candle yet.</p>
+    </section>`;
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -508,6 +822,11 @@ function renderHome(env) {
     p { color: #475467; line-height: 1.5; }
     .meta { display: flex; gap: 12px; flex-wrap: wrap; padding-top: 18px; border-top: 1px solid #d0d5dd; }
     .pill { border: 1px solid #d0d5dd; border-radius: 999px; padding: 8px 12px; font-weight: 700; color: #344054; }
+    section { margin-top: 32px; border-top: 1px solid #d0d5dd; padding-top: 24px; }
+    h2 { margin: 0 0 14px; font-size: 18px; }
+    dl { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 0; }
+    dt { font-size: 12px; color: #667085; text-transform: uppercase; font-weight: 700; }
+    dd { margin: 4px 0 0; font-weight: 700; color: #101828; }
   </style>
 </head>
 <body>
@@ -518,9 +837,18 @@ function renderHome(env) {
       <span class="pill">${escapeHtml(env.ENVIRONMENT || "unknown")}</span>
       <span class="pill">${escapeHtml(env.CURRENT_PHASE || "unknown")}</span>
     </div>
+    ${latestMarkup}
   </main>
 </body>
 </html>`;
+}
+
+async function latestCandleForHome(env) {
+  try {
+    return latestBtcUsdHourlyCandle(env);
+  } catch {
+    return null;
+  }
 }
 
 function publicStatusSchema() {
@@ -545,6 +873,59 @@ function publicStatusSchema() {
       "latestDeploymentSha",
       "currentPhase",
     ],
+  };
+}
+
+function ingestCandleOutputSchema() {
+  return {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      ok: { type: "boolean" },
+      tool: { type: "string" },
+      pair: { type: "string" },
+      closed_at: { type: "string" },
+      inserted: { type: "boolean" },
+      replayed: { type: "boolean" },
+      candle_id: { type: "string" },
+      database_connected: { type: "boolean" },
+    },
+    required: ["ok", "tool", "pair", "closed_at", "inserted", "replayed", "candle_id", "database_connected"],
+  };
+}
+
+function latestCandleOutputSchema() {
+  return {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      ok: { type: "boolean" },
+      pair: { type: "string" },
+      candle: {
+        anyOf: [
+          { type: "null" },
+          {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              id: { type: "string" },
+              pair: { type: "string" },
+              interval: { type: "string" },
+              closed_at: { type: "string" },
+              open: { type: "number" },
+              high: { type: "number" },
+              low: { type: "number" },
+              close: { type: "number" },
+              volume: { type: "number" },
+              source: { type: "string" },
+            },
+            required: ["id", "pair", "interval", "closed_at", "open", "high", "low", "close", "volume", "source"],
+          },
+        ],
+      },
+      database_connected: { type: "boolean" },
+    },
+    required: ["ok", "pair", "candle", "database_connected"],
   };
 }
 
