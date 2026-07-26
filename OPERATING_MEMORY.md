@@ -42,7 +42,16 @@ The earlier private-operator/public-runner split is obsolete. The former `opmgde
 - No shell, arbitrary SQL, arbitrary GitHub, arbitrary Cloudflare, generic router, or arbitrary code execution tools are present.
 - D1 migration `0002_market_candles_and_operator_receipts.sql` has been applied remotely.
 - Pending deploy for operator-control-plane migration `0003_operator_control_plane.sql`.
-- Previous deployed Worker version after the first candle MCP slice: `a745b82c-383b-4e5f-99a2-704360a3c33d`.
+- Operator-control-plane migration `0003_operator_control_plane.sql` has been applied remotely.
+- Latest deployed Worker version after operator control plane: `64c529d2-5fab-4ec4-8d19-5c7ca9f8ab56`.
+- ChatGPT connector action refresh succeeded after deployment. Connector settings showed only `get_quant_lab_status` and `execute_quant_lab_intent`.
+- ChatGPT connector invocation evidence supplied by user:
+  - `operator_status`: `operator_receipt_chatgpt-operator-status-20260726`
+  - `read_repo_file` for `README.md`: `operator_receipt_chatgpt-read-readme-20260726`
+  - `run_validation` for `npm test`: `operator_receipt_chatgpt-run-validation-20260726`
+  - `validate_production_sha`: `operator_receipt_chatgpt-validate-production-sha-20260726`
+- `run_validation` was durably receipted but blocked as designed because `npm test` is unavailable inside the Worker runtime.
+- `validate_production_sha` completed but reported `aligned: false` because repository SHA was unknown and deployed Worker `DEPLOYMENT_SHA` was `local`.
 - ChatGPT dev connector is installed and OAuth-connected.
 - Connector App ID: `asdk_app_6a667ec3d25c8191920959f517984266`
 - Connector Version ID: `asdk_app_v_6a667ec4c9608191b07d4cf48962f3ed`
@@ -57,6 +66,7 @@ The earlier private-operator/public-runner split is obsolete. The former `opmgde
 - Known passing CI after remote-first cleanup: run `30222233018`.
 - First candle MCP slice CI passed: run `30223013815` on commit `b3032a9041109395ea4bf65898a286880af2f10a`.
 - Operator control-plane local diagnostics passed: `npm test` 25 tests; `npm run check` Wrangler dry-run.
+- Operator control-plane CI passed: run `30223591985` on commit `c2b9e3982056f96681a8a0b70a3d137d08a33778`.
 - Do not store a "latest commit" value here for docs-only commits; it becomes stale immediately after memory updates.
 - Latest deployed Worker version ID after MCP secret alignment: `f847112c-8f94-444e-873f-3c5f32f39e32`.
 - Failed: PowerShell `Invoke-WebRequest` hit `Object reference not set to an instance of an object` while reading live MCP response headers. Use: a short Node `fetch` script to call OAuth token, `initialize`, read `mcp-session-id`, then call `tools/list` or `tools/call`. Applies when: verifying live MCP headers from this Windows shell.
@@ -71,4 +81,4 @@ The earlier private-operator/public-runner split is obsolete. The former `opmgde
 
 ## Next Action
 
-Current GPT-requested milestone: diagnose why ChatGPT still sees only `get_quant_lab_status` after the live MCP reportedly lists candle tools, then implement the authenticated Lensically-style operator control plane before adding more trading functionality. Read `docs/LENSICALLY_STYLE_MCP_ARCHITECTURE.md` and `docs/MCP_OPERATOR_CONTROL_PLANE_HANDOFF.md`; build the execution kernel, capability directory, client-safety registry, lifecycle manifest, receipt/audit persistence, and `execute_quant_lab_intent`. Verify ChatGPT can see/invoke it, perform a harmless repo read, run validation, report production alignment, and return durable operation receipts. Candle ingestion is a later vertical slice, not the current milestone.
+Current GPT-requested milestone is complete: authenticated Lensically-style operator control plane exists, ChatGPT sees `execute_quant_lab_intent`, and ChatGPT invoked `operator_status`, `read_repo_file`, `run_validation`, and `validate_production_sha` with durable receipts. Next action: replace checked-in/deployed `DEPLOYMENT_SHA: "local"` with a real deployed commit SHA flow so `validate_production_sha` can report production alignment accurately.
