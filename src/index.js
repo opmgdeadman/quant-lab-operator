@@ -6,6 +6,9 @@ const MCP_PATH = "/api/operator/mcp";
 const OAUTH_METADATA_PATH = "/.well-known/oauth-authorization-server";
 const OAUTH_AUTHORIZE_PATH = "/api/operator/oauth/authorize";
 const OAUTH_TOKEN_PATH = "/api/operator/oauth/token";
+const OPERATOR_ACCESS_TOKEN_TTL_SECONDS = 24 * 60 * 60;
+const OPERATOR_REFRESH_TOKEN_TTL_SECONDS = 365 * 24 * 60 * 60;
+const MCP_SESSION_TTL_SECONDS = 30 * 24 * 60 * 60;
 
 export async function handleRequest(request, env) {
   const url = new URL(request.url);
@@ -280,7 +283,7 @@ function oauthMetadata(request) {
     authorization_endpoint: `${origin}${OAUTH_AUTHORIZE_PATH}`,
     token_endpoint: `${origin}${OAUTH_TOKEN_PATH}`,
     response_types_supported: ["code"],
-    grant_types_supported: ["authorization_code", "client_credentials"],
+    grant_types_supported: ["authorization_code", "client_credentials", "refresh_token"],
     token_endpoint_auth_methods_supported: ["client_secret_post"],
     scopes_supported: ["quant.operator"],
   };
@@ -307,20 +310,33 @@ async function handleOauthToken(request, env) {
   const clientId = String(form.get("client_id") || "");
   const clientSecret = String(form.get("client_secret") || "");
   const code = String(form.get("code") || "");
+  const refreshToken = String(form.get("refresh_token") || "");
   const grantType = String(form.get("grant_type") || "");
   if (!(await isOauthClientAuthorized(clientId, clientSecret, env))) {
     return json({ ok: false, error: "invalid_client" }, 401);
   }
-  if (grantType === "authorization_code" && !(await verifyOauthCode(code, env))) {
-    return json({ ok: false, error: "invalid_grant" }, 400);
+  if (grantType === "authorization_code") {
+    if (!(await verifyOauthCode(code, env))) {
+      return json({ ok: false, error: "invalid_grant" }, 400);
+    }
+  } else if (grantType === "refresh_token") {
+    if (!(await verifyOperatorRefreshToken(refreshToken, env))) {
+      return json({ ok: false, error: "invalid_grant" }, 400);
+    }
+  } else if (grantType !== "client_credentials") {
+    return json({ ok: false, error: "unsupported_grant_type" }, 400);
   }
-  const accessToken = await createOperatorAccessToken(env);
-  return json({
-    access_token: accessToken,
+
+  const response = {
+    access_token: await createOperatorAccessToken(env),
     token_type: "Bearer",
-    expires_in: 3600,
+    expires_in: OPERATOR_ACCESS_TOKEN_TTL_SECONDS,
     scope: "quant.operator",
-  });
+  };
+  if (grantType !== "client_credentials") {
+    response.refresh_token = await createOperatorRefreshToken(env);
+  }
+  return json(response);
 }
 
 async function isAnyOperatorRequestAuthorized(request, env) {
@@ -385,7 +401,7 @@ async function verifyOauthCode(code, env) {
 async function createOperatorAccessToken(env) {
   return signPayload({
     type: "operator_access",
-    exp: Math.floor(Date.now() / 1000) + 3600,
+    exp: Math.floor(Date.now() / 1000) + OPERATOR_ACCESS_TOKEN_TTL_SECONDS,
     deploymentSha: env.DEPLOYMENT_SHA || "unknown",
   }, env);
 }
@@ -395,10 +411,22 @@ async function verifyOperatorAccessToken(token, env) {
   return payload?.type === "operator_access";
 }
 
+async function createOperatorRefreshToken(env) {
+  return signPayload({
+    type: "operator_refresh",
+    exp: Math.floor(Date.now() / 1000) + OPERATOR_REFRESH_TOKEN_TTL_SECONDS,
+  }, env);
+}
+
+async function verifyOperatorRefreshToken(token, env) {
+  const payload = await verifySignedPayload(token, env);
+  return payload?.type === "operator_refresh";
+}
+
 async function createMcpSessionId(env) {
   return signPayload({
     type: "mcp_session",
-    exp: Math.floor(Date.now() / 1000) + 3600,
+    exp: Math.floor(Date.now() / 1000) + MCP_SESSION_TTL_SECONDS,
     deploymentSha: env.DEPLOYMENT_SHA || "unknown",
   }, env);
 }
@@ -406,7 +434,7 @@ async function createMcpSessionId(env) {
 async function hasValidMcpSession(request, env) {
   const sessionId = request.headers.get("mcp-session-id") || "";
   const payload = await verifySignedPayload(sessionId, env);
-  return payload?.type === "mcp_session" && payload.deploymentSha === (env.DEPLOYMENT_SHA || "unknown");
+  return payload?.type === "mcp_session";
 }
 
 async function signPayload(payload, env) {

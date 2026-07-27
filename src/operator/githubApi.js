@@ -83,6 +83,7 @@ export async function readRepoContent(env, path, ref) {
 export async function commitRepoChanges(env, { message, changes, expectedHeadSha }) {
   const config = githubConfig(env);
   const refPath = repoApiPath(env, `/git/ref/heads/${encodeURIComponent(config.branch)}`);
+  const updateRefPath = repoApiPath(env, `/git/refs/heads/${encodeURIComponent(config.branch)}`);
   const ref = await githubRequest(env, refPath);
   if (!ref.ok) {
     return { ok: false, status: ref.status || "github_ref_lookup_failed", status_code: ref.status_code, config: ref.config };
@@ -136,7 +137,7 @@ export async function commitRepoChanges(env, { message, changes, expectedHeadSha
     return { ok: false, status: commit.status || "github_commit_create_failed", status_code: commit.status_code, config: commit.config };
   }
 
-  const update = await githubRequest(env, refPath, {
+  const update = await githubRequest(env, updateRefPath, {
     method: "PATCH",
     body: { sha: commit.body.sha, force: false },
   });

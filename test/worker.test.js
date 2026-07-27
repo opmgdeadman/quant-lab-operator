@@ -80,6 +80,21 @@ test("operator mcp initialize requires auth and returns a session id", async () 
   assert.match(initialize.headers.get("mcp-session-id"), /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/);
 });
 
+test("operator mcp session remains valid across deployments", async () => {
+  const env = createEnv();
+  const initialize = await initializeMcpSession(env);
+  const sessionId = initialize.headers.get("mcp-session-id");
+
+  env.DEPLOYMENT_SHA = "next-test-sha";
+  const toolsBody = await mcp(env, sessionId, { jsonrpc: "2.0", id: 2, method: "tools/list" });
+
+  assert.equal(toolsBody.error, undefined);
+  assert.deepEqual(toolsBody.result.tools.map((tool) => tool.name), [
+    "get_quant_lab_status",
+    "execute_quant_lab_intent",
+  ]);
+});
+
 test("operator mcp tools require valid session and expose status plus execute intent", async () => {
   const env = createEnv();
   const initialize = await initializeMcpSession(env);
@@ -340,10 +355,11 @@ test("create_repo_file and delete_repo_file use one bounded Git data commit", as
       return jsonResponse({ path: "docs/remove.md", sha: "remove-sha", content: btoa("remove me") });
     }
     if (url.endsWith("/git/ref/heads/main")) {
-      if (options.method === "PATCH") {
-        return jsonResponse({ object: { sha: "new-commit-sha" } });
-      }
+      assert.notEqual(options.method, "PATCH");
       return jsonResponse({ object: { sha: "head-sha" } });
+    }
+    if (url.endsWith("/git/refs/heads/main") && options.method === "PATCH") {
+      return jsonResponse({ object: { sha: "new-commit-sha" } });
     }
     if (url.endsWith("/git/commits/head-sha")) {
       return jsonResponse({ tree: { sha: "base-tree-sha" } });
@@ -374,7 +390,7 @@ test("create_repo_file and delete_repo_file use one bounded Git data commit", as
     assert.equal(created.result.structuredContent.result.status, "file_created");
     assert.equal(deleted.result.structuredContent.result.status, "file_deleted");
     assert.equal(calls.some((call) => call.url.endsWith("/git/trees")), true);
-    assert.equal(calls.some((call) => call.url.endsWith("/git/ref/heads/main") && call.options.method === "PATCH"), true);
+    assert.equal(calls.some((call) => call.url.endsWith("/git/refs/heads/main") && call.options.method === "PATCH"), true);
   } finally {
     restore();
   }
@@ -482,21 +498,34 @@ test("deploy_cloudflare_worker and apply_d1_migrations dispatch fixed workflow w
   }
 });
 
-test("oauth metadata and token endpoint support connector auth", async () => {
+test("oauth metadata and token endpoint support durable connector auth", async () => {
   const env = createEnv();
   const metadata = await handleRequest(new Request("https://example.com/.well-known/oauth-authorization-server"), env);
   const metadataBody = await metadata.json();
 
   assert.equal(metadata.status, 200);
   assert.equal(metadataBody.token_endpoint, "https://example.com/api/operator/oauth/token");
+  assert.ok(metadataBody.grant_types_supported.includes("refresh_token"));
+
+  const authorize = await handleRequest(
+    new Request("https://example.com/api/operator/oauth/authorize?redirect_uri=https%3A%2F%2Fchatgpt.com%2Fcallback&state=test-state"),
+    env,
+  );
+  const redirect = new URL(authorize.headers.get("location"));
+  const code = redirect.searchParams.get("code");
+
+  assert.equal(authorize.status, 302);
+  assert.equal(redirect.searchParams.get("state"), "test-state");
+  assert.ok(code);
 
   const token = await handleRequest(
     new Request("https://example.com/api/operator/oauth/token", {
       method: "POST",
       body: new URLSearchParams({
-        grant_type: "client_credentials",
+        grant_type: "authorization_code",
         client_id: "test-client",
         client_secret: "test-client-secret",
+        code,
       }),
     }),
     env,
@@ -505,7 +534,27 @@ test("oauth metadata and token endpoint support connector auth", async () => {
 
   assert.equal(token.status, 200);
   assert.equal(tokenBody.token_type, "Bearer");
+  assert.equal(tokenBody.expires_in, 24 * 60 * 60);
   assert.match(tokenBody.access_token, /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/);
+  assert.match(tokenBody.refresh_token, /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/);
+
+  const refreshed = await handleRequest(
+    new Request("https://example.com/api/operator/oauth/token", {
+      method: "POST",
+      body: new URLSearchParams({
+        grant_type: "refresh_token",
+        client_id: "test-client",
+        client_secret: "test-client-secret",
+        refresh_token: tokenBody.refresh_token,
+      }),
+    }),
+    env,
+  );
+  const refreshedBody = await refreshed.json();
+
+  assert.equal(refreshed.status, 200);
+  assert.match(refreshedBody.access_token, /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/);
+  assert.match(refreshedBody.refresh_token, /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/);
 });
 
 async function initializeMcpSession(env) {
