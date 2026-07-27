@@ -1,6 +1,6 @@
 # Whitelisted Cloud, GitHub, Cloudflare, Website, and MCP Runbook
 
-Last updated: 2026-07-26
+Last updated: 2026-07-27
 
 This is the replayable operating record for creating the Quant Lab public GitHub repository, Cloudflare Worker, D1 binding, public website, and authenticated ChatGPT MCP connector. It records both the successful path and the mistakes that were corrected so future Codex sessions do not restart from zero.
 
@@ -52,12 +52,18 @@ Before making a repo public, scan both the working tree and Git history for secr
 
 Latest known good state:
 
-- Commit with consolidated authenticated MCP: `415a6d6017e22db4e76ba1929b5818bb138e04ae`
-- Documentation commit after connector setup: `5050d4e`
-- Documentation/assets cleanup commit: `605ef228763ae934f59eabf994e016a069c02a3b`
+- Current Lensically-style engineering-control commit: `079325d94270b91f432d7a599553e021cdf5eca9`
+- Current deployed Worker version: `1baab6e8-a104-4045-aa57-d8f85909bd2b`
+- Live `validate_production_sha`: `repository_sha` and `deployment_sha` both `079325d94270b91f432d7a599553e021cdf5eca9`, `aligned: true`
+- GitHub CI push run for engineering-control port: `30226108681`, success
+- MCP-dispatched CI run: `30226144588`, success
+- MCP-dispatched migrations workflow run: `30226147861`, success
+- Earlier consolidated authenticated MCP commit: `415a6d6017e22db4e76ba1929b5818bb138e04ae`
+- Earlier documentation commit after connector setup: `5050d4e`
+- Earlier documentation/assets cleanup commit: `605ef228763ae934f59eabf994e016a069c02a3b`
 - Known passing GitHub Actions run after remote-first documentation cleanup: `30222233018`
 - Do not treat this section as a live "latest commit" ledger; use GitHub Actions for the current source of truth.
-- Worker deploy version after MCP secret alignment: `f847112c-8f94-444e-873f-3c5f32f39e32`
+- Earlier Worker deploy version after MCP secret alignment: `f847112c-8f94-444e-873f-3c5f32f39e32`
 - Earlier cleanup deploy version: `c0ddbf85-c22c-4a64-a746-813202a9154e`
 
 Official validation path:
@@ -77,6 +83,15 @@ Expected remote results:
 - Direct MCP OAuth token request succeeds with configured client credentials.
 - Authenticated JSON-RPC `initialize` returns `Mcp-Session-Id`.
 - Authenticated `tools/list` returns only public typed tools.
+
+Current live MCP proof receipts:
+
+- `operator_receipt_codex-read-readme-engineering-20260726`
+- `operator_receipt_codex-patch-dry-run-20260726`
+- `operator_receipt_codex-dispatch-ci-engineering-20260726`
+- `operator_receipt_codex-monitor-ci-engineering-20260726`
+- `operator_receipt_codex-dispatch-migrations-engineering-20260726`
+- `operator_receipt_codex-final-sha-engineering-20260726`
 
 ## Repository Push Pattern
 
@@ -122,8 +137,23 @@ Required secrets:
 
 - `INTERNAL_API_TOKEN`
 - `MCP_CLIENT_SECRET`
+- `GITHUB_TOKEN`
 
-Do not create secrets unless they are required by an active auth path. The `MCP_CLIENT_SECRET` became necessary only after the authenticated ChatGPT OAuth connector was configured.
+Do not create secrets unless they are required by an active auth/control path. The `MCP_CLIENT_SECRET` became necessary only after the authenticated ChatGPT OAuth connector was configured. `GITHUB_TOKEN` became necessary only after the engineering-control MCP needed to read, patch, commit, and dispatch GitHub Actions server-side.
+
+Required Worker vars:
+
+- `GITHUB_OWNER=opmgdeadman`
+- `GITHUB_REPO=quant-lab-operator`
+- `GITHUB_BRANCH=main`
+- `GITHUB_DEPLOY_WORKFLOW_ID=quant-lab-deploy.yml`
+
+Required GitHub Actions secrets:
+
+- `CLOUDFLARE_API_TOKEN`
+- `CLOUDFLARE_ACCOUNT_ID`
+
+The Worker can use `GITHUB_TOKEN`; ChatGPT cannot see the token. GitHub Actions owns Cloudflare credentials; ChatGPT and the Worker do not receive raw Cloudflare API access for deployment.
 
 Failed path:
 
@@ -144,6 +174,20 @@ Working pattern:
 4. Verify with a direct OAuth token request.
 
 Do not store the secret value in Git, docs, chat, or memory.
+
+For `GITHUB_TOKEN`, the same redirected-stdin Wrangler pattern worked. The default local profile contains the secret name:
+
+```powershell
+C:\Users\brian\.codex\profiles\briangriffin355.env
+```
+
+Set GitHub Actions secrets with `gh secret set` using `GH_TOKEN` from the same profile, but never print the token:
+
+```powershell
+$env:GH_TOKEN = $vars['GITHUB_TOKEN']
+$vars['CLOUDFLARE_API_TOKEN'] | gh secret set CLOUDFLARE_API_TOKEN --repo opmgdeadman/quant-lab-operator
+$vars['CLOUDFLARE_ACCOUNT_ID'] | gh secret set CLOUDFLARE_ACCOUNT_ID --repo opmgdeadman/quant-lab-operator
+```
 
 Local temp secret note:
 
@@ -234,6 +278,77 @@ Example descriptor expectations:
 - `openWorldHint: true` only when the tool reads live external/runtime state.
 - `inputSchema.additionalProperties: false`.
 - `outputSchema` present.
+
+## Lensically-Style Operator Control Plane
+
+Quant Lab now uses the Lensically-style control-plane shape, but Quant-native and whitelisted. Do not copy Lensically Manifest/account/content/scheduler product logic.
+
+Public MCP tools:
+
+- `get_quant_lab_status`
+- `execute_quant_lab_intent`
+
+Everything else is an intent behind `execute_quant_lab_intent`.
+
+Core source files:
+
+- `src/operator/toolRegistry.js`: public MCP descriptors.
+- `src/operator/executionKernel.js`: validates the intent envelope, enforces idempotency, dispatches handlers, bounds/redacts output, writes receipts/audit, and returns action closure.
+- `src/operator/capabilityDirectory.js`: source of truth for intents, schemas, handlers, risk gates, allowed paths/actions, and tests.
+- `src/operator/clientSafeRequests.js`: forbidden keys, path allowlists, blocked artifact paths, result bounds, and redaction.
+- `src/operator/capabilityLifecycle.json`: lifecycle declarations for every intent.
+- `src/operator/githubApi.js`: server-side GitHub REST/Git data wrapper.
+- `src/operator/handlers/controlPlane.js`: Quant-native bounded handlers.
+- `src/operator/receipts.js`: D1 operation receipt/audit persistence.
+
+Supported intents:
+
+- `get_engineering_access_state`
+- `operator_status`
+- `read_continuation`
+- `write_continuation`
+- `inspect_repository`
+- `read_repo_file`
+- `list_repo_files`
+- `apply_repo_patch_set`
+- `create_repo_file`
+- `delete_repo_file`
+- `run_validation`
+- `list_github_actions_runs`
+- `trigger_github_workflow`
+- `monitor_github_workflow`
+- `deploy_cloudflare_worker`
+- `apply_d1_migrations`
+- `validate_production_sha`
+
+Hard rules enforced:
+
+- No arbitrary shell.
+- No arbitrary SQL.
+- No raw/unrestricted GitHub API passthrough.
+- No raw/unrestricted Cloudflare API passthrough.
+- No returned secret values.
+- All file paths must pass the source-controlled allowlist.
+- Patch sets are exact `find`/`replace` only; each `find` must match exactly once.
+- Repo mutations use one GitHub Git data API commit and non-forced branch ref update.
+- Mutations require `operation_id` and durable idempotency receipts.
+- Deployments and D1 migrations dispatch GitHub Actions using an exact SHA.
+- Cloudflare credentials stay in GitHub Actions secrets.
+
+GPT self-update loop:
+
+1. `get_engineering_access_state` to confirm bounded controls and configured server-side access.
+2. `inspect_repository` to get branch/head/deployment state.
+3. `list_repo_files` and `read_repo_file` to inspect allowlisted source.
+4. `apply_repo_patch_set` with `dry_run: true`.
+5. `apply_repo_patch_set` with `dry_run: false` after the dry-run passes.
+6. `trigger_github_workflow` for `ci.yml`.
+7. `monitor_github_workflow` until CI completes.
+8. `deploy_cloudflare_worker` with the exact commit SHA, or `apply_d1_migrations` with the exact SHA when only migrations are needed.
+9. `monitor_github_workflow` until the deploy/migrations workflow completes.
+10. `validate_production_sha` to prove live Worker metadata matches the repository SHA.
+
+Do not add product/trading tools until this control plane is live and verified. Product functionality must be added as additional bounded intents with lifecycle declarations, schemas, tests, receipts, and deployment proof.
 
 ## Removed Proof Surfaces
 
@@ -381,10 +496,15 @@ Completed:
 - Status tool visible as read/open-world.
 - Permission mode set to allow all actions.
 - CI passed and live remote MCP validation succeeded.
+- Lensically-style `execute_quant_lab_intent` control plane implemented.
+- Capability directory, client-safety registry, lifecycle manifest, execution kernel, receipts, and audit persistence implemented.
+- Bounded GitHub repository read/list/patch/create/delete intents implemented.
+- Bounded GitHub Actions list/trigger/monitor intents implemented.
+- Exact-SHA Cloudflare deploy and D1 migration dispatch intents implemented.
+- Live MCP proof completed for repo read, patch dry-run, CI dispatch/monitor, migration dispatch/monitor, and SHA alignment.
 
 Not yet built:
 
-- real operational MCP control tools
 - candle ingestion tool
 - full D1 trading schema
 - scheduled trading cycle

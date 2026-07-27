@@ -1,6 +1,6 @@
 # Quant Lab Operating Memory
 
-Last updated: 2026-07-26
+Last updated: 2026-07-27
 
 ## Architecture Decision
 
@@ -55,12 +55,13 @@ The earlier private-operator/public-runner split is obsolete. The former `opmgde
   - `validate_production_sha`: `operator_receipt_chatgpt-validate-production-sha-20260726`
 - `run_validation` was durably receipted but blocked as designed because `npm test` is unavailable inside the Worker runtime.
 - `validate_production_sha` initially reported `aligned: false` because repository SHA was unknown and deployed Worker `DEPLOYMENT_SHA` was `local`.
-- Fix in progress: `npm run deploy` now uses `scripts/deploy-worker.mjs` to inject the current Git commit SHA into Worker `DEPLOYMENT_SHA` and `REPOSITORY_SHA`; `npm run check` uses the same wrapper with `--dry-run`.
+- Fixed: `npm run deploy` uses `scripts/deploy-worker.mjs` to inject the current Git commit SHA into Worker `DEPLOYMENT_SHA` and `REPOSITORY_SHA`; `npm run check` uses the same wrapper with `--dry-run`.
 - ChatGPT dev connector is installed and OAuth-connected.
 - Connector App ID: `asdk_app_6a667ec3d25c8191920959f517984266`
 - Connector Version ID: `asdk_app_v_6a667ec4c9608191b07d4cf48962f3ed`
 - ChatGPT action refresh shows `get_quant_lab_status` as `READ` / `OPEN WORLD`.
 - Full cloud/GitHub/Cloudflare/site/MCP creation runbook: `docs/WHITELISTED_CLOUD_GITHUB_MCP_RUNBOOK.md`.
+- The whitelisted runbook was updated on 2026-07-27 with the final Lensically-style engineering-control MCP pattern, live proof receipts, current deployed SHA/version, secret model, GitHub Actions deploy/migrations path, and corrected completion state.
 
 ## Remote Validation
 
@@ -89,4 +90,4 @@ The earlier private-operator/public-runner split is obsolete. The former `opmgde
 
 ## Next Action
 
-Current GPT-requested milestone is being extended with the missing Lensically-style engineering controls behind `execute_quant_lab_intent`. Next action after this deploy: live MCP proof for `read_repo_file`, `apply_repo_patch_set` dry-run, `trigger_github_workflow`, `monitor_github_workflow`, `deploy_cloudflare_worker` or `apply_d1_migrations`, and `validate_production_sha`.
+Current GPT-requested engineering-control milestone is complete. Next functional slice: add the first authenticated vertical trading tool to ingest one closed `BTC-USD` hourly candle into D1 and display that stored candle on the public website.
