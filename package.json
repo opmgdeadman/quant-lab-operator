@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node test/run-all-tests.mjs",
+    "test": "node --test",
     "check": "node scripts/deploy-worker.mjs --dry-run",
     "deploy": "node scripts/deploy-worker.mjs"
   },
