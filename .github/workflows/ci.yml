@@ -19,6 +19,36 @@ jobs:
       - name: Run Worker tests
         run: npm test
 
+  qualification-diagnostics:
+    name: qualification-${{ matrix.case }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - case: core
+            pattern: qualification policy|complete synthetic|current no-champion
+          - case: gates-a
+            pattern: qualified champion gate|cycle count gate|duration gate|trades gate|return gate|drawdown gate
+          - case: gates-b
+            pattern: double costs gate|triple costs gate|scheduler rate gate|scheduler coverage gate|duplicates gate|accounting gate|operations gate
+          - case: deterministic
+            pattern: assessment hashes
+          - case: malformed
+            pattern: malformed evidence
+          - case: metrics
+            pattern: forward metrics
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+      - name: Install dependencies
+        run: npm ci
+      - name: Run isolated qualification tests
+        run: node --test --test-name-pattern="${{ matrix.pattern }}" test/live-qualification.test.js
+
   quant-core-tests:
     runs-on: ubuntu-latest
     steps:
