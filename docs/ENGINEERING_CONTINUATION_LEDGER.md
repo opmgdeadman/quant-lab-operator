@@ -1,0 +1,96 @@
+# Quant Lab Engineering Continuation Ledger
+
+Last updated: 2026-08-01
+Status: ACTIVE
+Authority: Sole canonical engineering continuation ledger
+
+## Authority and Precedence
+
+This file contains Quant Lab's accepted incomplete engineering work, queue precedence, one active job, and one current action.
+
+No chat context, model memory, D1 continuation summary, runtime receipt, website state, operating-memory note, or other document may override this ledger.
+
+The governing mission, operator authority, owner boundary, and operating doctrine are defined separately in `docs/QUANT_LAB_STARTUP_AUTHORITY.md`.
+
+## Active Job
+
+Job ID: `stage-1-truthful-data-foundation`
+Priority: 1
+State: ACTIVE
+
+Engineering objective:
+
+Build and production-validate reliable BTC-USD 1-hour closed-candle ingestion with continuity checks, idempotent storage, gap recovery, scheduled execution, and website data-health visibility.
+
+Accepted scope:
+
+- provider-independent market-data boundary;
+- completed-candle validation;
+- timestamp, OHLC, volume, continuity, and duplicate validation;
+- idempotent D1 insertion;
+- stale-data and gap detection;
+- missed-candle backfill;
+- hourly scheduled execution;
+- website data-health panel;
+- focused tests, CI, exact-SHA deployment, and production verification.
+
+Out of scope for this job:
+
+- strategy generation;
+- paper orders, fills, positions, or portfolio accounting;
+- champion/challenger research;
+- live capital;
+- dashboards unrelated to data-health proof.
+
+## Completed Evidence
+
+- Cloudflare Worker deployed and online.
+- D1 binding connected.
+- Authenticated MCP and bounded execution kernel operational.
+- GitHub inspection, mutation, CI, deployment, migration, and production-SHA controls operational.
+- Deterministic Python indicator, strategy-specification, backtest, and judge core present.
+- `market_candles` and operator receipt tables present.
+- Existing website can display the latest stored BTC-USD 1-hour candle.
+- Quant Lab Startup Authority separated from this ledger at `docs/QUANT_LAB_STARTUP_AUTHORITY.md`.
+
+## Current Action
+
+Inspect the existing candle ingestion path and tests, then implement one coherent Stage 1 change set covering production data retrieval, validation, idempotent persistence, gap/stale health state, scheduled execution, and website visibility.
+
+## Exit Gate
+
+The active job is complete only when:
+
+- focused deterministic tests pass;
+- official GitHub Actions validation passes;
+- an exact commit SHA is deployed and verified in production;
+- repeated production ingestion does not create duplicate candles;
+- stale and missing-candle conditions are durably detected and visible;
+- website data-health state reflects the live D1 record truthfully;
+- at least one live scheduled execution is proven, with longer reliability evidence continuing as runtime observation rather than blocking the next engineering stage.
+
+## Unified Job Queue
+
+1. `stage-1-truthful-data-foundation` — ACTIVE
+2. `stage-2-paper-execution-ledger` — QUEUED
+3. `stage-3-baseline-strategy-bench` — QUEUED
+4. `stage-4-hostile-strategy-judge` — QUEUED
+5. `stage-5-controlled-strategy-factory` — QUEUED
+6. `stage-6-champion-challenger-selection` — QUEUED
+7. `stage-7-forward-paper-operation` — QUEUED
+8. `stage-8-live-capital-qualification` — QUEUED
+
+Only one job may be ACTIVE. New work must be inserted into this queue with explicit precedence rather than stored in chat or D1 as a competing continuation source.
+
+## Completion Recording
+
+For each completed job, record once:
+
+- exact implementation result;
+- validation evidence;
+- deployed SHA when applicable;
+- production verification;
+- unresolved risks;
+- next active job and current action.
+
+Runtime measurements, cycle receipts, market data, trades, experiments, incidents, and website telemetry belong in D1, not in this engineering ledger.
