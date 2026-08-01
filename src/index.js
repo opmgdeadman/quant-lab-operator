@@ -654,7 +654,7 @@ function constantTimeBytesEqual(left, right) {
 }
 
 async function renderHome(env) {
-  const [latest, health, paperAccount, baselineBench, hostileJudge, strategyFactory, championSelection, forwardOperation, liveQualification] = await Promise.all([
+  const [latest, health, paperAccount, baselineBench, hostileJudge, strategyFactory, championSelection, forwardOperation, liveQualification, rollingResearch] = await Promise.all([
     latestCandleForHome(env),
     marketDataHealthForHome(env),
     paperAccountForHome(env),
@@ -664,6 +664,7 @@ async function renderHome(env) {
     championSelectionForHome(env),
     forwardOperationForHome(env),
     liveQualificationForHome(env),
+    rollingResearchForHome(env),
   ]);
   const healthMarkup = health ? `
     <section>
@@ -832,6 +833,29 @@ async function renderHome(env) {
       <h2>Live-Capital Evidence Qualification</h2>
       <p>No immutable qualification assessment has been commissioned yet.</p>
     </section>`;
+  const rollingEpoch = rollingResearch?.latest_epoch || null;
+  const rollingReceipt = rollingResearch?.latest_scheduler_receipt || null;
+  const rollingMarkup = rollingResearch ? `
+    <section>
+      <h2>Autonomous Rolling Research</h2>
+      <p>One immutable epoch per UTC date. The fixed eight-strategy catalog runs only after 720 contiguous completed candles and after the current forward and qualification cycle.</p>
+      <dl>
+        <div><dt>Latest epoch</dt><dd>${escapeHtml(rollingEpoch?.epoch_id || "none")}</dd></div>
+        <div><dt>Epoch state</dt><dd>${escapeHtml(rollingEpoch?.state || "not yet run")}</dd></div>
+        <div><dt>Available candles</dt><dd>${escapeHtml(rollingEpoch?.available_candle_count ?? 0)}</dd></div>
+        <div><dt>Required candles</dt><dd>${escapeHtml(rollingEpoch?.required_candle_count ?? 720)}</dd></div>
+        <div><dt>Blockers</dt><dd>${escapeHtml(rollingEpoch?.blocker_codes?.join(", ") || "none")}</dd></div>
+        <div><dt>Selection</dt><dd>${escapeHtml(rollingEpoch?.selection_batch_id || "none")}</dd></div>
+        <div><dt>Champion</dt><dd>${escapeHtml(rollingEpoch?.champion_candidate_id || "none")}</dd></div>
+        <div><dt>Scheduler receipt</dt><dd>${escapeHtml(rollingReceipt?.scheduler_receipt_id || "none")}</dd></div>
+        <div><dt>Catalog mutable</dt><dd>false</dd></div>
+        <div><dt>Live capital</dt><dd>false</dd></div>
+      </dl>
+    </section>` : `
+    <section>
+      <h2>Autonomous Rolling Research</h2>
+      <p>No rolling-research epoch has been recorded yet.</p>
+    </section>`;
   const latestMarkup = latest ? `
     <section>
       <h2>Latest Stored BTC-USD 1h Candle</h2>
@@ -884,6 +908,7 @@ async function renderHome(env) {
     ${selectionMarkup}
     ${forwardMarkup}
     ${qualificationMarkup}
+    ${rollingMarkup}
     ${healthMarkup}
     ${latestMarkup}
   </main>
@@ -963,6 +988,14 @@ async function liveQualificationForHome(env) {
   }
 }
 
+async function rollingResearchForHome(env) {
+  try {
+    return await getRollingResearchSummary(env);
+  } catch {
+    return null;
+  }
+}
+
 function publicStatusSchema() {
   return {
     type: "object",
@@ -1017,6 +1050,12 @@ function publicStatusSchema() {
           { type: "object", additionalProperties: true },
         ],
       },
+      rollingResearch: {
+        anyOf: [
+          { type: "null" },
+          { type: "object", additionalProperties: true },
+        ],
+      },
       dataHealth: {
         anyOf: [
           { type: "null" },
@@ -1054,6 +1093,7 @@ function publicStatusSchema() {
       "championSelection",
       "forwardOperation",
       "liveQualification",
+      "rollingResearch",
     ],
   };
 }
