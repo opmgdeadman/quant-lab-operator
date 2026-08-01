@@ -649,7 +649,7 @@ function constantTimeBytesEqual(left, right) {
 }
 
 async function renderHome(env) {
-  const [latest, health, paperAccount, baselineBench, hostileJudge, strategyFactory, championSelection, forwardOperation] = await Promise.all([
+  const [latest, health, paperAccount, baselineBench, hostileJudge, strategyFactory, championSelection, forwardOperation, liveQualification] = await Promise.all([
     latestCandleForHome(env),
     marketDataHealthForHome(env),
     paperAccountForHome(env),
@@ -658,6 +658,7 @@ async function renderHome(env) {
     strategyFactoryForHome(env),
     championSelectionForHome(env),
     forwardOperationForHome(env),
+    liveQualificationForHome(env),
   ]);
   const healthMarkup = health ? `
     <section>
@@ -807,6 +808,25 @@ async function renderHome(env) {
       <h2>Autonomous Forward Paper Operation</h2>
       <p>No forward cycle has been commissioned yet.</p>
     </section>`;
+  const qualificationMarkup = liveQualification ? `
+    <section>
+      <h2>Live-Capital Evidence Qualification</h2>
+      <p>Evidence eligibility only. This system cannot approve, fund, credential, authorize, or execute live capital.</p>
+      <dl>
+        <div><dt>State</dt><dd>${escapeHtml(liveQualification.state)}</dd></div>
+        <div><dt>Champion</dt><dd>${escapeHtml(liveQualification.champion_candidate_id || "none")}</dd></div>
+        <div><dt>Passed gates</dt><dd>${escapeHtml(liveQualification.passed_gate_count)}</dd></div>
+        <div><dt>Failed gates</dt><dd>${escapeHtml(liveQualification.failed_gate_count)}</dd></div>
+        <div><dt>Blockers</dt><dd>${escapeHtml(liveQualification.blocker_codes?.join(", ") || "none")}</dd></div>
+        <div><dt>Owner approval required</dt><dd>true</dd></div>
+        <div><dt>Owner approval present</dt><dd>false</dd></div>
+        <div><dt>Live authorized</dt><dd>false</dd></div>
+      </dl>
+    </section>` : `
+    <section>
+      <h2>Live-Capital Evidence Qualification</h2>
+      <p>No immutable qualification assessment has been commissioned yet.</p>
+    </section>`;
   const latestMarkup = latest ? `
     <section>
       <h2>Latest Stored BTC-USD 1h Candle</h2>
@@ -858,6 +878,7 @@ async function renderHome(env) {
     ${factoryMarkup}
     ${selectionMarkup}
     ${forwardMarkup}
+    ${qualificationMarkup}
     ${healthMarkup}
     ${latestMarkup}
   </main>
@@ -929,6 +950,14 @@ async function forwardOperationForHome(env) {
   }
 }
 
+async function liveQualificationForHome(env) {
+  try {
+    return await getLiveQualificationSummary(env);
+  } catch {
+    return null;
+  }
+}
+
 function publicStatusSchema() {
   return {
     type: "object",
@@ -977,6 +1006,12 @@ function publicStatusSchema() {
           { type: "object", additionalProperties: true },
         ],
       },
+      liveQualification: {
+        anyOf: [
+          { type: "null" },
+          { type: "object", additionalProperties: true },
+        ],
+      },
       dataHealth: {
         anyOf: [
           { type: "null" },
@@ -1013,6 +1048,7 @@ function publicStatusSchema() {
       "strategyFactory",
       "championSelection",
       "forwardOperation",
+      "liveQualification",
     ],
   };
 }
