@@ -1,7 +1,7 @@
 # Quant Lab Engineering Continuation Ledger
 
 Last updated: 2026-08-01
-Status: ACTIVE
+Status: STEADY_STATE
 Authority: Sole canonical engineering continuation ledger
 
 ## Authority and Precedence
@@ -14,30 +14,29 @@ The governing mission, operator authority, owner boundary, and operating doctrin
 
 ## Active Job
 
-Job ID: `stage-10-bounded-historical-bootstrap`
-Priority: 10
-State: ACTIVE
+Job ID: `none`
+Priority: none
+State: COMPLETE
 
 Engineering objective:
 
-Build and production-validate a one-time, bounded historical market-data bootstrap that fills the immutable BTC-USD hourly table to at least 720 contiguous completed candles from the existing free provider path, allowing the next UTC-day rolling-research epoch to begin immediately rather than waiting roughly 27 days.
+No accepted incomplete engineering work remains. Quant Lab is in autonomous paper-only steady state.
 
-Accepted scope:
+Automatic operating scope:
 
-- immutable bootstrap policy, target window, chunk limits, provider order, and policy hash;
-- completed BTC-USD 1-hour candles only, ending no later than the current expected close;
-- bounded backward pagination through the existing Coinbase Exchange provider with an exact-source fallback only where already approved;
-- reuse of Stage 1 OHLCV validation, immutable idempotent persistence, provider-transition checks, gap detection, and health telemetry;
-- durable chunk and bootstrap receipts with resumable idempotency;
-- automatic stop at 720 contiguous candles or a hard provider/safety blocker;
-- no overwrite of conflicting candles and no synthetic interpolation;
-- bounded operator controls, focused tests, CI, exact-SHA deployment, production commissioning, and truthful website visibility.
+- hourly completed-candle ingestion and health verification;
+- qualified-champion forward-paper execution or explicit safe idle;
+- immutable live-capital evidence reassessment with owner approval kept separate;
+- one immutable rolling-research epoch per UTC date using the fixed eight-strategy catalog after 720 contiguous candles;
+- completed historical bootstrap replay with no further backward requests once the 720-candle target is met;
+- truthful website and authenticated status visibility;
+- incident-driven engineering only when new evidence proves a defect or an owner decision changes scope.
 
-Out of scope for this job:
+Permanent boundaries:
 
-- invented candles, gap filling by interpolation, future or incomplete candles, paid data, or hidden provider substitutions;
-- changes to research candidates, judge gates, selection rules, forward policy, or qualification thresholds;
-- leverage, derivatives, shorting, owner approval, or live capital.
+- paper only until explicit owner approval after evidence eligibility;
+- no leverage, derivatives, shorting, paid data, synthetic candles, hidden parameter tuning, or silent threshold changes;
+- no engineering work may be invented merely to keep the queue nonempty.
 
 ## Completed Evidence
 
@@ -104,29 +103,31 @@ Out of scope for this job:
 - Production created and replayed one immutable `waiting_for_history` epoch at 75/720 candles with zero benchmark, candidates, runs, verdicts, or selection changes.
 - A real scheduled invocation at `2026-08-01T20:05:18.000Z` ingested first, ran the no-champion forward gate, reassessed live qualification, and finally wrote rolling scheduler receipt `rolling-research-scheduler:2026-08-01T20:05:18.000Z` without same-candle activation.
 - Stage 9 is complete. The laboratory can now grow history, research daily, select only qualified evidence, forward-test, and reassess qualification autonomously.
+- Stage 10 implemented migration `0013_historical_bootstrap.sql`, immutable policy/chunk/attempt receipts, bounded 200-hour backward windows, at most two windows per invocation, exact provider lineage, completed-candle validation, conflict rejection, resumable progress, and website/MCP visibility.
+- Focused tests proved policy immutability, deterministic two-attempt planning, exact remainder sizing, complete-stop behavior, stale-tail blocking, gap-aware suffix handling, historical-window idempotency, future/oversized rejection, and stored-candle conflict rejection.
+- Official CI passed and exact SHA `22bf60f81c57c475ba06d14617f2bf9de0aa69a4` deployed after migration success.
+- Production first extended continuity from 76 to 276 candles, safely stopped on a transient Coinbase HTTP 403, then resumed without duplicate effects to 676 and finally 720 contiguous completed candles.
+- Final production history spans `2026-07-02T21:00:00.000Z` through `2026-08-01T20:00:00.000Z`, contains zero gaps, uses Coinbase exact-source candles, and has zero synthetic rows, conflicts, or remaining bootstrap work.
+- Repeating the completed bootstrap replayed the same immutable completion attempt. The sealed August 1 rolling epoch also replayed unchanged, proving the new history could not retroactively affect same-day research or selection.
+- Stage 10 is complete. All accepted engineering jobs are complete and Quant Lab is ready for autonomous paper-only steady-state operation.
 
 ## Current Action
 
-Inspect the existing Stage 1 provider and persistence boundaries, then define and freeze a bootstrap policy that walks backward in bounded chunks until at least 720 contiguous completed candles are present. Implement resumable receipts, exact-source validation, duplicate-safe persistence, conflict rejection, gap-aware progress, bounded operator controls, production commissioning, and website visibility. The next UTC-day rolling epoch—not the bootstrap—must create research evidence.
+No engineering action is pending. Operate automatically under the deployed hourly schedule. The next UTC-day scheduler invocation will create the first eligible 720-candle rolling-research epoch; its resulting selection may affect only later forward cycles. Create a new canonical engineering job only for a verified incident, evidence-backed improvement, or explicit owner scope change.
 
-## Exit Gate
+## Steady-State Operating Gate
 
-The active job is complete only when:
+Quant Lab remains healthy only while:
 
-- focused deterministic tests pass;
-- official GitHub Actions validation passes;
-- D1 migrations apply successfully;
-- an exact commit SHA is deployed and verified in production;
-- bootstrap policy, target count, provider order, request bounds, chunk sizes, stop rules, and policy hash are immutable before execution;
-- every stored candle is completed, valid BTC-USD 1-hour OHLCV from an approved exact source;
-- existing immutable candles replay as duplicates and conflicting payloads fail closed;
-- bootstrap can resume after partial progress without duplicate effects;
-- provider failure produces a durable blocker rather than fabricated history;
-- production reaches at least 720 contiguous hourly candles or records the exact external blocker preventing it;
-- market-data health is healthy with zero gaps across the research window;
-- rolling research remains the only component permitted to create candidate, verdict, or selection evidence;
-- website bootstrap state reflects live D1 records truthfully;
-- no paid service, synthetic data, leverage, derivatives, shorting, owner approval, or live-capital path is introduced.
+- repository and production deployment SHAs stay aligned;
+- hourly ingestion remains completed-candle-only, gap-free, and duplicate-safe;
+- no champion means explicit safe idle with no fallback trade;
+- only hostile-judge-qualified evidence can become champion;
+- rolling research uses the fixed catalog and immutable daily epochs;
+- live-capital qualification remains evidence-only and owner approval remains separate;
+- paper accounting stays reconciled;
+- public surfaces remain truthful and expose no unsafe controls;
+- any verified defect creates one new canonical engineering job with explicit precedence.
 
 ## Unified Job Queue
 
@@ -139,7 +140,7 @@ The active job is complete only when:
 7. `stage-7-forward-paper-operation` — COMPLETE
 8. `stage-8-live-capital-qualification` — COMPLETE
 9. `stage-9-autonomous-rolling-research` — COMPLETE
-10. `stage-10-bounded-historical-bootstrap` — ACTIVE
+10. `stage-10-bounded-historical-bootstrap` — COMPLETE
 
 Only one job may be ACTIVE. New work must be inserted into this queue with explicit precedence rather than stored in chat or D1 as a competing continuation source.
 
