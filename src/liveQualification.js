@@ -21,6 +21,8 @@ export const LIVE_QUALIFICATION_POLICY = deepFreeze({
   maximum_unresolved_operational_errors: 0,
   accounting_reconciliation_required: true,
   qualified_champion_required: true,
+  source_identity_required: true,
+  healthy_market_data_required: true,
   owner_approval_required_after_eligibility: true,
   owner_approval_is_separate: true,
   live_authorization_allowed: false,
@@ -30,6 +32,7 @@ export const LIVE_QUALIFICATION_POLICY = deepFreeze({
 });
 
 export const LIVE_QUALIFICATION_REASON_CODES = deepFreeze([
+  "source_identity_invalid",
   "qualified_champion_missing",
   "qualified_champion_evidence_invalid",
   "insufficient_forward_cycles",
@@ -40,6 +43,7 @@ export const LIVE_QUALIFICATION_REASON_CODES = deepFreeze([
   "doubled_cost_stress_failed",
   "tripled_cost_stress_failed",
   "scheduler_reliability_below_gate",
+  "market_data_unhealthy",
   "duplicate_safety_violation",
   "accounting_not_reconciled",
   "unresolved_operational_errors",
@@ -97,6 +101,14 @@ export async function buildLiveCapitalQualification(rawEvidence, options = {}) {
   const policyHash = await stableHash(LIVE_QUALIFICATION_POLICY);
   const gates = [];
 
+  addGate(gates, assessmentId, "source_identity",
+    Boolean(evidence.selection_batch_id) && Boolean(evidence.selection_hash),
+    {
+      selection_batch_id: evidence.selection_batch_id,
+      selection_hash: evidence.selection_hash,
+    },
+    { selection_batch_id_required: true, selection_hash_required: true },
+    "source_identity_invalid", createdAt);
   addGate(gates, assessmentId, "qualified_champion",
     evidence.selection_state === "champion_selected"
       && Boolean(evidence.champion_candidate_id)
@@ -157,13 +169,21 @@ export async function buildLiveCapitalQualification(rawEvidence, options = {}) {
       minimum_success_rate_percent: LIVE_QUALIFICATION_POLICY.minimum_scheduler_success_rate_percent,
     },
     "scheduler_reliability_below_gate", createdAt);
+  addGate(gates, assessmentId, "market_data_health",
+    evidence.market_data_status === "healthy",
+    { market_data_status: evidence.market_data_status },
+    { required_status: "healthy" },
+    "market_data_unhealthy", createdAt);
   addGate(gates, assessmentId, "duplicate_safety",
     evidence.duplicate_violation_count <= LIVE_QUALIFICATION_POLICY.maximum_duplicate_violations,
     { duplicate_violation_count: evidence.duplicate_violation_count },
     { maximum: LIVE_QUALIFICATION_POLICY.maximum_duplicate_violations },
     "duplicate_safety_violation", createdAt);
   addGate(gates, assessmentId, "accounting_reconciliation",
-    evidence.accounting_reconciled === true,
+    evidence.accounting_reconciled === true
+      && Math.abs(evidence.cash_ledger_delta) <= EPSILON
+      && Math.abs(evidence.simulated_cash_delta) <= 0.01
+      && Math.abs(evidence.simulated_position_delta) <= EPSILON,
     {
       accounting_reconciled: evidence.accounting_reconciled,
       cash_ledger_delta: evidence.cash_ledger_delta,
@@ -422,8 +442,8 @@ export function calculateForwardMetrics({ cycleRows, fills, candles, endingCash,
   const positionDelta = sortedFills.reduce((sum, fill) => (
     sum + (fill.side === "buy" ? fill.quantity : -fill.quantity)
   ), 0);
-  const startingCash = sortedFills.length ? endingCash - cashDelta : initialCashFallback;
-  const startingPosition = sortedFills.length ? endingPosition - positionDelta : 0;
+  const startingCash = sortedFills.length ? endingCash - cashDelta : endingCash;
+  const startingPosition = sortedFills.length ? endingPosition - positionDelta : endingPosition;
   let cash = startingCash;
   let quantity = startingPosition;
   let peak = startingCash;
@@ -519,6 +539,28 @@ function normalizeEvidence(raw) {
   if (evidence.first_forward_closed_at && evidence.last_forward_closed_at
     && Date.parse(evidence.first_forward_closed_at) > Date.parse(evidence.last_forward_closed_at)) {
     throw new Error("qualification_forward_boundaries_invalid");
+  }
+  if (evidence.forward_cycle_count > 0
+    && (!evidence.first_forward_closed_at || !evidence.last_forward_closed_at)) {
+    throw new Error("qualification_forward_boundaries_required");
+  }
+  if (evidence.forward_cycle_count === 0
+    && (evidence.first_forward_closed_at || evidence.last_forward_closed_at || evidence.inclusive_span_days !== 0)) {
+    throw new Error("qualification_empty_forward_evidence_invalid");
+  }
+  if (evidence.first_forward_closed_at && evidence.last_forward_closed_at) {
+    const spanHours = ((Date.parse(evidence.last_forward_closed_at) - Date.parse(evidence.first_forward_closed_at)) / HOUR_MS) + 1;
+    const expectedSpanDays = spanHours / 24;
+    if (Math.abs(evidence.inclusive_span_days - expectedSpanDays) > EPSILON
+      || evidence.forward_cycle_count > Math.floor(spanHours + EPSILON)) {
+      throw new Error("qualification_forward_span_conflict");
+    }
+  }
+  const expectedSchedulerRate = evidence.scheduler_receipt_count
+    ? (evidence.scheduler_success_count / evidence.scheduler_receipt_count) * 100
+    : 0;
+  if (Math.abs(evidence.scheduler_success_rate_percent - expectedSchedulerRate) > EPSILON) {
+    throw new Error("qualification_scheduler_rate_conflict");
   }
   return evidence;
 }
