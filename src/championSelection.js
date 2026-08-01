@@ -44,6 +44,31 @@ export async function runProductionChampionSelection(env, options = {}) {
   return { ...built.summary, replayed: false };
 }
 
+export async function runChampionSelectionForFactoryBatch(env, factoryBatchId, options = {}) {
+  if (!factoryBatchId) throw new Error("selection_source_factory_batch_required");
+  const batchId = options.batchId || `rolling-selection-v1:${factoryBatchId}`;
+  const existing = await readSelectionBatch(env, batchId);
+  if (existing) return { ...existing, replayed: true };
+  const source = await readFactoryEvidence(env, factoryBatchId);
+  const built = await buildChampionSelection(source, {
+    batchId,
+    sourceFactoryBatchId: factoryBatchId,
+    createdAt: options.now || new Date(),
+  });
+  const existingPolicy = await readPolicy(env, POLICY_ID);
+  if (existingPolicy && existingPolicy.policy_hash !== built.policy.policy_hash) {
+    throw new Error("selection_policy_hash_conflict");
+  }
+  try {
+    await persistSelection(env, built, Boolean(existingPolicy));
+  } catch (error) {
+    const raced = await readSelectionBatch(env, batchId);
+    if (raced) return { ...raced, replayed: true };
+    throw error;
+  }
+  return { ...built.summary, replayed: false };
+}
+
 export async function getChampionSelectionSummary(env) {
   const row = await env.DB.prepare(
     `SELECT id, summary_json, created_at FROM selection_batches
@@ -61,7 +86,7 @@ export async function getChampionSelectionSummary(env) {
 }
 
 export async function buildChampionSelection(source, options = {}) {
-  validateSource(source);
+  validateSource(source, options.sourceFactoryBatchId || SOURCE_FACTORY_BATCH_ID);
   const batchId = options.batchId || BATCH_ID;
   const createdAt = iso(options.createdAt || new Date(), "created_at");
   const policyHash = await stableHash(SELECTION_POLICY);
@@ -228,8 +253,8 @@ export function selectionScore(metrics) {
   );
 }
 
-function validateSource(source) {
-  if (!source?.batch?.id || source.batch.id !== SOURCE_FACTORY_BATCH_ID) {
+function validateSource(source, expectedFactoryBatchId = SOURCE_FACTORY_BATCH_ID) {
+  if (!source?.batch?.id || source.batch.id !== expectedFactoryBatchId) {
     throw new Error("selection_source_factory_batch_mismatch");
   }
   if (!source.batch.batch_hash || !Array.isArray(source.candidates)) {

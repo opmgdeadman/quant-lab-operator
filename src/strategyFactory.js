@@ -43,7 +43,7 @@ export async function runProductionStrategyFactory(env, options = {}) {
     batchId: BATCH_ID,
     createdAt: options.now || new Date(),
   });
-  await persistFactory(env, built);
+  await persistStrategyFactoryBatch(env, built);
   return { ...built.summary, replayed: false };
 }
 
@@ -59,17 +59,20 @@ export async function getStrategyFactorySummary(env) {
 export async function buildStrategyFactoryBatch(source, options = {}) {
   const batchId = options.batchId || BATCH_ID;
   const createdAt = iso(options.createdAt || new Date(), "created_at");
-  validateSource(source);
-  const policyHash = await stableHash(FACTORY_POLICY);
+  const policyDefinition = options.policy || FACTORY_POLICY;
+  const candidateCatalog = options.candidateCatalog || FACTORY_CANDIDATE_CATALOG;
+  const sourceBenchmarkId = options.sourceBenchmarkId || SOURCE_BENCHMARK_ID;
+  validateSource(source, sourceBenchmarkId);
+  const policyHash = await stableHash(policyDefinition);
   const policy = {
-    id: POLICY_ID,
-    version: FACTORY_POLICY.version,
-    policy_json: canonicalJson(FACTORY_POLICY),
+    id: policyDefinition.id,
+    version: policyDefinition.version,
+    policy_json: canonicalJson(policyDefinition),
     policy_hash: policyHash,
     created_at: createdAt,
   };
   const definitions = [];
-  for (const catalogEntry of FACTORY_CANDIDATE_CATALOG) {
+  for (const catalogEntry of candidateCatalog) {
     const spec = {
       schema: "controlled_candidate_v1",
       id: catalogEntry.id,
@@ -82,7 +85,7 @@ export async function buildStrategyFactoryBatch(source, options = {}) {
       parameters: catalogEntry.parameters,
       tuning_allowed: false,
       parent_reference_id: catalogEntry.parent_reference_id,
-      generation_policy_id: POLICY_ID,
+      generation_policy_id: policyDefinition.id,
     };
     const specHash = await stableHash(spec);
     const lineageHash = await stableHash({
@@ -99,7 +102,7 @@ export async function buildStrategyFactoryBatch(source, options = {}) {
       created_at: createdAt,
     });
   }
-  assertCatalogExact(definitions);
+  assertCatalogExact(definitions, candidateCatalog);
 
   const runs = [];
   for (const definition of definitions) {
@@ -175,7 +178,7 @@ export async function buildStrategyFactoryBatch(source, options = {}) {
     promotion_performed: false,
     adaptive_tuning_allowed: false,
     result_dependent_expansion_allowed: false,
-    factory_policy_id: POLICY_ID,
+    factory_policy_id: policyDefinition.id,
     factory_policy_hash: policyHash,
     batch_id: batchId,
     batch_hash: batchHash,
@@ -203,7 +206,7 @@ export async function buildStrategyFactoryBatch(source, options = {}) {
     verdicts,
     batch: {
       id: batchId,
-      policy_id: POLICY_ID,
+      policy_id: policyDefinition.id,
       policy_hash: policyHash,
       source_benchmark_id: source.benchmark.id,
       source_benchmark_hash: source.benchmark.benchmark_hash,
@@ -245,8 +248,8 @@ async function readFrozenSource(env, benchmarkId) {
   return { benchmark, candles, partition_manifest: manifest, partitions };
 }
 
-function validateSource(source) {
-  if (!source?.benchmark?.id || source.benchmark.id !== SOURCE_BENCHMARK_ID) {
+function validateSource(source, expectedBenchmarkId = SOURCE_BENCHMARK_ID) {
+  if (!source?.benchmark?.id || source.benchmark.id !== expectedBenchmarkId) {
     throw new Error("factory_source_benchmark_mismatch");
   }
   if (source.candles.length !== Number(source.benchmark.dataset_candle_count)) {
@@ -267,8 +270,8 @@ function validateSource(source) {
   }
 }
 
-function assertCatalogExact(definitions) {
-  const expected = FACTORY_CANDIDATE_CATALOG.map((entry) => entry.id);
+function assertCatalogExact(definitions, candidateCatalog = FACTORY_CANDIDATE_CATALOG) {
+  const expected = candidateCatalog.map((entry) => entry.id);
   const actual = definitions.map((entry) => entry.id);
   if (canonicalJson(actual) !== canonicalJson(expected)) throw new Error("factory_catalog_changed");
   if (new Set(actual).size !== actual.length || actual.length !== 8) {
@@ -276,7 +279,7 @@ function assertCatalogExact(definitions) {
   }
 }
 
-async function persistFactory(env, built) {
+export async function persistStrategyFactoryBatch(env, built) {
   const evidenceStatements = [];
   evidenceStatements.push(env.DB.prepare(
     `INSERT OR IGNORE INTO strategy_factory_policies
