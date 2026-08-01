@@ -260,9 +260,12 @@ function normalizedMetrics(summary, allowNull = false) {
   const output = {};
   for (const key of keys) {
     const value = summary?.[key];
-    if ((value === null || value === undefined) && allowNull) {
-      output[key] = null;
-      continue;
+    if (value === null || value === undefined) {
+      if (allowNull) {
+        output[key] = null;
+        continue;
+      }
+      throw new Error(`selection_metric_invalid:${key}`);
     }
     const number = Number(value);
     if (!Number.isFinite(number)) throw new Error(`selection_metric_invalid:${key}`);
