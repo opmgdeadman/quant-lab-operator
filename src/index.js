@@ -1,4 +1,5 @@
 import { executeQuantLabIntent } from "./operator/executionKernel.js";
+import { loadQuantStartupContext } from "./operator/startupAuthority.js";
 import { publicTools as operatorPublicTools } from "./operator/toolRegistry.js";
 
 const SYSTEM_NAME = "Quant Lab";
@@ -120,7 +121,7 @@ async function mcpResponseFor(message, request, env) {
             version: "0.2.0",
             deploymentSha: env.DEPLOYMENT_SHA || "unknown",
           },
-          instructions: "Authenticated Quant Operator MCP. Use only advertised typed tools with closed schemas.",
+          instructions: "Authenticated Quant Operator MCP. Before any operator intent, call get_quant_lab_startup_context, read the full Startup Authority and sole canonical Git ECL, then send the exact required acknowledgment and current ECL SHA with every intent.";
         },
       },
     };
@@ -142,7 +143,7 @@ async function mcpResponseFor(message, request, env) {
         jsonrpc: "2.0",
         id,
         result: {
-          tools: operatorPublicTools(publicStatusSchema(), executeIntentOutputSchema()),
+          tools: operatorPublicTools(publicStatusSchema(), startupContextSchema(), executeIntentOutputSchema()),
         },
       },
     };
@@ -157,7 +158,7 @@ async function mcpResponseFor(message, request, env) {
     }
     const name = message.params?.name;
     const args = message.params?.arguments || {};
-    if (!operatorPublicTools(publicStatusSchema(), executeIntentOutputSchema()).some((tool) => tool.name === name)) {
+    if (!operatorPublicTools(publicStatusSchema(), startupContextSchema(), executeIntentOutputSchema()).some((tool) => tool.name === name)) {
       return { body: mcpErrorObject(id, -32602, "public_direct_tool_required") };
     }
     let structuredContent;
@@ -212,13 +213,18 @@ async function mcpResponseFor(message, request, env) {
 }
 
 async function callPublicTool(name, args, env) {
+  if (name === "get_quant_lab_startup_context") {
+    return loadQuantStartupContext(env);
+  }
   if (name === "get_quant_lab_status") {
     return publicStatusPayload(env);
   }
   if (name === "execute_quant_lab_intent") {
+    const startupContext = await loadQuantStartupContext(env);
     return executeQuantLabIntent(args, {
       env,
       databaseProbe,
+      startupContext,
     });
   }
   throw new ToolInputError("public_direct_tool_required");
@@ -667,6 +673,33 @@ function publicStatusSchema() {
       "latestDeploymentSha",
       "currentPhase",
     ],
+  };
+}
+
+function startupContextSchema() {
+  const documentSchema = {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      ok: { type: "boolean" },
+      path: { type: "string" },
+      sha: { type: "string" },
+      source: { type: "string" },
+      content: { type: "string" },
+    },
+    required: ["ok", "path", "sha", "source", "content"],
+  };
+  return {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      ok: { type: "boolean" },
+      required_governing_authority_ack: { type: "string" },
+      startup_authority: { anyOf: [{ type: "null" }, documentSchema] },
+      canonical_continuation: { anyOf: [{ type: "null" }, documentSchema] },
+      errors: { type: "array", items: { type: "string" } },
+    },
+    required: ["ok", "required_governing_authority_ack", "startup_authority", "canonical_continuation", "errors"],
   };
 }
 

@@ -2,6 +2,7 @@ import { resolveCapability, supportedIntents } from "./capabilityDirectory.js";
 import { assertClientSafeInputs, boundResultBytes, ClientSafetyError } from "./clientSafeRequests.js";
 import { handlers } from "./handlers/controlPlane.js";
 import { fingerprintIntent, readReceipt, receiptSummary, writeAuditLog, writeReceipt } from "./receipts.js";
+import { REQUIRED_GOVERNING_AUTHORITY_ACK } from "./startupAuthority.js";
 
 export const executionKernelInfo = {
   name: "Quant Lab Execution Kernel",
@@ -15,6 +16,7 @@ export async function executeQuantLabIntent(args, context) {
     throw new ExecutionKernelError("unknown_intent");
   }
 
+  const capabilityInputs = validateStartupAuthority(envelope.inputs, context.startupContext);
   const requestFingerprint = await fingerprintIntent(envelope.intent, envelope.inputs);
   const existing = await readReceipt(context.env, envelope.operation_id);
   if (existing) {
@@ -32,13 +34,13 @@ export async function executeQuantLabIntent(args, context) {
   let response;
   let status = "completed";
   try {
-    assertClientSafeInputs(envelope.inputs);
-    validateAgainstSchema(envelope.inputs, capability.input_schema);
+    assertClientSafeInputs(capabilityInputs);
+    validateAgainstSchema(capabilityInputs, capability.input_schema);
     const handler = handlers[capability.handler_id];
     if (!handler) {
       throw new ExecutionKernelError("handler_not_found");
     }
-    const rawResult = await handler(envelope.inputs, context);
+    const rawResult = await handler(capabilityInputs, context);
     const boundedResult = boundResultBytes(rawResult, capability.max_response_bytes);
     response = buildResponse({
       ok: rawResult.ok !== false,
@@ -85,6 +87,22 @@ export async function executeQuantLabIntent(args, context) {
   });
 
   return response;
+}
+
+function validateStartupAuthority(inputs, startupContext) {
+  if (!startupContext?.ok) {
+    throw new ExecutionKernelError("quant_startup_context_unavailable");
+  }
+  if (inputs.governing_authority_ack !== REQUIRED_GOVERNING_AUTHORITY_ACK) {
+    throw new ExecutionKernelError("governing_authority_ack_required");
+  }
+  if (inputs.canonical_continuation_sha !== startupContext.canonical_continuation?.sha) {
+    throw new ExecutionKernelError("canonical_continuation_sha_stale_or_missing");
+  }
+  const capabilityInputs = { ...inputs };
+  delete capabilityInputs.governing_authority_ack;
+  delete capabilityInputs.canonical_continuation_sha;
+  return capabilityInputs;
 }
 
 function buildResponse({ ok, error, intent, operationId, requestFingerprint, createdAt, capability, result, status }) {

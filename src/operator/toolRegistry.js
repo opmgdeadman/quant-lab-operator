@@ -1,8 +1,21 @@
 import { supportedIntents } from "./capabilityDirectory.js";
 import { objectSchema } from "./schemas.js";
 
-export function publicTools(publicStatusSchema, executeIntentOutputSchema) {
+export function publicTools(publicStatusSchema, startupContextSchema, executeIntentOutputSchema) {
   return [
+    {
+      name: "get_quant_lab_startup_context",
+      title: "Get Quant Lab Startup Context",
+      description: "Load the mandatory Quant Lab Startup Authority and sole canonical Git Engineering Continuation Ledger before any operator intent.",
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: true,
+      },
+      inputSchema: objectSchema({}),
+      outputSchema: startupContextSchema,
+    },
     {
       name: "get_quant_lab_status",
       title: "Get Quant Lab Status",
@@ -19,7 +32,7 @@ export function publicTools(publicStatusSchema, executeIntentOutputSchema) {
     {
       name: "execute_quant_lab_intent",
       title: "Execute Quant Lab Intent",
-      description: "Execute one bounded source-defined Quant Lab operator intent through the execution kernel.",
+      description: "Execute one bounded source-defined Quant Lab operator intent. First call get_quant_lab_startup_context, then include its exact required_governing_authority_ack and canonical_continuation.sha inside inputs as governing_authority_ack and canonical_continuation_sha. Calls fail closed when authority is skipped or the Git ECL SHA is stale.";
       annotations: {
         readOnlyHint: false,
         destructiveHint: false,
