@@ -8,6 +8,7 @@ import { getHostileJudgeSummary, runProductionHostileJudge } from "../../hostile
 import { getStrategyFactorySummary, runProductionStrategyFactory } from "../../strategyFactory.js";
 import { getChampionSelectionSummary, runProductionChampionSelection } from "../../championSelection.js";
 import { commissionForwardPaperOperation, getForwardOperationSummary, runProductionForwardPaperCycle } from "../../forwardPaper.js";
+import { getLiveQualificationSummary, runProductionLiveQualification } from "../../liveQualification.js";
 
 export const handlers = {
   get_engineering_access_state,
@@ -24,6 +25,8 @@ export const handlers = {
   run_champion_selection,
   get_forward_operation,
   run_forward_operation,
+  get_live_qualification,
+  run_live_qualification,
   read_continuation,
   write_continuation,
   inspect_repository,
@@ -226,6 +229,36 @@ async function run_forward_operation(inputs, context) {
       live_capital_enabled: false,
       status: "forward_operation_failed",
       error: error instanceof Error ? error.message : "forward_operation_failed",
+    };
+  }
+}
+
+async function get_live_qualification(inputs, context) {
+  const qualification = await getLiveQualificationSummary(context.env);
+  return {
+    ok: Boolean(qualification),
+    evidence_only: true,
+    owner_approval_required: true,
+    owner_approval_present: false,
+    live_capital_enabled: false,
+    live_authorized: false,
+    qualification,
+  };
+}
+
+async function run_live_qualification(inputs, context) {
+  try {
+    return await runProductionLiveQualification(context.env);
+  } catch (error) {
+    return {
+      ok: false,
+      evidence_only: true,
+      owner_approval_required: true,
+      owner_approval_present: false,
+      live_capital_enabled: false,
+      live_authorized: false,
+      status: "live_qualification_failed",
+      error: error instanceof Error ? error.message : "live_qualification_failed",
     };
   }
 }
@@ -451,6 +484,24 @@ async function delete_repo_file(inputs, context) {
 }
 
 export async function runValidation(inputs, context) {
+  if (inputs.validation === "production live qualification commission") {
+    try {
+      const qualification = await runProductionLiveQualification(context.env);
+      return {
+        ok: qualification.ok,
+        validation: inputs.validation,
+        status: qualification.ok ? "passed" : "failed",
+        live_qualification_commission: qualification,
+      };
+    } catch (error) {
+      return {
+        ok: false,
+        validation: inputs.validation,
+        status: "production_live_qualification_commission_failed",
+        error: error instanceof Error ? error.message : "live_qualification_commission_failed",
+      };
+    }
+  }
   if (inputs.validation === "production forward paper commission") {
     try {
       const forward = await commissionForwardPaperOperation(context.env);
