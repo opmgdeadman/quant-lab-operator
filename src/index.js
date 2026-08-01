@@ -7,6 +7,7 @@ import { getChampionSelectionSummary } from "./championSelection.js";
 import { getForwardOperationSummary, runScheduledForwardOperation } from "./forwardPaper.js";
 import { getLiveQualificationSummary, runProductionLiveQualification } from "./liveQualification.js";
 import { getRollingResearchSummary, runScheduledRollingResearch } from "./rollingResearch.js";
+import { getHistoricalBootstrapSummary, runScheduledHistoricalBootstrap } from "./historicalBootstrap.js";
 import { executeQuantLabIntent } from "./operator/executionKernel.js";
 import { loadQuantStartupContext } from "./operator/startupAuthority.js";
 import { publicTools as operatorPublicTools } from "./operator/toolRegistry.js";
@@ -79,7 +80,8 @@ async function runScheduledQuantLabOperation(env, scheduledAt) {
   const forward = await runScheduledForwardOperation(env, scheduledAt);
   const qualification = await runProductionLiveQualification(env);
   const rollingResearch = await runScheduledRollingResearch(env, scheduledAt);
-  return { forward, qualification, rollingResearch };
+  const historicalBootstrap = await runScheduledHistoricalBootstrap(env, scheduledAt);
+  return { forward, qualification, rollingResearch, historicalBootstrap };
 }
 
 async function publicStatusPayload(env) {
@@ -101,6 +103,7 @@ async function publicStatusPayload(env) {
     forwardOperation: status.forwardOperation,
     liveQualification: status.liveQualification,
     rollingResearch: status.rollingResearch,
+    historicalBootstrap: status.historicalBootstrap,
   };
 }
 
