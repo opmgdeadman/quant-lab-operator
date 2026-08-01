@@ -1,7 +1,7 @@
 # Quant Lab Engineering Continuation Ledger
 
 Last updated: 2026-08-01
-Status: ACTIVE
+Status: STEADY_STATE
 Authority: Sole canonical engineering continuation ledger
 
 ## Authority and Precedence
@@ -14,13 +14,13 @@ The governing mission, operator authority, owner boundary, and operating doctrin
 
 ## Active Job
 
-Job ID: `stage-12-canonical-brand-identity`
-Priority: 12
-State: ACTIVE
+Job ID: `none`
+Priority: none
+State: COMPLETE
 
 Engineering objective:
 
-Integrate the owner-supplied Quant Lab logo as the canonical brand mark across the professional operating console, browser icons, web-app manifest, and social preview metadata; validate the exact implementation, deploy the exact SHA, and verify production alignment without changing trading logic or the paper-only boundary.
+No accepted incomplete engineering work remains. Quant Lab is in autonomous paper-only steady state.
 
 Automatic operating scope:
 
@@ -115,10 +115,16 @@ Permanent boundaries:
 - Official CI passed on exact implementation SHA `f47ed4b4b1dcf6b89dbbfdcdd4c7ad5f5bdac817`, including Worker tests, quant-core tests, Wrangler validation, and the runtime-escaping regression.
 - Exact SHA `f47ed4b4b1dcf6b89dbbfdcdd4c7ad5f5bdac817` deployed successfully. The production professional-console contract rendered 64,760 bytes against live D1 state with 96 candles and eight candidates and passed all nine checks: professional shell, TradingView, first-party fallback, responsive breakpoints, readable strategy table, expandable evidence, paper-only boundary, legacy-layout removal, and runtime escaping.
 - Stage 11 is complete. Quant Lab now presents the quality and operating rigor of the underlying autonomous paper laboratory without changing trading logic or live-capital authority.
+- Stage 12 integrated the owner-supplied rising-chart logo as Quant Lab's canonical brand mark in the professional console and exposed verified browser, Apple, Android, and social-preview assets through bounded public Worker routes.
+- The document head now includes canonical URL, favicon, Apple touch icon, web-app manifest, Open Graph, and Twitter metadata. The manifest declares Quant Lab identity, standalone display behavior, theme colors, and 192/512 application icons.
+- Regression coverage verifies the console markup, every public brand asset, content types, cache policy, manifest contract, and social metadata. Official CI run `30723724885` passed Worker tests, quant-core tests, and Wrangler validation on exact implementation SHA `2bce3f332575cdf579d36e17e485b84184cada62`.
+- Exact SHA `2bce3f332575cdf579d36e17e485b84184cada62` deployed successfully in workflow run `30723744571`. Its post-deploy production smoke gate fetched the live console, manifest, all eight brand assets, and public status route and passed every assertion.
+- Repository and production deployment SHAs were proven aligned at `2bce3f332575cdf579d36e17e485b84184cada62`. No trading logic, strategy evidence, paper accounting, scheduler behavior, or live-capital authority changed.
+- Stage 12 is complete. Quant Lab now carries one consistent owner-approved visual identity across the live console, browser surfaces, installed-app surfaces, and link previews.
 
 ## Current Action
 
-Implement Stage 12 branding assets and routes, wire the canonical logo into the console and metadata, extend regression coverage, run official validation, deploy the exact SHA, verify production rendering and SHA alignment, then close the job back to steady state.
+No engineering action is pending. Operate automatically under the deployed hourly schedule and professional public console. Create a new canonical engineering job only for a verified incident, evidence-backed improvement, or explicit owner scope change.
 
 ## Steady-State Operating Gate
 
@@ -147,7 +153,7 @@ Quant Lab remains healthy only while:
 9. `stage-9-autonomous-rolling-research` — COMPLETE
 10. `stage-10-bounded-historical-bootstrap` — COMPLETE
 11. `stage-11-professional-quant-console` — COMPLETE
-12. `stage-12-canonical-brand-identity` — ACTIVE
+12. `stage-12-canonical-brand-identity` — COMPLETE
 
 Only one job may be ACTIVE. New work must be inserted into this queue with explicit precedence rather than stored in chat or D1 as a competing continuation source.
 
