@@ -14,32 +14,32 @@ The governing mission, operator authority, owner boundary, and operating doctrin
 
 ## Active Job
 
-Job ID: `stage-4-hostile-strategy-judge`
-Priority: 4
+Job ID: `stage-5-controlled-strategy-factory`
+Priority: 5
 State: ACTIVE
 
 Engineering objective:
 
-Build and production-validate an immutable hostile judge that rejects weak, inactive, corrupted, overfit, or cost-fragile strategy evidence under gates fixed before evaluation. The judge may qualify evidence for later consideration but may not promote a strategy.
+Build and production-validate a bounded strategy factory that creates a small, predeclared set of immutable candidate specifications, evaluates them on the frozen benchmark partitions, and submits their evidence to the hostile judge without adaptive tuning or promotion.
 
 Accepted scope:
 
-- immutable, versioned judge configuration and gate hashes;
-- evidence-integrity verification for definitions, runs, datasets, and artifacts;
-- partition-specific evaluation with untouched test evidence;
-- minimum activity, positive validation/test return, drawdown, degradation, and cash-excess gates;
-- deterministic doubled- and tripled-cost stress replay from stored artifacts;
-- explicit verdicts and durable reason codes;
-- idempotent evaluation batches with immutable gate results and stress evidence;
-- bounded operator controls and truthful website judge visibility;
+- immutable factory policy, candidate catalog, generation batch, and lineage hashes;
+- a small predeclared EMA and RSI candidate set only;
+- exact reuse of the frozen Stage 3 dataset, partitions, execution model, fees, and slippage;
+- deterministic candidate runs, trades, metrics, and artifacts;
+- hostile-judge evaluation using the immutable Stage 4 configuration;
+- durable candidate verdicts and reason codes;
+- idempotent generation and evaluation with no duplicate candidates or evidence;
+- bounded operator controls and truthful website factory visibility;
 - focused tests, CI, exact-SHA deployment, and production verification.
 
 Out of scope for this job:
 
-- strategy generation or mutation;
+- open-ended search, random mutation, genetic optimization, or model-invented parameters;
+- changing candidates because results are weak;
 - champion/challenger selection or promotion;
 - forward paper scheduling;
-- retroactive gate changes to rescue a result;
 - leverage, derivatives, shorting, or live capital.
 
 ## Completed Evidence
@@ -74,10 +74,15 @@ Out of scope for this job:
 - Production froze 74 contiguous BTC-USD hourly candles from `2026-07-29T17:00:00.000Z` through `2026-08-01T18:00:00.000Z` into 44/14/16 train-validation-test partitions and persisted nine immutable runs.
 - Repeating production commissioning replayed the same benchmark hash and created no duplicate definitions, runs, trades, or artifacts. No tuning or promotion occurred.
 - Stage 3 is complete. The website labels all results as historical paper research and explicitly states that comparison order is not promotion.
+- Stage 4 implemented migration `0007_hostile_strategy_judge.sql`, immutable judge configuration, evidence-integrity gates, partition-specific activity/performance gates, doubled/tripled cost stress replay, durable verdict reasons, and idempotent batches.
+- Seven adversarial tests proved config immutability, inactivity rejection, corruption rejection, missing-partition rejection, deterministic stress replay, deterministic batch hashes, and successful qualification of genuinely active cost-robust synthetic evidence without promotion.
+- Official CI passed and exact SHA `35b543d3dc17f2acddaf5c524bbab6db91bebcb3` deployed after migration success.
+- Production judged the three Stage 3 baselines: zero qualified, three insufficient-evidence, zero promoted. Replaying the batch returned the identical hash with no duplicate verdicts.
+- Stage 4 is complete. The website exposes verdicts and reason codes while explicitly denying promotion and live-capital authority.
 
 ## Current Action
 
-Define the immutable hostile-judge configuration and reason-code contract, then implement evidence-integrity verification, partition-specific gates, doubled/tripled cost stress replay, durable verdicts, and idempotent production evaluation of the frozen Stage 3 benchmark. The judge may only reject, mark insufficient evidence, or qualify evidence; it may not promote.
+Define and freeze a small candidate catalog and generation policy, then implement immutable candidate specifications, exact frozen-partition backtests, hashed artifacts, hostile-judge evaluation, durable candidate verdicts, and idempotent production commissioning. Results may not alter the catalog or trigger promotion.
 
 ## Exit Gate
 
@@ -87,22 +92,22 @@ The active job is complete only when:
 - official GitHub Actions validation passes;
 - D1 migrations apply successfully;
 - an exact commit SHA is deployed and verified in production;
-- judge version, gates, cost stresses, reason codes, and config hash are immutable and declared before evaluation;
-- definition, dataset, result, and artifact integrity failures are rejected deterministically;
-- train, validation, and untouched test evidence are evaluated separately without leakage;
-- inactive, negative-return, excessive-drawdown, over-degraded, and cost-fragile evidence cannot qualify;
-- repeated evaluation creates no duplicate batches, verdicts, gate results, or stress records;
-- the judge produces no promotion or live-capital action;
-- website judge state reflects live D1 records truthfully and explains verdict reasons;
-- no retroactive gate change can alter an existing immutable evaluation.
+- factory policy and every candidate parameter are immutable, predeclared, bounded, and hashed before results exist;
+- candidate lineage, frozen dataset, partitions, execution costs, runs, trades, and artifacts are reproducible;
+- repeated generation creates no duplicate candidates, runs, artifacts, or verdicts;
+- candidates are evaluated by the unchanged Stage 4 judge configuration;
+- weak or inactive candidates remain rejected or insufficient rather than triggering parameter changes;
+- the factory performs no selection, promotion, forward scheduling, or live-capital action;
+- website factory state reflects live D1 records truthfully and displays judge verdict reasons;
+- no result-dependent search-space expansion occurs.
 
 ## Unified Job Queue
 
 1. `stage-1-truthful-data-foundation` — COMPLETE
 2. `stage-2-paper-execution-ledger` — COMPLETE
 3. `stage-3-baseline-strategy-bench` — COMPLETE
-4. `stage-4-hostile-strategy-judge` — ACTIVE
-5. `stage-5-controlled-strategy-factory` — QUEUED
+4. `stage-4-hostile-strategy-judge` — COMPLETE
+5. `stage-5-controlled-strategy-factory` — ACTIVE
 6. `stage-6-champion-challenger-selection` — QUEUED
 7. `stage-7-forward-paper-operation` — QUEUED
 8. `stage-8-live-capital-qualification` — QUEUED
