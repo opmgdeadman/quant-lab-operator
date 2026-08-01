@@ -1,6 +1,7 @@
 import { getMarketDataHealth, runHourlyCandleIngestion } from "./marketData.js";
 import { getPaperAccountSummary } from "./paperLedger.js";
 import { getBaselineBenchSummary } from "./baselineBench.js";
+import { getHostileJudgeSummary } from "./hostileJudge.js";
 import { executeQuantLabIntent } from "./operator/executionKernel.js";
 import { loadQuantStartupContext } from "./operator/startupAuthority.js";
 import { publicTools as operatorPublicTools } from "./operator/toolRegistry.js";
@@ -82,6 +83,7 @@ async function publicStatusPayload(env) {
     dataHealth: status.dataHealth,
     paperAccount: status.paperAccount,
     baselineBench: status.baselineBench,
+    hostileJudge: status.hostileJudge,
   };
 }
 
@@ -541,11 +543,12 @@ function mcpErrorObject(id, code, message) {
 }
 
 async function statusPayload(env) {
-  const [dbProbe, dataHealth, paperAccount, baselineBench] = await Promise.all([
+  const [dbProbe, dataHealth, paperAccount, baselineBench, hostileJudge] = await Promise.all([
     databaseProbe(env),
     marketDataHealthForHome(env),
     paperAccountForHome(env),
     baselineBenchForHome(env),
+    hostileJudgeForHome(env),
   ]);
   return {
     ok: dbProbe.connected,
@@ -557,6 +560,7 @@ async function statusPayload(env) {
     dataHealth,
     paperAccount,
     baselineBench,
+    hostileJudge,
     latestDeploymentSha: env.DEPLOYMENT_SHA || "unknown",
     currentPhase: env.CURRENT_PHASE || "unknown",
     boundaries: {
@@ -623,11 +627,12 @@ function constantTimeBytesEqual(left, right) {
 }
 
 async function renderHome(env) {
-  const [latest, health, paperAccount, baselineBench] = await Promise.all([
+  const [latest, health, paperAccount, baselineBench, hostileJudge] = await Promise.all([
     latestCandleForHome(env),
     marketDataHealthForHome(env),
     paperAccountForHome(env),
     baselineBenchForHome(env),
+    hostileJudgeForHome(env),
   ]);
   const healthMarkup = health ? `
     <section>
@@ -692,6 +697,26 @@ async function renderHome(env) {
       <h2>Historical Baseline Research</h2>
       <p>No frozen baseline benchmark has been commissioned yet.</p>
     </section>`;
+  const judgeRows = hostileJudge?.verdicts?.map((entry) => `
+        <div><dt>${escapeHtml(entry.baseline_id)}</dt><dd>${escapeHtml(entry.verdict)} · ${escapeHtml(entry.reason_codes.join(", ") || "all gates passed")}</dd></div>`).join("") || "";
+  const judgeMarkup = hostileJudge ? `
+    <section>
+      <h2>Hostile Evidence Judge</h2>
+      <p>Qualification evidence only. The judge rejects or qualifies evidence; it never promotes a strategy or enables live capital.</p>
+      <dl>
+        <div><dt>Judge</dt><dd>${escapeHtml(hostileJudge.judge_id)}</dd></div>
+        <div><dt>Evaluated</dt><dd>${escapeHtml(hostileJudge.evaluation_count)}</dd></div>
+        <div><dt>Qualified</dt><dd>${escapeHtml(hostileJudge.qualified_count)}</dd></div>
+        <div><dt>Insufficient</dt><dd>${escapeHtml(hostileJudge.insufficient_count)}</dd></div>
+        <div><dt>Rejected</dt><dd>${escapeHtml(hostileJudge.rejected_count)}</dd></div>
+        <div><dt>Promotion performed</dt><dd>${escapeHtml(hostileJudge.promotion_performed)}</dd></div>
+        ${judgeRows}
+      </dl>
+    </section>` : `
+    <section>
+      <h2>Hostile Evidence Judge</h2>
+      <p>No immutable judge batch has been commissioned yet.</p>
+    </section>`;
   const latestMarkup = latest ? `
     <section>
       <h2>Latest Stored BTC-USD 1h Candle</h2>
@@ -739,6 +764,7 @@ async function renderHome(env) {
     </div>
     ${paperMarkup}
     ${baselineMarkup}
+    ${judgeMarkup}
     ${healthMarkup}
     ${latestMarkup}
   </main>
@@ -778,6 +804,14 @@ async function baselineBenchForHome(env) {
   }
 }
 
+async function hostileJudgeForHome(env) {
+  try {
+    return await getHostileJudgeSummary(env);
+  } catch {
+    return null;
+  }
+}
+
 function publicStatusSchema() {
   return {
     type: "object",
@@ -797,6 +831,12 @@ function publicStatusSchema() {
         ],
       },
       baselineBench: {
+        anyOf: [
+          { type: "null" },
+          { type: "object", additionalProperties: true },
+        ],
+      },
+      hostileJudge: {
         anyOf: [
           { type: "null" },
           { type: "object", additionalProperties: true },
@@ -834,6 +874,7 @@ function publicStatusSchema() {
       "dataHealth",
       "paperAccount",
       "baselineBench",
+      "hostileJudge",
     ],
   };
 }
