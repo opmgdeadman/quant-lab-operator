@@ -9,7 +9,7 @@
   },
   "vars": {
     "ENVIRONMENT": "production",
-    "CURRENT_PHASE": "stage-7-forward-paper-operation",
+    "CURRENT_PHASE": "stage-8-live-capital-qualification",
     "MARKET_DATA_PROVIDER": "coinbase_exchange",
     "DEPLOYMENT_SHA": "set-by-deploy-script",
     "REPOSITORY_SHA": "set-by-deploy-script",
@@ -20,7 +20,7 @@
     "GITHUB_DEPLOY_WORKFLOW_ID": "quant-lab-deploy.yml"
   },
   "triggers": {
-    "crons": ["*/5 * * * *"]
+    "crons": ["5 * * * *"]
   },
   "d1_databases": [
     {
