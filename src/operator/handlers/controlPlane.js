@@ -9,6 +9,7 @@ import { getStrategyFactorySummary, runProductionStrategyFactory } from "../../s
 import { getChampionSelectionSummary, runProductionChampionSelection } from "../../championSelection.js";
 import { commissionForwardPaperOperation, getForwardOperationSummary, runProductionForwardPaperCycle } from "../../forwardPaper.js";
 import { getLiveQualificationSummary, runProductionLiveQualification } from "../../liveQualification.js";
+import { getRollingResearchSummary, runProductionRollingResearch } from "../../rollingResearch.js";
 
 export const handlers = {
   get_engineering_access_state,
@@ -27,6 +28,8 @@ export const handlers = {
   run_forward_operation,
   get_live_qualification,
   run_live_qualification,
+  get_rolling_research,
+  run_rolling_research,
   read_continuation,
   write_continuation,
   inspect_repository,
@@ -263,6 +266,30 @@ async function run_live_qualification(inputs, context) {
   }
 }
 
+async function get_rolling_research(inputs, context) {
+  const rolling = await getRollingResearchSummary(context.env);
+  return {
+    ok: true,
+    paper_only: true,
+    live_capital_enabled: false,
+    rolling,
+  };
+}
+
+async function run_rolling_research(inputs, context) {
+  try {
+    return await runProductionRollingResearch(context.env);
+  } catch (error) {
+    return {
+      ok: false,
+      paper_only: true,
+      live_capital_enabled: false,
+      status: "rolling_research_failed",
+      error: error instanceof Error ? error.message : "rolling_research_failed",
+    };
+  }
+}
+
 async function read_continuation(inputs, context) {
   const row = await context.env.DB.prepare(
     "SELECT active_objective, current_phase, completed_evidence_json, next_action, updated_at FROM operator_continuation_state WHERE id = ?",
@@ -484,6 +511,24 @@ async function delete_repo_file(inputs, context) {
 }
 
 export async function runValidation(inputs, context) {
+  if (inputs.validation === "production rolling research commission") {
+    try {
+      const rolling = await runProductionRollingResearch(context.env);
+      return {
+        ok: rolling.ok,
+        validation: inputs.validation,
+        status: rolling.ok ? "passed" : "failed",
+        rolling_research_commission: rolling,
+      };
+    } catch (error) {
+      return {
+        ok: false,
+        validation: inputs.validation,
+        status: "production_rolling_research_commission_failed",
+        error: error instanceof Error ? error.message : "rolling_research_commission_failed",
+      };
+    }
+  }
   if (inputs.validation === "production live qualification commission") {
     try {
       const qualification = await runProductionLiveQualification(context.env);

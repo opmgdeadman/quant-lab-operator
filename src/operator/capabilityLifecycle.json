@@ -27,6 +27,8 @@
     { "id": "forward_operation.cycle_run.lifecycle", "intent": "run_forward_operation" },
     { "id": "live_qualification.summary_read.lifecycle", "intent": "get_live_qualification" },
     { "id": "live_qualification.assessment_run.lifecycle", "intent": "run_live_qualification" },
+    { "id": "rolling_research.summary_read.lifecycle", "intent": "get_rolling_research" },
+    { "id": "rolling_research.epoch_run.lifecycle", "intent": "run_rolling_research" },
     { "id": "operating.continuation_read.lifecycle", "intent": "read_continuation" },
     { "id": "operating.continuation_write.lifecycle", "intent": "write_continuation" },
     { "id": "engineering.repository_inspection.lifecycle", "intent": "inspect_repository" },
