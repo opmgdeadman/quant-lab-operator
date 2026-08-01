@@ -14,34 +14,33 @@ The governing mission, operator authority, owner boundary, and operating doctrin
 
 ## Active Job
 
-Job ID: `stage-3-baseline-strategy-bench`
-Priority: 3
+Job ID: `stage-4-hostile-strategy-judge`
+Priority: 4
 State: ACTIVE
 
 Engineering objective:
 
-Build and production-validate an immutable baseline strategy bench that measures simple, predeclared BTC-USD 1-hour strategies against fixed data partitions and the same cost and timing rules before any strategy factory or promotion system exists.
+Build and production-validate an immutable hostile judge that rejects weak, inactive, corrupted, overfit, or cost-fragile strategy evidence under gates fixed before evaluation. The judge may qualify evidence for later consideration but may not promote a strategy.
 
 Accepted scope:
 
-- predeclared, versioned baseline specifications with immutable hashes;
-- buy-and-hold, simple trend, and simple mean-reversion reference strategies;
-- fixed chronological train, validation, and test partitions with dataset hashes;
-- cost-adjusted deterministic backtests using next-candle execution only;
-- D1 persistence for baseline definitions, runs, metrics, trades, and artifacts;
-- idempotent benchmark execution and reproducible result hashes;
-- baseline comparison without tuning, promotion, or retroactive threshold changes;
-- bounded operator controls and truthful website benchmark visibility;
+- immutable, versioned judge configuration and gate hashes;
+- evidence-integrity verification for definitions, runs, datasets, and artifacts;
+- partition-specific evaluation with untouched test evidence;
+- minimum activity, positive validation/test return, drawdown, degradation, and cash-excess gates;
+- deterministic doubled- and tripled-cost stress replay from stored artifacts;
+- explicit verdicts and durable reason codes;
+- idempotent evaluation batches with immutable gate results and stress evidence;
+- bounded operator controls and truthful website judge visibility;
 - focused tests, CI, exact-SHA deployment, and production verification.
 
 Out of scope for this job:
 
-- strategy generation, mutation, or optimization;
-- hostile judging or champion/challenger promotion;
+- strategy generation or mutation;
+- champion/challenger selection or promotion;
 - forward paper scheduling;
-- leverage, derivatives, shorting, or complex execution;
-- live capital;
-- performance claims beyond the exact stored historical benchmark results.
+- retroactive gate changes to rescue a result;
+- leverage, derivatives, shorting, or live capital.
 
 ## Completed Evidence
 
@@ -69,10 +68,16 @@ Out of scope for this job:
 - Official CI passed and exact SHA `542ec6c7bd3bf9f9eea303d7b827f3c876ed4aad` deployed after D1 migration success.
 - Production commissioning created one bounded paper buy and sell, then replayed both receipts without new effects. The final account has zero BTC, two orders, two fills, two cycles, reconciled cash ledger delta `0`, and no live capital enabled.
 - Stage 2 is complete. The website and authenticated status now expose truthful paper-account state and reconciliation without publishing unsupported claims.
+- Stage 3 implemented migration `0006_baseline_strategy_bench.sql`, three predeclared immutable reference strategies, deterministic 60/20/20 chronological partitions, cost-adjusted next-candle backtests, hashed artifacts, and idempotent benchmark persistence.
+- Focused tests proved catalog immutability, partition separation, gap rejection, deterministic hashes, fixed fees/slippage, next-candle execution, and hash sensitivity to changed data.
+- Official CI passed and exact SHA `40fad6975311d946432a41862fc0be23b9b2e763` deployed after migration success.
+- Production froze 74 contiguous BTC-USD hourly candles from `2026-07-29T17:00:00.000Z` through `2026-08-01T18:00:00.000Z` into 44/14/16 train-validation-test partitions and persisted nine immutable runs.
+- Repeating production commissioning replayed the same benchmark hash and created no duplicate definitions, runs, trades, or artifacts. No tuning or promotion occurred.
+- Stage 3 is complete. The website labels all results as historical paper research and explicitly states that comparison order is not promotion.
 
 ## Current Action
 
-Inspect the existing strategy specification, backtest, hashing, indicator, and judge core, then define the immutable Stage 3 baseline catalog, fixed chronological dataset partitions, D1 benchmark schema, and idempotent execution contract. Use only predeclared reference strategies and prohibit parameter tuning or promotion logic.
+Define the immutable hostile-judge configuration and reason-code contract, then implement evidence-integrity verification, partition-specific gates, doubled/tripled cost stress replay, durable verdicts, and idempotent production evaluation of the frozen Stage 3 benchmark. The judge may only reject, mark insufficient evidence, or qualify evidence; it may not promote.
 
 ## Exit Gate
 
@@ -82,20 +87,21 @@ The active job is complete only when:
 - official GitHub Actions validation passes;
 - D1 migrations apply successfully;
 - an exact commit SHA is deployed and verified in production;
-- baseline definitions, parameters, partitions, cost model, and hashes are immutable and predeclared;
-- repeated execution of the same benchmark creates no duplicate definitions, runs, trades, metrics, or artifacts;
-- all baselines use completed candles and next-candle execution with the fixed fee and slippage model;
-- chronological train, validation, and test partitions are disjoint, reproducible, and visibly hashed;
-- no tuning, promotion, mutation, or threshold rescue occurs inside the baseline bench;
-- website benchmark state reflects live D1 records truthfully and clearly labels results as historical paper research;
-- no live-capital path is introduced or implied.
+- judge version, gates, cost stresses, reason codes, and config hash are immutable and declared before evaluation;
+- definition, dataset, result, and artifact integrity failures are rejected deterministically;
+- train, validation, and untouched test evidence are evaluated separately without leakage;
+- inactive, negative-return, excessive-drawdown, over-degraded, and cost-fragile evidence cannot qualify;
+- repeated evaluation creates no duplicate batches, verdicts, gate results, or stress records;
+- the judge produces no promotion or live-capital action;
+- website judge state reflects live D1 records truthfully and explains verdict reasons;
+- no retroactive gate change can alter an existing immutable evaluation.
 
 ## Unified Job Queue
 
 1. `stage-1-truthful-data-foundation` — COMPLETE
 2. `stage-2-paper-execution-ledger` — COMPLETE
-3. `stage-3-baseline-strategy-bench` — ACTIVE
-4. `stage-4-hostile-strategy-judge` — QUEUED
+3. `stage-3-baseline-strategy-bench` — COMPLETE
+4. `stage-4-hostile-strategy-judge` — ACTIVE
 5. `stage-5-controlled-strategy-factory` — QUEUED
 6. `stage-6-champion-challenger-selection` — QUEUED
 7. `stage-7-forward-paper-operation` — QUEUED
