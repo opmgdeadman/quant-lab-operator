@@ -11,6 +11,7 @@ import { commissionForwardPaperOperation, getForwardOperationSummary, runProduct
 import { getLiveQualificationSummary, runProductionLiveQualification } from "../../liveQualification.js";
 import { getRollingResearchSummary, runProductionRollingResearch } from "../../rollingResearch.js";
 import { getHistoricalBootstrapSummary, runProductionHistoricalBootstrap } from "../../historicalBootstrap.js";
+import { renderProfessionalConsole } from "../../professionalConsole.js";
 
 export const handlers = {
   get_engineering_access_state,
@@ -539,6 +540,89 @@ async function delete_repo_file(inputs, context) {
 }
 
 export async function runValidation(inputs, context) {
+  if (inputs.validation === "production professional console contract") {
+    try {
+      const candleRows = await context.env.DB.prepare(
+        `SELECT closed_at, open, high, low, close, volume, source
+         FROM market_candles
+         WHERE pair = ? AND interval = ?
+         ORDER BY closed_at DESC
+         LIMIT 96`,
+      ).bind("BTC-USD", "1h").all();
+      const candles = (candleRows.results || []).reverse().map((row) => ({
+        closed_at: row.closed_at,
+        open: Number(row.open),
+        high: Number(row.high),
+        low: Number(row.low),
+        close: Number(row.close),
+        volume: Number(row.volume),
+        source: row.source,
+      }));
+      const latest = candles.at(-1) || null;
+      const [paperAccount, baselineBench, hostileJudge, strategyFactory, championSelection, forwardOperation, liveQualification, rollingResearch, historicalBootstrap] = await Promise.all([
+        getPaperAccountSummary(context.env),
+        getBaselineBenchSummary(context.env),
+        getHostileJudgeSummary(context.env),
+        getStrategyFactorySummary(context.env),
+        getChampionSelectionSummary(context.env),
+        getForwardOperationSummary(context.env),
+        getLiveQualificationSummary(context.env),
+        getRollingResearchSummary(context.env),
+        getHistoricalBootstrapSummary(context.env),
+      ]);
+      const html = renderProfessionalConsole({
+        environment: context.env.ENVIRONMENT || "unknown",
+        currentPhase: context.env.CURRENT_PHASE || "unknown",
+        deploymentSha: context.env.DEPLOYMENT_SHA || "unknown",
+        latest,
+        candles,
+        health: await context.env.DB.prepare(
+          `SELECT provider, status, latest_closed_at, expected_latest_closed_at, stale_hours,
+                  missing_candles, last_success_at, last_error
+           FROM market_data_health WHERE id = ?`,
+        ).bind("BTC-USD:1h").first(),
+        paperAccount,
+        baselineBench,
+        hostileJudge,
+        strategyFactory,
+        championSelection,
+        forwardOperation,
+        liveQualification,
+        rollingResearch,
+        historicalBootstrap,
+      });
+      const checks = {
+        professional_title: html.includes("Autonomous Research Console"),
+        tradingview_chart: html.includes("embed-widget-advanced-chart.js"),
+        first_party_fallback: html.includes("Stored BTC-USD hourly candlestick chart"),
+        responsive_breakpoints: html.includes("@media(max-width:620px)"),
+        strategy_table: html.includes("Controlled strategy factory") && html.includes("<table>"),
+        expandable_evidence: html.includes("<details>"),
+        paper_only_boundary: html.includes("PAPER ONLY") && html.includes("Live orders disabled"),
+        legacy_definition_grid_removed: !html.includes("<dl>") && !html.includes("max-width: 760px"),
+        runtime_data_escaped: !html.includes("<img src=x onerror="),
+      };
+      const passed = Object.values(checks).every(Boolean);
+      return {
+        ok: passed,
+        validation: inputs.validation,
+        status: passed ? "passed" : "failed",
+        checks,
+        rendered_bytes: new TextEncoder().encode(html).length,
+        candle_count: candles.length,
+        candidate_count: strategyFactory?.candidate_count || 0,
+        deployment_sha: context.env.DEPLOYMENT_SHA || "unknown",
+        live_capital_enabled: false,
+      };
+    } catch (error) {
+      return {
+        ok: false,
+        validation: inputs.validation,
+        status: "production_professional_console_contract_failed",
+        error: error instanceof Error ? error.message : "professional_console_contract_failed",
+      };
+    }
+  }
   if (inputs.validation === "production historical bootstrap commission") {
     try {
       const bootstrap = await runProductionHistoricalBootstrap(context.env);
