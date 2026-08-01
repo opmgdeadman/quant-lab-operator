@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS paper_portfolios (
   total_fees REAL NOT NULL DEFAULT 0 CHECK (total_fees >= 0),
   status TEXT NOT NULL CHECK (status IN ('active', 'paused')),
   version INTEGER NOT NULL DEFAULT 0 CHECK (version >= 0),
+  last_cycle_id TEXT,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
@@ -131,6 +132,8 @@ CREATE TRIGGER IF NOT EXISTS paper_receipt_version_guard
 BEFORE INSERT ON paper_cycle_receipts
 WHEN COALESCE((SELECT version FROM paper_portfolios WHERE id = NEW.portfolio_id), -1)
   != NEW.committed_portfolio_version
+  OR COALESCE((SELECT last_cycle_id FROM paper_portfolios WHERE id = NEW.portfolio_id), '')
+  != NEW.cycle_id
 BEGIN
   SELECT RAISE(ABORT, 'paper_portfolio_version_conflict');
 END;
@@ -158,10 +161,10 @@ BEFORE DELETE ON paper_cycle_receipts BEGIN SELECT RAISE(ABORT, 'paper_cycle_rec
 
 INSERT OR IGNORE INTO paper_portfolios (
   id, name, base_currency, initial_cash, cash_balance, realized_pnl,
-  total_fees, status, version, created_at, updated_at
+  total_fees, status, version, last_cycle_id, created_at, updated_at
 ) VALUES (
   'paper-main', 'Primary paper portfolio', 'USD', 10000.0, 10000.0, 0.0,
-  0.0, 'active', 0,
+  0.0, 'active', 0, NULL,
   strftime('%Y-%m-%dT%H:%M:%fZ', 'now'),
   strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
 );
