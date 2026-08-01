@@ -1,7 +1,7 @@
 # Quant Lab Engineering Continuation Ledger
 
 Last updated: 2026-08-01
-Status: ACTIVE
+Status: STEADY_STATE
 Authority: Sole canonical engineering continuation ledger
 
 ## Authority and Precedence
@@ -14,29 +14,28 @@ The governing mission, operator authority, owner boundary, and operating doctrin
 
 ## Active Job
 
-Job ID: `stage-11-professional-quant-console`
-Priority: 11
-State: ACTIVE
+Job ID: `none`
+Priority: none
+State: COMPLETE
 
 Engineering objective:
 
-Replace the raw diagnostic webpage with a professional, responsive Quant Lab operating console whose visual quality matches the underlying system while preserving truthful paper-only boundaries.
+No accepted incomplete engineering work remains. Quant Lab is in autonomous paper-only steady state.
 
-Accepted scope:
+Automatic operating scope:
 
-- institutional dark-theme dashboard architecture with clear navigation and information hierarchy;
-- live BTC-USD market chart with a reputable embeddable chart and graceful fallback;
-- executive overview for market state, paper equity, champion state, live qualification, data health, and deployment state;
-- readable strategy, research, forward-operation, qualification, and bootstrap views using cards, tables, badges, and expandable detail instead of overflowing raw text;
-- responsive desktop, tablet, and mobile layouts with accessible contrast and keyboard focus;
-- preserve all existing backend truth, safety language, and no-live-capital controls;
-- focused rendering tests, CI, exact-SHA deployment, and production verification.
+- hourly completed-candle ingestion and health verification;
+- qualified-champion forward-paper execution or explicit safe idle;
+- immutable live-capital evidence reassessment with owner approval kept separate;
+- one immutable rolling-research epoch per UTC date using the fixed eight-strategy catalog;
+- professional public operating console with live market context and truthful research evidence;
+- incident-driven engineering only when new evidence proves a defect or an owner decision changes scope.
 
-Out of scope:
+Permanent boundaries:
 
-- changing trading logic, research gates, paper accounting, candidate parameters, or live-capital authority;
-- presenting paper results as live returns or inventing unavailable performance data;
-- paid charting or data services and secret exposure.
+- paper only until explicit owner approval after evidence eligibility;
+- no leverage, derivatives, shorting, paid data, synthetic candles, hidden parameter tuning, or silent threshold changes;
+- no engineering work may be invented merely to keep the queue nonempty.
 
 ## Completed Evidence
 
@@ -110,22 +109,16 @@ Out of scope:
 - Final production history spans `2026-07-02T21:00:00.000Z` through `2026-08-01T20:00:00.000Z`, contains zero gaps, uses Coinbase exact-source candles, and has zero synthetic rows, conflicts, or remaining bootstrap work.
 - Repeating the completed bootstrap replayed the same immutable completion attempt. The sealed August 1 rolling epoch also replayed unchanged, proving the new history could not retroactively affect same-day research or selection.
 - Stage 10 is complete. All accepted engineering jobs are complete and Quant Lab is ready for autonomous paper-only steady-state operation.
+- Stage 11 replaced the broken 760-pixel diagnostic document with a dark institutional operating console: persistent navigation, executive KPIs, paper-account view, autonomous-operation evidence, responsive research tables, expandable blocker details, qualification progress, and system-integrity panels.
+- The market terminal includes the official responsive TradingView Advanced Chart for Coinbase BTC-USD plus a first-party 96-candle Quant Lab SVG fallback. A safe public status route refreshes selected operating state every 30 seconds without exposing operator credentials or unsafe controls.
+- Desktop, tablet, and mobile breakpoints, keyboard focus, skip navigation, reduced-motion behavior, table overflow containment, and runtime HTML escaping were implemented. The raw definition-list layout and unbounded diagnostic strings were removed from the active route.
+- Official CI passed on exact implementation SHA `f47ed4b4b1dcf6b89dbbfdcdd4c7ad5f5bdac817`, including Worker tests, quant-core tests, Wrangler validation, and the runtime-escaping regression.
+- Exact SHA `f47ed4b4b1dcf6b89dbbfdcdd4c7ad5f5bdac817` deployed successfully. The production professional-console contract rendered 64,760 bytes against live D1 state with 96 candles and eight candidates and passed all nine checks: professional shell, TradingView, first-party fallback, responsive breakpoints, readable strategy table, expandable evidence, paper-only boundary, legacy-layout removal, and runtime escaping.
+- Stage 11 is complete. Quant Lab now presents the quality and operating rigor of the underlying autonomous paper laboratory without changing trading logic or live-capital authority.
 
 ## Current Action
 
-Audit the current home-page renderer and public data contract, then implement a complete visual redesign with a live BTC-USD chart, professional dashboard shell, summary metrics, readable strategy and research tables, explicit paper-only state, responsive behavior, and regression tests. Deploy only after exact-SHA CI success and verify the production console visually and through public status data.
-
-## Exit Gate
-
-Stage 11 is complete only when:
-
-- the screenshot defect is eliminated with no overlapping or clipped strategy text at desktop and mobile widths;
-- the landing view immediately communicates market, account, champion, qualification, system health, and paper-only state;
-- a live BTC-USD chart is present with graceful fallback behavior;
-- detailed research and strategy evidence is readable without raw unbounded diagnostic strings;
-- navigation, responsive layout, accessibility, and loading and error states are implemented;
-- existing backend truth and safety boundaries remain unchanged;
-- focused tests, official CI, exact-SHA deployment, and production verification pass.
+No engineering action is pending. Operate automatically under the deployed hourly schedule and professional public console. Create a new canonical engineering job only for a verified incident, evidence-backed improvement, or explicit owner scope change.
 
 ## Steady-State Operating Gate
 
@@ -153,7 +146,7 @@ Quant Lab remains healthy only while:
 8. `stage-8-live-capital-qualification` — COMPLETE
 9. `stage-9-autonomous-rolling-research` — COMPLETE
 10. `stage-10-bounded-historical-bootstrap` — COMPLETE
-11. `stage-11-professional-quant-console` — ACTIVE
+11. `stage-11-professional-quant-console` — COMPLETE
 
 Only one job may be ACTIVE. New work must be inserted into this queue with explicit precedence rather than stored in chat or D1 as a competing continuation source.
 
