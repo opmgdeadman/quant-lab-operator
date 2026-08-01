@@ -14,32 +14,34 @@ The governing mission, operator authority, owner boundary, and operating doctrin
 
 ## Active Job
 
-Job ID: `stage-2-paper-execution-ledger`
-Priority: 2
+Job ID: `stage-3-baseline-strategy-bench`
+Priority: 3
 State: ACTIVE
 
 Engineering objective:
 
-Build and production-validate an immutable, auditable paper-execution ledger that converts bounded decisions into idempotent orders, fills, positions, cash movements, costs, and reconciled portfolio state without exposing live capital.
+Build and production-validate an immutable baseline strategy bench that measures simple, predeclared BTC-USD 1-hour strategies against fixed data partitions and the same cost and timing rules before any strategy factory or promotion system exists.
 
 Accepted scope:
 
-- D1 schemas for paper portfolios, orders, fills, positions, cash ledger entries, valuation snapshots, and cycle receipts;
-- deterministic order acceptance and rejection rules;
-- no-look-ahead execution timing with explicit fee, slippage, latency, and fill assumptions;
-- idempotent cycle execution and duplicate protection;
-- position, cash, realized/unrealized P&L, and accounting reconciliation;
-- impossible-state and insufficient-cash fail-closed controls;
-- bounded operator controls and website paper-account visibility;
+- predeclared, versioned baseline specifications with immutable hashes;
+- buy-and-hold, simple trend, and simple mean-reversion reference strategies;
+- fixed chronological train, validation, and test partitions with dataset hashes;
+- cost-adjusted deterministic backtests using next-candle execution only;
+- D1 persistence for baseline definitions, runs, metrics, trades, and artifacts;
+- idempotent benchmark execution and reproducible result hashes;
+- baseline comparison without tuning, promotion, or retroactive threshold changes;
+- bounded operator controls and truthful website benchmark visibility;
 - focused tests, CI, exact-SHA deployment, and production verification.
 
 Out of scope for this job:
 
-- strategy generation or optimization;
-- champion/challenger selection;
+- strategy generation, mutation, or optimization;
+- hostile judging or champion/challenger promotion;
+- forward paper scheduling;
 - leverage, derivatives, shorting, or complex execution;
 - live capital;
-- performance claims unsupported by reconciled paper records.
+- performance claims beyond the exact stored historical benchmark results.
 
 ## Completed Evidence
 
@@ -61,10 +63,16 @@ Out of scope for this job:
 - Production commissioning at `2026-08-01T17:34:27.981Z` recovered the missing `2026-08-01T17:00:00.000Z` candle and reported healthy state with zero staleness and zero gaps; an immediate repeat inserted zero rows and counted one duplicate.
 - A real Cloudflare scheduled execution at `2026-08-01T17:35:41.000Z` completed successfully, preserved healthy state, inserted zero rows, and counted one duplicate, proving scheduler wiring and duplicate-safe operation.
 - Stage 1 is complete. This transition restores the permanent `5 * * * *` UTC hourly cadence; longer reliability evidence continues as runtime observation and does not block Stage 2.
+- Stage 2 implemented migration `0005_paper_execution_ledger.sql`, immutable orders, fills, cash entries, valuation snapshots, cycle receipts, mutable versioned projections, and a cycle-matching concurrency guard.
+- The paper execution model is fixed as `paper-spot-next-eligible-open-v1` with 10 bps fees, 5 bps slippage, long-only BTC-USD spot, no leverage, no shorting, and no live-capital path.
+- Focused tests prove next-eligible-candle timing, delayed-decision handling, pending retries, immutable replay, payload mismatch rejection, insufficient-cash rejection, oversell rejection, accounting conservation, malformed decision rejection, and version-conflict protection.
+- Official CI passed and exact SHA `542ec6c7bd3bf9f9eea303d7b827f3c876ed4aad` deployed after D1 migration success.
+- Production commissioning created one bounded paper buy and sell, then replayed both receipts without new effects. The final account has zero BTC, two orders, two fills, two cycles, reconciled cash ledger delta `0`, and no live capital enabled.
+- Stage 2 is complete. The website and authenticated status now expose truthful paper-account state and reconciliation without publishing unsupported claims.
 
 ## Current Action
 
-Inspect the existing deterministic quant core and D1 schema, then define and implement the immutable Stage 2 paper-account state model, migrations, and bounded execution contract. Prove accounting conservation, no-look-ahead timing, fees/slippage, insufficient-cash rejection, and duplicate-cycle idempotency with focused tests before adding website controls.
+Inspect the existing strategy specification, backtest, hashing, indicator, and judge core, then define the immutable Stage 3 baseline catalog, fixed chronological dataset partitions, D1 benchmark schema, and idempotent execution contract. Use only predeclared reference strategies and prohibit parameter tuning or promotion logic.
 
 ## Exit Gate
 
@@ -74,17 +82,19 @@ The active job is complete only when:
 - official GitHub Actions validation passes;
 - D1 migrations apply successfully;
 - an exact commit SHA is deployed and verified in production;
-- repeated execution of the same paper cycle creates no duplicate orders, fills, ledger entries, or position changes;
-- cash, positions, realized P&L, unrealized P&L, fees, and equity reconcile under deterministic invariants;
-- look-ahead, same-candle fills, insufficient cash, impossible positions, and malformed decisions fail closed;
-- website paper-account state reflects the live D1 records truthfully;
+- baseline definitions, parameters, partitions, cost model, and hashes are immutable and predeclared;
+- repeated execution of the same benchmark creates no duplicate definitions, runs, trades, metrics, or artifacts;
+- all baselines use completed candles and next-candle execution with the fixed fee and slippage model;
+- chronological train, validation, and test partitions are disjoint, reproducible, and visibly hashed;
+- no tuning, promotion, mutation, or threshold rescue occurs inside the baseline bench;
+- website benchmark state reflects live D1 records truthfully and clearly labels results as historical paper research;
 - no live-capital path is introduced or implied.
 
 ## Unified Job Queue
 
 1. `stage-1-truthful-data-foundation` — COMPLETE
-2. `stage-2-paper-execution-ledger` — ACTIVE
-3. `stage-3-baseline-strategy-bench` — QUEUED
+2. `stage-2-paper-execution-ledger` — COMPLETE
+3. `stage-3-baseline-strategy-bench` — ACTIVE
 4. `stage-4-hostile-strategy-judge` — QUEUED
 5. `stage-5-controlled-strategy-factory` — QUEUED
 6. `stage-6-champion-challenger-selection` — QUEUED
