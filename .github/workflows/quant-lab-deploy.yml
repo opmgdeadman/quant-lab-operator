@@ -68,3 +68,35 @@ jobs:
           DEPLOYMENT_SHA: ${{ inputs.deploy_sha }}
           REPOSITORY_SHA: ${{ inputs.deploy_sha }}
           CURRENT_PHASE: autonomous-steady-state
+      - name: Verify production console and canonical branding
+        if: ${{ inputs.mode == 'deploy' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          base_url="https://quant-lab-operator.briangriffin355.workers.dev"
+          home="$(mktemp)"
+          manifest="$(mktemp)"
+          for attempt in {1..12}; do
+            if curl --fail --silent --show-error --location "$base_url/" --output "$home"; then
+              break
+            fi
+            if [[ "$attempt" == "12" ]]; then
+              echo "Production home did not become available"
+              exit 1
+            fi
+            sleep 5
+          done
+          grep -Fq '/quant-lab-logo.png' "$home"
+          grep -Fq '/site.webmanifest' "$home"
+          grep -Fq 'property="og:image"' "$home"
+          grep -Fq 'name="twitter:card" content="summary"' "$home"
+          curl --fail --silent --show-error --location "$base_url/site.webmanifest" --output "$manifest"
+          grep -Fq '"name":"Quant Lab"' "$manifest"
+          grep -Fq 'android-chrome-192x192.png' "$manifest"
+          grep -Fq 'android-chrome-512x512.png' "$manifest"
+          for asset in favicon.ico favicon-16x16.png favicon-32x32.png apple-touch-icon.png android-chrome-192x192.png android-chrome-512x512.png quant-lab-logo.png og-image.png; do
+            curl --fail --silent --show-error --location "$base_url/$asset" --output /dev/null
+          done
+          status="$(curl --fail --silent --show-error --location "$base_url/api/public/status")"
+          grep -Fq '"workerStatus":"online"' <<<"$status"
+          echo "Production branding smoke verification passed"
