@@ -21,6 +21,8 @@
     { "id": "hostile_judge.batch_run.lifecycle", "intent": "run_hostile_judge" },
     { "id": "strategy_factory.summary_read.lifecycle", "intent": "get_strategy_factory" },
     { "id": "strategy_factory.batch_run.lifecycle", "intent": "run_strategy_factory" },
+    { "id": "selection.summary_read.lifecycle", "intent": "get_champion_selection" },
+    { "id": "selection.batch_run.lifecycle", "intent": "run_champion_selection" },
     { "id": "operating.continuation_read.lifecycle", "intent": "read_continuation" },
     { "id": "operating.continuation_write.lifecycle", "intent": "write_continuation" },
     { "id": "engineering.repository_inspection.lifecycle", "intent": "inspect_repository" },

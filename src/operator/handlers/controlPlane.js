@@ -6,6 +6,7 @@ import { commissionPaperLedger, executePaperDecision, getPaperAccountSummary } f
 import { getBaselineBenchSummary, runProductionBaselineBench } from "../../baselineBench.js";
 import { getHostileJudgeSummary, runProductionHostileJudge } from "../../hostileJudge.js";
 import { getStrategyFactorySummary, runProductionStrategyFactory } from "../../strategyFactory.js";
+import { getChampionSelectionSummary, runProductionChampionSelection } from "../../championSelection.js";
 
 export const handlers = {
   get_engineering_access_state,
@@ -18,6 +19,8 @@ export const handlers = {
   run_hostile_judge,
   get_strategy_factory,
   run_strategy_factory,
+  get_champion_selection,
+  run_champion_selection,
   read_continuation,
   write_continuation,
   inspect_repository,
@@ -170,6 +173,32 @@ async function run_strategy_factory(inputs, context) {
       live_capital_enabled: false,
       status: "strategy_factory_failed",
       error: error instanceof Error ? error.message : "strategy_factory_failed",
+    };
+  }
+}
+
+async function get_champion_selection(inputs, context) {
+  const selection = await getChampionSelectionSummary(context.env);
+  return {
+    ok: Boolean(selection),
+    paper_execution_started: false,
+    scheduling_started: false,
+    live_capital_enabled: false,
+    selection,
+  };
+}
+
+async function run_champion_selection(inputs, context) {
+  try {
+    return await runProductionChampionSelection(context.env);
+  } catch (error) {
+    return {
+      ok: false,
+      paper_execution_started: false,
+      scheduling_started: false,
+      live_capital_enabled: false,
+      status: "champion_selection_failed",
+      error: error instanceof Error ? error.message : "champion_selection_failed",
     };
   }
 }
@@ -395,6 +424,24 @@ async function delete_repo_file(inputs, context) {
 }
 
 export async function runValidation(inputs, context) {
+  if (inputs.validation === "production champion selection commission") {
+    try {
+      const selection = await runProductionChampionSelection(context.env);
+      return {
+        ok: selection.ok,
+        validation: inputs.validation,
+        status: selection.ok ? "passed" : "failed",
+        champion_selection_commission: selection,
+      };
+    } catch (error) {
+      return {
+        ok: false,
+        validation: inputs.validation,
+        status: "production_champion_selection_commission_failed",
+        error: error instanceof Error ? error.message : "champion_selection_commission_failed",
+      };
+    }
+  }
   if (inputs.validation === "production strategy factory commission") {
     try {
       const factory = await runProductionStrategyFactory(context.env);
