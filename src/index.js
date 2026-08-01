@@ -121,7 +121,7 @@ async function mcpResponseFor(message, request, env) {
             version: "0.2.0",
             deploymentSha: env.DEPLOYMENT_SHA || "unknown",
           },
-          instructions: "Authenticated Quant Operator MCP. Before any operator intent, call get_quant_lab_startup_context, read the full Startup Authority and sole canonical Git ECL, then send the exact required acknowledgment and current ECL SHA with every intent.";
+          instructions: "Authenticated Quant Operator MCP. Before any operator intent, call get_quant_lab_startup_context, read the full Startup Authority and sole canonical Git ECL, then send the exact required acknowledgment and current ECL SHA with every intent.",
         },
       },
     };
