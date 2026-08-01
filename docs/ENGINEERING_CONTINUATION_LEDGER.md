@@ -14,31 +14,32 @@ The governing mission, operator authority, owner boundary, and operating doctrin
 
 ## Active Job
 
-Job ID: `stage-8-live-capital-qualification`
-Priority: 8
+Job ID: `stage-9-autonomous-rolling-research`
+Priority: 9
 State: ACTIVE
 
 Engineering objective:
 
-Build and production-validate an immutable live-capital qualification gate that evaluates operationally reliable forward-paper evidence and may only produce `not_qualified` or `eligible_for_owner_review`. It can never authorize, fund, deploy, or execute live capital.
+Build and production-validate an autonomous daily rolling-research loop that converts growing market history into immutable research epochs, evaluates only the predeclared eight-strategy catalog under unchanged costs and hostile-judge gates, and publishes a new qualified-only selection for future forward hours without human intervention.
 
 Accepted scope:
 
-- immutable qualification policy, evidence thresholds, reason codes, and policy hash;
-- qualified-champion, forward-duration, activity, performance, drawdown, cost-resilience, data-reliability, duplicate-safety, and accounting gates;
-- evidence drawn only from immutable production selection, forward cycles, scheduler receipts, paper ledger, and stored stress results;
-- deterministic assessment batches with durable gate evidence and evidence hashes;
-- explicit separation between evidence eligibility and owner approval;
-- idempotent assessments with no silent threshold or verdict replacement;
-- bounded operator controls and truthful website qualification visibility;
-- focused tests, CI, exact-SHA deployment, and production verification.
+- immutable rolling-research policy, daily epoch identity, and policy hash;
+- eligibility only after 720 contiguous BTC-USD hourly candles exist;
+- trailing 720-candle datasets with fixed 60/20/20 chronological partitions;
+- exactly eight epoch-scoped instances of the existing EMA/RSI catalog with unchanged parameters;
+- deterministic next-candle backtests, hostile-judge verdicts, doubled/tripled cost stress, and qualified-only ranking;
+- immutable benchmark, factory, verdict, selection, and epoch evidence using existing canonical tables plus an epoch ledger;
+- one idempotent epoch per UTC date, executed after the hourly forward and qualification cycle so new research cannot affect the same execution candle;
+- safe waiting states while history is insufficient, bounded operator controls, and truthful website visibility;
+- focused tests, CI, exact-SHA deployment, scheduler proof, and production verification.
 
 Out of scope for this job:
 
-- owner approval, capital funding, broker or exchange credentials, or live execution;
-- lowering thresholds because current evidence is insufficient;
-- changing champion, judge, factory, forward policy, or historical evidence;
-- leverage, derivatives, shorting, or any implied promise of profitability.
+- changing candidate parameters, adding strategy families, random search, genetic optimization, or model-invented strategies;
+- lowering judge, selection, or live-qualification gates because results are weak;
+- retroactively changing an epoch, using research results on the same execution candle, or silently replacing evidence;
+- leverage, derivatives, shorting, owner approval, or live capital.
 
 ## Completed Evidence
 
@@ -94,10 +95,15 @@ Out of scope for this job:
 - Commissioning SHA `0ba23a4ad6450578b811b0957b1829a1c1e1b341` deployed migration `0010` with a temporary five-minute cron. Historical commissioning and replay produced the identical blocked-no-champion cycle hash without a paper decision.
 - A real Cloudflare scheduled invocation at `2026-08-01T18:50:31.000Z` ingested first, reported healthy data, inserted zero candles, counted one duplicate, created scheduler receipt `forward-scheduler:2026-08-01T18:50:31.000Z`, and durably recorded the single `2026-08-01T18:00:00.000Z` forward cycle as `blocked_no_champion` without any paper order.
 - Stage 7 is complete. This transition restores the permanent `5 * * * *` UTC hourly cadence. The autonomous operator can safely ingest, verify, idle, and later execute a qualified champion without human intervention or live capital.
+- Stage 8 implemented migration `0011_live_capital_qualification.sql`, an immutable evidence-only qualification policy, 14 independently recorded gates, source-identity and market-health checks, deterministic evidence and assessment hashes, and explicit separation from owner approval.
+- The full Stage 8 suite proved a complete synthetic evidence bundle can become `eligible_for_owner_review`, every threshold fails independently, malformed or conflicting evidence fails closed, hashes are deterministic, and no-trade/closed-trade accounting reconstruction reconciles.
+- Official CI passed and exact SHA `0d035d0351fa148ac63b9ed481bea88bba642694` deployed after migration success.
+- Production assessed itself as `not_qualified` with six truthful blockers, eight passed gates, zero owner approval, zero authorization, and no funding, credential, or live-order capability. Replay returned the identical assessment and evidence hashes.
+- Stage 8 is complete. The website and authenticated status expose every blocker while preserving the permanent paper-only boundary.
 
 ## Current Action
 
-Define and freeze the live-capital qualification policy before reading assessment results. Implement immutable evidence collection and gates for champion status, at least 720 distinct hourly forward cycles spanning 30 days, at least 30 closed forward-paper trades, positive cost-adjusted return, maximum 10% drawdown, doubled- and tripled-cost resilience, healthy scheduled ingestion, zero duplicate violations, reconciled accounting, and zero unresolved operational errors. The only positive state is `eligible_for_owner_review`; no live authorization is permitted.
+Define and freeze the rolling-research policy, then implement a daily epoch ledger, 720-candle contiguous-window construction, fixed 432/144/144 partitions, eight immutable epoch-scoped candidate instances, deterministic candidate runs and artifacts, unchanged hostile-judge verdicts, generic qualified-only selection, scheduler orchestration after forward/qualification, safe insufficient-history waiting, replay protection, and website visibility.
 
 ## Exit Gate
 
@@ -107,14 +113,15 @@ The active job is complete only when:
 - official GitHub Actions validation passes;
 - D1 migrations apply successfully;
 - an exact commit SHA is deployed and verified in production;
-- qualification policy, thresholds, reason codes, and policy hash are immutable before assessment;
-- evidence collection verifies source identities and fails closed on missing, malformed, conflicting, or unreconciled records;
-- a synthetic complete evidence bundle can reach `eligible_for_owner_review` while production's insufficient evidence remains `not_qualified`;
-- champion, 30-day/720-cycle, 30-trade, positive-return, 10% drawdown, cost-resilience, scheduler-health, duplicate-safety, accounting, and unresolved-error gates are all independently recorded;
-- repeated assessment creates no duplicate batch, gate, or verdict and cannot silently replace an immutable result;
-- the system exposes no live-authorization, funding, credential, order, or execution capability;
-- website qualification state reflects live D1 records truthfully and displays every blocker;
-- explicit owner approval remains a separate future decision even after evidence eligibility.
+- rolling policy, minimum history, window length, partition sizes, catalog, cadence, costs, and policy hash are immutable before the first epoch;
+- fewer than 720 contiguous hourly candles produces a durable waiting state without candidate runs or selection changes;
+- an eligible synthetic epoch creates exactly one benchmark, eight epoch-scoped candidates, 24 runs, eight unchanged-judge verdicts, and one qualified-only selection;
+- rolling research uses only completed candles and a new selection cannot affect the same forward execution candle;
+- weak or inactive results produce no champion and never expand or retune the catalog;
+- repeated daily execution creates no duplicate epoch, benchmark, candidate, run, verdict, ranking, or selection evidence;
+- the scheduler executes rolling research after forward operation and qualification, with a real scheduled epoch or waiting receipt proven;
+- website rolling-research state reflects live D1 records truthfully;
+- no leverage, derivatives, shorting, owner approval, or live-capital path is introduced.
 
 ## Unified Job Queue
 
@@ -125,7 +132,8 @@ The active job is complete only when:
 5. `stage-5-controlled-strategy-factory` — COMPLETE
 6. `stage-6-champion-challenger-selection` — COMPLETE
 7. `stage-7-forward-paper-operation` — COMPLETE
-8. `stage-8-live-capital-qualification` — ACTIVE
+8. `stage-8-live-capital-qualification` — COMPLETE
+9. `stage-9-autonomous-rolling-research` — ACTIVE
 
 Only one job may be ACTIVE. New work must be inserted into this queue with explicit precedence rather than stored in chat or D1 as a competing continuation source.
 
