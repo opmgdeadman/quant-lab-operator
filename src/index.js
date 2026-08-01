@@ -560,7 +560,7 @@ function mcpErrorObject(id, code, message) {
 }
 
 async function statusPayload(env) {
-  const [dbProbe, dataHealth, paperAccount, baselineBench, hostileJudge, strategyFactory, championSelection, forwardOperation, liveQualification] = await Promise.all([
+  const [dbProbe, dataHealth, paperAccount, baselineBench, hostileJudge, strategyFactory, championSelection, forwardOperation, liveQualification, rollingResearch] = await Promise.all([
     databaseProbe(env),
     marketDataHealthForHome(env),
     paperAccountForHome(env),
@@ -570,6 +570,7 @@ async function statusPayload(env) {
     championSelectionForHome(env),
     forwardOperationForHome(env),
     liveQualificationForHome(env),
+    rollingResearchForHome(env),
   ]);
   return {
     ok: dbProbe.connected,
@@ -586,6 +587,7 @@ async function statusPayload(env) {
     championSelection,
     forwardOperation,
     liveQualification,
+    rollingResearch,
     latestDeploymentSha: env.DEPLOYMENT_SHA || "unknown",
     currentPhase: env.CURRENT_PHASE || "unknown",
     boundaries: {
