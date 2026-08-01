@@ -5,6 +5,7 @@ import { getHostileJudgeSummary } from "./hostileJudge.js";
 import { getStrategyFactorySummary } from "./strategyFactory.js";
 import { getChampionSelectionSummary } from "./championSelection.js";
 import { getForwardOperationSummary, runScheduledForwardOperation } from "./forwardPaper.js";
+import { getLiveQualificationSummary, runProductionLiveQualification } from "./liveQualification.js";
 import { executeQuantLabIntent } from "./operator/executionKernel.js";
 import { loadQuantStartupContext } from "./operator/startupAuthority.js";
 import { publicTools as operatorPublicTools } from "./operator/toolRegistry.js";
@@ -69,9 +70,15 @@ export default {
   },
   scheduled(controller, env, ctx) {
     const scheduledAt = new Date(controller.scheduledTime);
-    ctx.waitUntil(runScheduledForwardOperation(env, scheduledAt));
+    ctx.waitUntil(runScheduledQuantLabOperation(env, scheduledAt));
   },
 };
+
+async function runScheduledQuantLabOperation(env, scheduledAt) {
+  const forward = await runScheduledForwardOperation(env, scheduledAt);
+  const qualification = await runProductionLiveQualification(env);
+  return { forward, qualification };
+}
 
 async function publicStatusPayload(env) {
   const status = await statusPayload(env);
@@ -90,6 +97,7 @@ async function publicStatusPayload(env) {
     strategyFactory: status.strategyFactory,
     championSelection: status.championSelection,
     forwardOperation: status.forwardOperation,
+    liveQualification: status.liveQualification,
   };
 }
 
