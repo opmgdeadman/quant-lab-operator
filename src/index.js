@@ -2,6 +2,7 @@ import { getMarketDataHealth, runHourlyCandleIngestion } from "./marketData.js";
 import { getPaperAccountSummary } from "./paperLedger.js";
 import { getBaselineBenchSummary } from "./baselineBench.js";
 import { getHostileJudgeSummary } from "./hostileJudge.js";
+import { getStrategyFactorySummary } from "./strategyFactory.js";
 import { executeQuantLabIntent } from "./operator/executionKernel.js";
 import { loadQuantStartupContext } from "./operator/startupAuthority.js";
 import { publicTools as operatorPublicTools } from "./operator/toolRegistry.js";
@@ -84,6 +85,7 @@ async function publicStatusPayload(env) {
     paperAccount: status.paperAccount,
     baselineBench: status.baselineBench,
     hostileJudge: status.hostileJudge,
+    strategyFactory: status.strategyFactory,
   };
 }
 
@@ -543,12 +545,13 @@ function mcpErrorObject(id, code, message) {
 }
 
 async function statusPayload(env) {
-  const [dbProbe, dataHealth, paperAccount, baselineBench, hostileJudge] = await Promise.all([
+  const [dbProbe, dataHealth, paperAccount, baselineBench, hostileJudge, strategyFactory] = await Promise.all([
     databaseProbe(env),
     marketDataHealthForHome(env),
     paperAccountForHome(env),
     baselineBenchForHome(env),
     hostileJudgeForHome(env),
+    strategyFactoryForHome(env),
   ]);
   return {
     ok: dbProbe.connected,
@@ -561,6 +564,7 @@ async function statusPayload(env) {
     paperAccount,
     baselineBench,
     hostileJudge,
+    strategyFactory,
     latestDeploymentSha: env.DEPLOYMENT_SHA || "unknown",
     currentPhase: env.CURRENT_PHASE || "unknown",
     boundaries: {
@@ -627,12 +631,13 @@ function constantTimeBytesEqual(left, right) {
 }
 
 async function renderHome(env) {
-  const [latest, health, paperAccount, baselineBench, hostileJudge] = await Promise.all([
+  const [latest, health, paperAccount, baselineBench, hostileJudge, strategyFactory] = await Promise.all([
     latestCandleForHome(env),
     marketDataHealthForHome(env),
     paperAccountForHome(env),
     baselineBenchForHome(env),
     hostileJudgeForHome(env),
+    strategyFactoryForHome(env),
   ]);
   const healthMarkup = health ? `
     <section>
@@ -717,6 +722,28 @@ async function renderHome(env) {
       <h2>Hostile Evidence Judge</h2>
       <p>No immutable judge batch has been commissioned yet.</p>
     </section>`;
+  const factoryRows = strategyFactory?.verdicts?.map((entry) => `
+        <div><dt>${escapeHtml(entry.candidate_id)}</dt><dd>${escapeHtml(entry.verdict)} · ${escapeHtml(entry.reason_codes.join(", ") || "all gates passed")}</dd></div>`).join("") || "";
+  const factoryMarkup = strategyFactory ? `
+    <section>
+      <h2>Controlled Strategy Factory</h2>
+      <p>Exactly eight predeclared candidates. No adaptive tuning, result-dependent expansion, promotion, forward scheduling, or live capital.</p>
+      <dl>
+        <div><dt>Policy</dt><dd>${escapeHtml(strategyFactory.factory_policy_id)}</dd></div>
+        <div><dt>Candidates</dt><dd>${escapeHtml(strategyFactory.candidate_count)}</dd></div>
+        <div><dt>Partitioned runs</dt><dd>${escapeHtml(strategyFactory.run_count)}</dd></div>
+        <div><dt>Qualified</dt><dd>${escapeHtml(strategyFactory.qualified_count)}</dd></div>
+        <div><dt>Insufficient</dt><dd>${escapeHtml(strategyFactory.insufficient_count)}</dd></div>
+        <div><dt>Rejected</dt><dd>${escapeHtml(strategyFactory.rejected_count)}</dd></div>
+        <div><dt>Adaptive tuning</dt><dd>${escapeHtml(strategyFactory.adaptive_tuning_allowed)}</dd></div>
+        <div><dt>Promotion performed</dt><dd>${escapeHtml(strategyFactory.promotion_performed)}</dd></div>
+        ${factoryRows}
+      </dl>
+    </section>` : `
+    <section>
+      <h2>Controlled Strategy Factory</h2>
+      <p>No immutable candidate batch has been commissioned yet.</p>
+    </section>`;
   const latestMarkup = latest ? `
     <section>
       <h2>Latest Stored BTC-USD 1h Candle</h2>
@@ -765,6 +792,7 @@ async function renderHome(env) {
     ${paperMarkup}
     ${baselineMarkup}
     ${judgeMarkup}
+    ${factoryMarkup}
     ${healthMarkup}
     ${latestMarkup}
   </main>
@@ -812,6 +840,14 @@ async function hostileJudgeForHome(env) {
   }
 }
 
+async function strategyFactoryForHome(env) {
+  try {
+    return await getStrategyFactorySummary(env);
+  } catch {
+    return null;
+  }
+}
+
 function publicStatusSchema() {
   return {
     type: "object",
@@ -837,6 +873,12 @@ function publicStatusSchema() {
         ],
       },
       hostileJudge: {
+        anyOf: [
+          { type: "null" },
+          { type: "object", additionalProperties: true },
+        ],
+      },
+      strategyFactory: {
         anyOf: [
           { type: "null" },
           { type: "object", additionalProperties: true },
@@ -875,6 +917,7 @@ function publicStatusSchema() {
       "paperAccount",
       "baselineBench",
       "hostileJudge",
+      "strategyFactory",
     ],
   };
 }
