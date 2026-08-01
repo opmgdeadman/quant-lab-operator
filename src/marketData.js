@@ -28,6 +28,7 @@ export async function runHourlyCandleIngestion(env, options = {}) {
   let fetchedCount = 0;
   let insertedCount = 0;
   let duplicateCount = 0;
+  let effectiveProvider = provider;
 
   try {
     const latestBefore = await latestStoredCandle(env);
@@ -36,20 +37,23 @@ export async function runHourlyCandleIngestion(env, options = {}) {
     requestedEndClosedAt = new Date(window.endMs).toISOString();
 
     const providerCandles = [];
+    const providersUsed = new Set();
     for (let cursorMs = window.startMs; cursorMs <= window.endMs; cursorMs += PROVIDER_REQUEST_HOURS * HOUR_MS) {
       const chunkEndMs = Math.min(
         window.endMs,
         cursorMs + (PROVIDER_REQUEST_HOURS - 1) * HOUR_MS,
       );
-      const chunk = await fetchProviderCandles(provider, {
+      const chunkResult = await fetchProviderCandles(provider, {
         startClosedAt: new Date(cursorMs).toISOString(),
         endClosedAt: new Date(chunkEndMs).toISOString(),
         expectedClosedAt,
         fetchImpl,
         sleepImpl,
       });
-      providerCandles.push(...chunk);
+      providersUsed.add(chunkResult.provider);
+      providerCandles.push(...chunkResult.candles);
     }
+    effectiveProvider = providersUsed.size === 1 ? [...providersUsed][0] : "mixed";
 
     const candles = deduplicateAndSort(providerCandles);
     fetchedCount = candles.length;
@@ -84,7 +88,7 @@ export async function runHourlyCandleIngestion(env, options = {}) {
     const liveHealth = await calculateLiveHealth(env, expectedClosedAt);
     const health = {
       ...liveHealth,
-      provider,
+      provider: effectiveProvider,
       last_attempt_at: startedAt,
       last_success_at: completedAt,
       last_error: null,
@@ -96,7 +100,7 @@ export async function runHourlyCandleIngestion(env, options = {}) {
     await persistHealth(env, health);
     await persistRun(env, {
       id: runId,
-      provider,
+      provider: effectiveProvider,
       started_at: startedAt,
       completed_at: completedAt,
       status: health.status,
@@ -216,7 +220,7 @@ export function validateCompletedCandle(candle, expectedClosedAt) {
 
 function ingestionWindow(latestClosedAt, expectedClosedMs) {
   const startMs = latestClosedAt
-    ? dateMillis(latestClosedAt, "latest_closed_at")
+    ? Math.min(dateMillis(latestClosedAt, "latest_closed_at") + HOUR_MS, expectedClosedMs)
     : expectedClosedMs - (INITIAL_BACKFILL_HOURS - 1) * HOUR_MS;
   const endMs = Math.min(
     expectedClosedMs,
@@ -227,9 +231,24 @@ function ingestionWindow(latestClosedAt, expectedClosedMs) {
 
 async function fetchProviderCandles(provider, request) {
   if (provider === "coinbase_exchange") {
-    return fetchCoinbaseExchangeCandles(request);
+    try {
+      return { provider, candles: await fetchCoinbaseExchangeCandles(request) };
+    } catch (error) {
+      if (!isProviderAvailabilityError(error)) {
+        throw error;
+      }
+      return { provider: "binance_us", candles: await fetchBinanceUsCandles(request) };
+    }
+  }
+  if (provider === "binance_us") {
+    return { provider, candles: await fetchBinanceUsCandles(request) };
   }
   throw new Error(`unsupported_market_data_provider:${provider}`);
+}
+
+function isProviderAvailabilityError(error) {
+  const message = error instanceof Error ? error.message : "";
+  return /^market_data_http_(429|5\d{2})$/.test(message) || message === "market_data_network_error";
 }
 
 async function fetchCoinbaseExchangeCandles({
@@ -281,15 +300,72 @@ async function fetchCoinbaseExchangeCandles({
   return candles;
 }
 
+async function fetchBinanceUsCandles({
+  startClosedAt,
+  endClosedAt,
+  expectedClosedAt,
+  fetchImpl,
+  sleepImpl,
+}) {
+  const startClosedMs = dateMillis(startClosedAt, "start_closed_at");
+  const endClosedMs = dateMillis(endClosedAt, "end_closed_at");
+  const url = new URL("https://api.binance.us/api/v3/klines");
+  url.searchParams.set("symbol", "BTCUSD");
+  url.searchParams.set("interval", "1h");
+  url.searchParams.set("startTime", String(startClosedMs - HOUR_MS));
+  url.searchParams.set("endTime", String(endClosedMs - 1));
+  url.searchParams.set("limit", String(PROVIDER_REQUEST_HOURS));
+
+  const response = await fetchProviderResponse(url.toString(), fetchImpl, sleepImpl);
+  const payload = await response.json();
+  if (!Array.isArray(payload)) {
+    throw new Error("market_data_invalid_payload");
+  }
+
+  const candles = [];
+  for (const row of payload) {
+    if (!Array.isArray(row) || row.length < 6) {
+      throw new Error("market_data_invalid_candle_shape");
+    }
+    const closedMs = Number(row[0]) + HOUR_MS;
+    if (closedMs < startClosedMs || closedMs > endClosedMs) {
+      continue;
+    }
+    const candle = {
+      id: candleId(new Date(closedMs).toISOString()),
+      pair: PAIR,
+      interval: INTERVAL,
+      closed_at: new Date(closedMs).toISOString(),
+      open: Number(row[1]),
+      high: Number(row[2]),
+      low: Number(row[3]),
+      close: Number(row[4]),
+      volume: Number(row[5]),
+      source: "binance_us",
+    };
+    candles.push(validateCompletedCandle(candle, expectedClosedAt));
+  }
+  return candles;
+}
+
 async function fetchProviderResponse(url, fetchImpl, sleepImpl) {
   let lastStatus = null;
   for (let attempt = 1; attempt <= PROVIDER_MAX_ATTEMPTS; attempt += 1) {
-    const response = await fetchImpl(url, {
-      headers: {
-        accept: "application/json",
-        "user-agent": "quant-lab-operator/1.0",
-      },
-    });
+    let response;
+    try {
+      response = await fetchImpl(url, {
+        headers: {
+          accept: "application/json",
+          "user-agent": "quant-lab-operator/1.0",
+        },
+      });
+    } catch {
+      if (attempt === PROVIDER_MAX_ATTEMPTS) {
+        throw new Error("market_data_network_error");
+      }
+      await sleepImpl(Math.min(PROVIDER_RETRY_BASE_MS * (2 ** (attempt - 1)), PROVIDER_RETRY_MAX_MS));
+      continue;
+    }
     if (response.ok) {
       return response;
     }

@@ -69,6 +69,46 @@ test("hourly ingestion retries transient provider rate limits", async () => {
   assert.equal(result.health.last_error, null);
 });
 
+test("persistent Coinbase limits fall back to Binance.US without rewriting stored candles", async () => {
+  const env = createEnv();
+  await runHourlyCandleIngestion(env, {
+    now: NOW,
+    fetchImpl: async () => jsonResponse([
+      coinbaseRow("2026-08-01T12:00:00.000Z", 102, 105, 101, 103, 11),
+    ]),
+  });
+
+  let coinbaseAttempts = 0;
+  let binanceAttempts = 0;
+  const result = await runHourlyCandleIngestion(env, {
+    now: new Date("2026-08-01T13:32:00.000Z"),
+    fetchImpl: async (url) => {
+      if (url.includes("api.exchange.coinbase.com")) {
+        coinbaseAttempts += 1;
+        return jsonResponse({ error: "rate limited" }, 429);
+      }
+      if (url.includes("api.binance.us")) {
+        binanceAttempts += 1;
+        return jsonResponse([
+          binanceRow("2026-08-01T12:00:00.000Z", 202, 205, 201, 203, 21),
+          binanceRow("2026-08-01T13:00:00.000Z", 203, 206, 202, 204, 22),
+        ]);
+      }
+      throw new Error(`unexpected provider URL: ${url}`);
+    },
+    sleepImpl: async () => {},
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(coinbaseAttempts, 3);
+  assert.equal(binanceAttempts, 1);
+  assert.equal(result.fetched_count, 1);
+  assert.equal(result.inserted_count, 1);
+  assert.equal(result.health.provider, "binance_us");
+  assert.equal(env.DB.candles.get("2026-08-01T12:00:00.000Z").source, "coinbase_exchange");
+  assert.equal(env.DB.candles.get("2026-08-01T13:00:00.000Z").source, "binance_us");
+});
+
 test("continuity health detects a missing closed candle", async () => {
   const env = createEnv();
   const payload = [
@@ -139,6 +179,11 @@ test("completed-candle validator rejects misaligned timestamps and impossible ra
 function coinbaseRow(closedAt, open, high, low, close, volume) {
   const bucketStartSeconds = (Date.parse(closedAt) - 60 * 60 * 1000) / 1000;
   return [bucketStartSeconds, low, high, open, close, volume];
+}
+
+function binanceRow(closedAt, open, high, low, close, volume) {
+  const openTime = Date.parse(closedAt) - 60 * 60 * 1000;
+  return [openTime, String(open), String(high), String(low), String(close), String(volume)];
 }
 
 function jsonResponse(body, status = 200) {
