@@ -114,13 +114,17 @@ test("weak results never expand or retune the catalog", async () => {
   assert.equal(built.selection.summary.champion_candidate_id, null);
 });
 
-test("gapped history fails closed before research artifacts exist", async () => {
+test("gapped history produces a safe waiting epoch without research artifacts", async () => {
   const broken = candles();
   broken[300] = { ...broken[300], closed_at: new Date(Date.parse(broken[300].closed_at) + 60 * 60 * 1000).toISOString() };
-  await assert.rejects(
-    () => buildRollingResearchEpoch(broken, options),
-    /rolling_history_gap/,
-  );
+  const built = await buildRollingResearchEpoch(broken, options);
+  assert.equal(built.summary.state, "waiting_for_history");
+  assert.equal(built.summary.contiguous_candle_count, 419);
+  assert.equal(built.summary.candidate_count, 0);
+  assert.equal(built.summary.run_count, 0);
+  assert.equal(built.benchmark, null);
+  assert.equal(built.factory, null);
+  assert.equal(built.selection, null);
 });
 
 test("as-of mismatch fails closed", async () => {

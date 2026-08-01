@@ -199,21 +199,28 @@ export async function buildRollingResearchEpoch(rawCandles, options = {}) {
     policy_hash: policyHash,
     created_at: createdAt,
   };
+  const normalized = normalizeCandles(rawCandles);
+  if (normalized.length > 0 && normalized.at(-1).closed_at !== asOfClosedAt) {
+    throw new Error("rolling_as_of_boundary_mismatch");
+  }
+  const contiguousCandleCount = trailingContiguousCount(normalized);
 
-  if (availableCandleCount < REQUIRED_CANDLES || rawCandles.length < REQUIRED_CANDLES) {
+  if (availableCandleCount < REQUIRED_CANDLES
+    || normalized.length < REQUIRED_CANDLES
+    || contiguousCandleCount < REQUIRED_CANDLES) {
     return buildWaitingEpoch({
       epochId,
       epochDate,
       asOfClosedAt,
       availableCandleCount,
+      contiguousCandleCount,
       policy,
       createdAt,
     });
   }
 
-  const candles = normalizeCandles(rawCandles).slice(-REQUIRED_CANDLES);
+  const candles = normalized.slice(-REQUIRED_CANDLES);
   assertContiguous(candles);
-  if (candles.at(-1).closed_at !== asOfClosedAt) throw new Error("rolling_as_of_boundary_mismatch");
   const partitions = {
     train: candles.slice(0, TRAIN_CANDLES),
     validation: candles.slice(TRAIN_CANDLES, TRAIN_CANDLES + VALIDATION_CANDLES),
@@ -348,12 +355,13 @@ export async function buildRollingResearchEpoch(rawCandles, options = {}) {
   };
 }
 
-function buildWaitingEpoch({ epochId, epochDate, asOfClosedAt, availableCandleCount, policy, createdAt }) {
+function buildWaitingEpoch({ epochId, epochDate, asOfClosedAt, availableCandleCount, contiguousCandleCount, policy, createdAt }) {
   return stableHash({
     epoch_id: epochId,
     policy_hash: policy.policy_hash,
     state: "waiting_for_history",
     available_candle_count: availableCandleCount,
+    contiguous_candle_count: contiguousCandleCount,
     required_candle_count: REQUIRED_CANDLES,
     as_of_closed_at: asOfClosedAt,
   }).then((epochHash) => {
@@ -559,6 +567,16 @@ function normalizeCandles(rawCandles) {
     }
     return candle;
   }).sort((left, right) => left.closed_at.localeCompare(right.closed_at));
+}
+
+function trailingContiguousCount(candles) {
+  if (candles.length === 0) return 0;
+  let count = 1;
+  for (let index = candles.length - 1; index > 0; index -= 1) {
+    if (Date.parse(candles[index].closed_at) - Date.parse(candles[index - 1].closed_at) !== HOUR_MS) break;
+    count += 1;
+  }
+  return count;
 }
 
 function assertContiguous(candles) {
