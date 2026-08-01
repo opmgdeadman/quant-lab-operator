@@ -1,3 +1,4 @@
+import { getMarketDataHealth, runHourlyCandleIngestion } from "./marketData.js";
 import { executeQuantLabIntent } from "./operator/executionKernel.js";
 import { loadQuantStartupContext } from "./operator/startupAuthority.js";
 import { publicTools as operatorPublicTools } from "./operator/toolRegistry.js";
@@ -28,6 +29,19 @@ export async function handleRequest(request, env) {
   if (url.pathname === MCP_PATH) {
     return handleOperatorMcpRequest(request, env);
   }
+  if (url.pathname === "/internal/market-data/ingest" && request.method === "POST") {
+    if (!(await isAuthorized(request, env))) {
+      return json({ ok: false, error: "unauthorized" }, 401);
+    }
+    try {
+      return json(await runHourlyCandleIngestion(env));
+    } catch (error) {
+      return json({
+        ok: false,
+        error: error instanceof Error ? error.message : "market_data_ingestion_failed",
+      }, 502);
+    }
+  }
   if (request.method !== "GET") {
     return json({ ok: false, error: "method_not_allowed" }, 405);
   }
@@ -46,6 +60,10 @@ export async function handleRequest(request, env) {
 export default {
   fetch(request, env) {
     return handleRequest(request, env);
+  },
+  scheduled(controller, env, ctx) {
+    const scheduledAt = new Date(controller.scheduledTime);
+    ctx.waitUntil(runHourlyCandleIngestion(env, { now: scheduledAt }));
   },
 };
 
@@ -517,7 +535,10 @@ function mcpErrorObject(id, code, message) {
 }
 
 async function statusPayload(env) {
-  const dbProbe = await databaseProbe(env);
+  const [dbProbe, dataHealth] = await Promise.all([
+    databaseProbe(env),
+    marketDataHealthForHome(env),
+  ]);
   return {
     ok: dbProbe.connected,
     system: SYSTEM_NAME,
@@ -525,6 +546,7 @@ async function statusPayload(env) {
     workerStatus: "online",
     databaseConnected: dbProbe.connected,
     databaseProbe: dbProbe,
+    dataHealth,
     latestDeploymentSha: env.DEPLOYMENT_SHA || "unknown",
     currentPhase: env.CURRENT_PHASE || "unknown",
     boundaries: {
@@ -591,7 +613,28 @@ function constantTimeBytesEqual(left, right) {
 }
 
 async function renderHome(env) {
-  const latest = await latestCandleForHome(env);
+  const [latest, health] = await Promise.all([
+    latestCandleForHome(env),
+    marketDataHealthForHome(env),
+  ]);
+  const healthMarkup = health ? `
+    <section>
+      <h2>BTC-USD 1h Data Health</h2>
+      <dl>
+        <div><dt>Status</dt><dd>${escapeHtml(health.status)}</dd></div>
+        <div><dt>Provider</dt><dd>${escapeHtml(health.provider)}</dd></div>
+        <div><dt>Latest closed</dt><dd>${escapeHtml(health.latest_closed_at || "none")}</dd></div>
+        <div><dt>Expected latest</dt><dd>${escapeHtml(health.expected_latest_closed_at)}</dd></div>
+        <div><dt>Stale hours</dt><dd>${escapeHtml(health.stale_hours ?? "n/a")}</dd></div>
+        <div><dt>Missing candles</dt><dd>${escapeHtml(health.missing_candles)}</dd></div>
+        <div><dt>Last success</dt><dd>${escapeHtml(health.last_success_at || "none")}</dd></div>
+        <div><dt>Last error</dt><dd>${escapeHtml(health.last_error || "none")}</dd></div>
+      </dl>
+    </section>` : `
+    <section>
+      <h2>BTC-USD 1h Data Health</h2>
+      <p>Data-health state is unavailable until the latest migration is applied.</p>
+    </section>`;
   const latestMarkup = latest ? `
     <section>
       <h2>Latest Stored BTC-USD 1h Candle</h2>
@@ -637,10 +680,19 @@ async function renderHome(env) {
       <span class="pill">${escapeHtml(env.ENVIRONMENT || "unknown")}</span>
       <span class="pill">${escapeHtml(env.CURRENT_PHASE || "unknown")}</span>
     </div>
+    ${healthMarkup}
     ${latestMarkup}
   </main>
 </body>
 </html>`;
+}
+
+async function marketDataHealthForHome(env) {
+  try {
+    return await getMarketDataHealth(env);
+  } catch {
+    return null;
+  }
 }
 
 async function latestCandleForHome(env) {

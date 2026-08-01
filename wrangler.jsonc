@@ -9,7 +9,8 @@
   },
   "vars": {
     "ENVIRONMENT": "production",
-    "CURRENT_PHASE": "operator-control-plane",
+    "CURRENT_PHASE": "stage-1-truthful-data-foundation",
+    "MARKET_DATA_PROVIDER": "coinbase_exchange",
     "DEPLOYMENT_SHA": "set-by-deploy-script",
     "REPOSITORY_SHA": "set-by-deploy-script",
     "MCP_CLIENT_ID": "quant-lab-dev",
@@ -17,6 +18,9 @@
     "GITHUB_REPO": "quant-lab-operator",
     "GITHUB_BRANCH": "main",
     "GITHUB_DEPLOY_WORKFLOW_ID": "quant-lab-deploy.yml"
+  },
+  "triggers": {
+    "crons": ["5 * * * *"]
   },
   "d1_databases": [
     {
