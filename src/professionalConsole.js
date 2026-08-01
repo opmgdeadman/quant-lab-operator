@@ -2,7 +2,7 @@ import { PROFESSIONAL_CONSOLE_CSS } from "./professionalConsoleStyles.js";
 
 export function renderProfessionalConsole(model = {}) {
   const {
-    environment = "unknown", currentPhase = "unknown", deploymentSha = "unknown",
+    siteOrigin = "", environment = "unknown", currentPhase = "unknown", deploymentSha = "unknown",
     latest = null, candles = [], health = null, paperAccount = null,
     baselineBench = null, hostileJudge = null, strategyFactory = null,
     championSelection = null, forwardOperation = null, liveQualification = null,
@@ -24,6 +24,9 @@ export function renderProfessionalConsole(model = {}) {
   const qFailed = num(liveQualification?.failed_gate_count) || 0;
   const qTotal = qPassed + qFailed || 14;
   const qProgress = Math.round((qPassed / qTotal) * 100);
+  const origin = safeOrigin(siteOrigin);
+  const canonicalUrl = origin ? `${origin}/` : "/";
+  const socialImageUrl = origin ? `${origin}/og-image.png` : "/og-image.png";
 
   const candidateRows = (strategyFactory?.verdicts || []).map((entry) => {
     const reasons = Array.isArray(entry.reason_codes) ? entry.reason_codes : [];
@@ -52,6 +55,24 @@ export function renderProfessionalConsole(model = {}) {
 <meta name="theme-color" content="#050a12">
 <meta name="color-scheme" content="dark">
 <meta name="description" content="Quant Lab autonomous paper-trading research and operations console.">
+<link rel="canonical" href="${esc(canonicalUrl)}">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="manifest" href="/site.webmanifest">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Quant Lab">
+<meta property="og:title" content="Quant Lab — Autonomous Research Console">
+<meta property="og:description" content="Autonomous paper-trading research, hostile strategy evaluation, and forward-operation evidence.">
+<meta property="og:url" content="${esc(canonicalUrl)}">
+<meta property="og:image" content="${esc(socialImageUrl)}">
+<meta property="og:image:width" content="512">
+<meta property="og:image:height" content="512">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Quant Lab — Autonomous Research Console">
+<meta name="twitter:description" content="Autonomous paper-trading research, hostile strategy evaluation, and forward-operation evidence.">
+<meta name="twitter:image" content="${esc(socialImageUrl)}">
 <title>Quant Lab — Autonomous Research Console</title>
 <style>${PROFESSIONAL_CONSOLE_CSS}</style>
 </head>
@@ -59,7 +80,7 @@ export function renderProfessionalConsole(model = {}) {
 <a class="skip" href="#overview">Skip to console</a>
 <div class="app">
   <aside class="sidebar" id="sidebar" aria-label="Quant Lab navigation">
-    <div class="brand"><div class="mark">QL</div><div><b>Quant Lab</b><small>Research OS</small></div></div>
+    <div class="brand"><div class="mark"><img src="/quant-lab-logo.png" width="38" height="38" alt=""></div><div><b>Quant Lab</b><small>Research OS</small></div></div>
     <div class="nav-label">Console</div>
     <nav class="nav">
       ${nav("overview", "Overview", icon("grid"), true)}
@@ -183,5 +204,6 @@ function pct(v){const n=num(v);return n===null?'—':`${n>0?'+':''}${format(n,2)
 function date(v){if(!v)return '—';const d=new Date(v);return Number.isFinite(d.getTime())?new Intl.DateTimeFormat('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',timeZoneName:'short'}).format(d):String(v)}
 function shortSha(v){const s=String(v||'unknown');return s.length>12?`${s.slice(0,12)}…`:s}
 function tone(v){const n=num(v);return n===null||n===0?'neutral':n>0?'positive':'negative'}
+function safeOrigin(value){try{const url=new URL(String(value||''));return url.protocol==='https:'||url.protocol==='http:'?url.origin:''}catch{return ''}}
 function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':'&quot;',"'":"&#39;"})[c])}
 function icon(name){const paths={grid:'<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',chart:'<path d="M3 3v18h18"/><path d="m7 15 4-4 3 3 5-7"/>',flask:'<path d="M9 3h6"/><path d="M10 3v6l-5 8a2 2 0 0 0 1.7 3h10.6a2 2 0 0 0 1.7-3l-5-8V3"/><path d="M8 14h8"/>',cycle:'<path d="M20 7h-5V2"/><path d="M4 17h5v5"/><path d="M20 7a8 8 0 0 0-14-3L4 6"/><path d="M4 17a8 8 0 0 0 14 3l2-2"/>',shield:'<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/>',server:'<rect x="3" y="4" width="18" height="6" rx="2"/><rect x="3" y="14" width="18" height="6" rx="2"/><path d="M7 7h.01M7 17h.01"/>',menu:'<path d="M4 6h16M4 12h16M4 18h16"/>',bitcoin:'<path d="M9 5h6a3 3 0 0 1 0 6H9z"/><path d="M9 11h7a3 3 0 0 1 0 6H9zM12 3v2M15 3v2M12 17v4M15 17v4M7 5h2M7 17h2"/>',wallet:'<path d="M3 6h15a2 2 0 0 1 2 2v10H5a2 2 0 0 1-2-2V6Z"/><path d="M3 8V5a2 2 0 0 1 2-2h11"/><path d="M16 12h4"/>',crown:'<path d="m3 7 4 4 5-7 5 7 4-4-2 11H5L3 7Z"/>',clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',alert:'<path d="M10.3 3.6 2.2 17.7A2 2 0 0 0 4 20.7h16a2 2 0 0 0 1.8-3L13.7 3.6a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4M12 17h.01"/>',check:'<path d="m5 12 4 4L19 6"/>',cycle2:'<path d="M20 12a8 8 0 1 1-2.3-5.7L20 8"/><path d="M20 3v5h-5"/>'};return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name]||paths.check}</svg>`}

@@ -46,7 +46,41 @@ test("home renders the professional paper-only Quant Lab console", async () => {
   assert.match(body, /TradingView/);
   assert.match(body, /Controlled strategy factory/);
   assert.match(body, /Live orders disabled/);
+  assert.match(body, /\/quant-lab-logo\.png/);
+  assert.match(body, /\/site\.webmanifest/);
+  assert.match(body, /property="og:image" content="https:\/\/example\.com\/og-image\.png"/);
+  assert.match(body, /name="twitter:card" content="summary"/);
   assert.doesNotMatch(body, /guaranteed profit/i);
+});
+
+test("canonical Quant Lab brand assets and manifest are publicly served", async () => {
+  const env = createEnv();
+  const assets = [
+    ["/favicon.ico", "image/x-icon"],
+    ["/favicon-16x16.png", "image/png"],
+    ["/favicon-32x32.png", "image/png"],
+    ["/apple-touch-icon.png", "image/png"],
+    ["/android-chrome-192x192.png", "image/png"],
+    ["/android-chrome-512x512.png", "image/png"],
+    ["/quant-lab-logo.png", "image/png"],
+    ["/og-image.png", "image/png"],
+  ];
+
+  for (const [path, contentType] of assets) {
+    const response = await handleRequest(new Request(`https://example.com${path}`), env);
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    assert.equal(response.status, 200, path);
+    assert.equal(response.headers.get("content-type"), contentType, path);
+    assert.ok(bytes.byteLength > 100, path);
+    assert.match(response.headers.get("cache-control"), /immutable/, path);
+  }
+
+  const manifestResponse = await handleRequest(new Request("https://example.com/site.webmanifest"), env);
+  const manifest = await manifestResponse.json();
+  assert.equal(manifestResponse.status, 200);
+  assert.match(manifestResponse.headers.get("content-type"), /application\/manifest\+json/);
+  assert.equal(manifest.name, "Quant Lab");
+  assert.deepEqual(manifest.icons.map((entry) => entry.sizes), ["192x192", "512x512"]);
 });
 
 test("public live status is safe and does not require operator credentials", async () => {

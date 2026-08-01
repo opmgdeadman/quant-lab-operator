@@ -9,6 +9,10 @@ import { getLiveQualificationSummary, runProductionLiveQualification } from "./l
 import { getRollingResearchSummary, runScheduledRollingResearch } from "./rollingResearch.js";
 import { getHistoricalBootstrapSummary, runScheduledHistoricalBootstrap } from "./historicalBootstrap.js";
 import { renderProfessionalConsole } from "./professionalConsole.js";
+import { BRAND_SMALL_ASSETS } from "./brandAssetsSmall.js";
+import { BRAND_APPLE_ASSET } from "./brandAppleAsset.js";
+import { BRAND_ANDROID_192_ASSET } from "./brandAndroid192Asset.js";
+import { BRAND_ANDROID_512_ASSET, BRAND_MANIFEST } from "./brandAndroid512Asset.js";
 import { executeQuantLabIntent } from "./operator/executionKernel.js";
 import { loadQuantStartupContext } from "./operator/startupAuthority.js";
 import { publicTools as operatorPublicTools } from "./operator/toolRegistry.js";
@@ -21,6 +25,13 @@ const OAUTH_TOKEN_PATH = "/api/operator/oauth/token";
 const OPERATOR_ACCESS_TOKEN_TTL_SECONDS = 24 * 60 * 60;
 const OPERATOR_REFRESH_TOKEN_TTL_SECONDS = 365 * 24 * 60 * 60;
 const MCP_SESSION_TTL_SECONDS = 30 * 24 * 60 * 60;
+const BRAND_ASSETS = Object.freeze({
+  ...BRAND_SMALL_ASSETS,
+  "/apple-touch-icon.png": BRAND_APPLE_ASSET,
+  "/android-chrome-192x192.png": BRAND_ANDROID_192_ASSET,
+  "/android-chrome-512x512.png": BRAND_ANDROID_512_ASSET,
+  "/og-image.png": BRAND_ANDROID_512_ASSET,
+});
 
 export async function handleRequest(request, env) {
   const url = new URL(request.url);
@@ -55,8 +66,14 @@ export async function handleRequest(request, env) {
   if (request.method !== "GET") {
     return json({ ok: false, error: "method_not_allowed" }, 405);
   }
+  if (BRAND_ASSETS[url.pathname]) {
+    return brandAsset(BRAND_ASSETS[url.pathname]);
+  }
+  if (url.pathname === "/site.webmanifest") {
+    return webManifest();
+  }
   if (url.pathname === "/") {
-    return html(await renderHome(env));
+    return html(await renderHome(env, url.origin));
   }
   if (url.pathname === "/api/public/status") {
     return json(await publicStatusPayload(env));
@@ -662,7 +679,7 @@ function constantTimeBytesEqual(left, right) {
   return diff === 0;
 }
 
-async function renderHome(env) {
+async function renderHome(env, siteOrigin) {
   const [latest, candles, health, paperAccount, baselineBench, hostileJudge, strategyFactory, championSelection, forwardOperation, liveQualification, rollingResearch, historicalBootstrap] = await Promise.all([
     latestCandleForHome(env),
     recentCandlesForHome(env),
@@ -678,6 +695,7 @@ async function renderHome(env) {
     historicalBootstrapForHome(env),
   ]);
   return renderProfessionalConsole({
+    siteOrigin,
     environment: env.ENVIRONMENT || "unknown",
     currentPhase: env.CURRENT_PHASE || "unknown",
     deploymentSha: env.DEPLOYMENT_SHA || "unknown",
@@ -1328,6 +1346,27 @@ function html(body) {
     headers: {
       "content-type": "text/html; charset=utf-8",
       "cache-control": "no-store",
+    },
+  });
+}
+
+function brandAsset(asset) {
+  const bytes = Uint8Array.from(atob(asset.base64), (character) => character.charCodeAt(0));
+  return new Response(bytes, {
+    headers: {
+      "content-type": asset.contentType,
+      "cache-control": "public, max-age=31536000, immutable",
+      "x-content-type-options": "nosniff",
+    },
+  });
+}
+
+function webManifest() {
+  return new Response(JSON.stringify(BRAND_MANIFEST), {
+    headers: {
+      "content-type": "application/manifest+json; charset=utf-8",
+      "cache-control": "public, max-age=3600",
+      "x-content-type-options": "nosniff",
     },
   });
 }
