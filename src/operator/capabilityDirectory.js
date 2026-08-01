@@ -240,7 +240,7 @@ export const capabilityDirectory = [
     output_schema: objectSchema({ ok: { type: "boolean" } }, ["ok"]),
     external_systems: ["d1", "selection_batches", "forward_operation_cycles", "paper_ledger"],
     risk_gates: ["auth_required", "session_required", "idempotency_required", "immutable_policy", "evidence_only", "owner_approval_separate", "no_live_authorization", "no_funding", "no_credentials", "no_live_execution"],
-    tests: ["qualification assessment remains not qualified without complete evidence", "eligible evidence still requires separate owner approval"],
+    tests: ["qualification assessment remains not qualified without complete evidence", "repeated assessment replays the immutable result", "eligible evidence still requires separate owner approval"],
   }),
   capability({
     id: "operating.continuation_read",
