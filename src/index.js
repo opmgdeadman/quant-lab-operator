@@ -8,6 +8,7 @@ import { getForwardOperationSummary, runScheduledForwardOperation } from "./forw
 import { getLiveQualificationSummary, runProductionLiveQualification } from "./liveQualification.js";
 import { getRollingResearchSummary, runScheduledRollingResearch } from "./rollingResearch.js";
 import { getHistoricalBootstrapSummary, runScheduledHistoricalBootstrap } from "./historicalBootstrap.js";
+import { renderProfessionalConsole } from "./professionalConsole.js";
 import { executeQuantLabIntent } from "./operator/executionKernel.js";
 import { loadQuantStartupContext } from "./operator/startupAuthority.js";
 import { publicTools as operatorPublicTools } from "./operator/toolRegistry.js";
@@ -56,6 +57,9 @@ export async function handleRequest(request, env) {
   }
   if (url.pathname === "/") {
     return html(await renderHome(env));
+  }
+  if (url.pathname === "/api/public/status") {
+    return json(await publicStatusPayload(env));
   }
   if (url.pathname === "/internal/status") {
     if (!(await isAuthorized(request, env))) {
@@ -659,6 +663,40 @@ function constantTimeBytesEqual(left, right) {
 }
 
 async function renderHome(env) {
+  const [latest, candles, health, paperAccount, baselineBench, hostileJudge, strategyFactory, championSelection, forwardOperation, liveQualification, rollingResearch, historicalBootstrap] = await Promise.all([
+    latestCandleForHome(env),
+    recentCandlesForHome(env),
+    marketDataHealthForHome(env),
+    paperAccountForHome(env),
+    baselineBenchForHome(env),
+    hostileJudgeForHome(env),
+    strategyFactoryForHome(env),
+    championSelectionForHome(env),
+    forwardOperationForHome(env),
+    liveQualificationForHome(env),
+    rollingResearchForHome(env),
+    historicalBootstrapForHome(env),
+  ]);
+  return renderProfessionalConsole({
+    environment: env.ENVIRONMENT || "unknown",
+    currentPhase: env.CURRENT_PHASE || "unknown",
+    deploymentSha: env.DEPLOYMENT_SHA || "unknown",
+    latest,
+    candles,
+    health,
+    paperAccount,
+    baselineBench,
+    hostileJudge,
+    strategyFactory,
+    championSelection,
+    forwardOperation,
+    liveQualification,
+    rollingResearch,
+    historicalBootstrap,
+  });
+}
+
+async function renderLegacyHome(env) {
   const [latest, health, paperAccount, baselineBench, hostileJudge, strategyFactory, championSelection, forwardOperation, liveQualification, rollingResearch, historicalBootstrap] = await Promise.all([
     latestCandleForHome(env),
     marketDataHealthForHome(env),
@@ -959,6 +997,30 @@ async function latestCandleForHome(env) {
     return latestBtcUsdHourlyCandle(env);
   } catch {
     return null;
+  }
+}
+
+async function recentCandlesForHome(env, limit = 96) {
+  try {
+    const result = await env.DB.prepare(
+      `SELECT closed_at, open, high, low, close, volume, source
+       FROM market_candles
+       WHERE pair = ? AND interval = ?
+       ORDER BY closed_at DESC
+       LIMIT ?`,
+    ).bind("BTC-USD", "1h", limit).all();
+    const rows = Array.isArray(result?.results) ? result.results : [];
+    return rows.reverse().map((row) => ({
+      closed_at: row.closed_at,
+      open: Number(row.open),
+      high: Number(row.high),
+      low: Number(row.low),
+      close: Number(row.close),
+      volume: Number(row.volume),
+      source: row.source,
+    }));
+  } catch {
+    return [];
   }
 }
 

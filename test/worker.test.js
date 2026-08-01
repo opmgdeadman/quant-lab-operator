@@ -34,15 +34,29 @@ test("internal status requires bearer token", async () => {
   assert.equal(body.databaseProbe.connected, true);
 });
 
-test("home renders no trading claims or fake metrics", async () => {
+test("home renders the professional paper-only Quant Lab console", async () => {
   const env = createEnv();
   const response = await handleRequest(new Request("https://example.com/"), env);
   const body = await response.text();
 
   assert.equal(response.status, 200);
-  assert.match(body, /Paper-trading laboratory/);
-  assert.doesNotMatch(body, /return/i);
-  assert.doesNotMatch(body, /profit/i);
+  assert.match(body, /Autonomous Research Console/);
+  assert.match(body, /PAPER ONLY/);
+  assert.match(body, /TradingView/);
+  assert.match(body, /Controlled strategy factory/);
+  assert.match(body, /Live orders disabled/);
+  assert.doesNotMatch(body, /guaranteed profit/i);
+});
+
+test("public live status is safe and does not require operator credentials", async () => {
+  const env = createEnv();
+  const response = await handleRequest(new Request("https://example.com/api/public/status"), env);
+  const body = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(body.system, "Quant Lab");
+  assert.equal(body.boundaries, undefined);
+  assert.equal(body.workerStatus, "online");
 });
 
 test("legacy public proof routes are removed", async () => {
