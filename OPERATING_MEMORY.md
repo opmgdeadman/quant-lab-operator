@@ -36,7 +36,9 @@ The earlier private-operator/public-runner split is obsolete. The former `opmgde
 - Added Lensically-style authenticated route skeleton at `/api/operator/mcp`.
 - `initialize` returns a deployment-scoped signed `Mcp-Session-Id`.
 - `tools/list`, `tools/call`, and `ping` require auth plus valid session.
-- Current advertised tools are `get_quant_lab_status` and `execute_quant_lab_intent`.
+- Current advertised tools are `get_quant_lab_startup_context`, `get_quant_lab_status`, and `execute_quant_lab_intent`.
+- `get_quant_lab_startup_context` loads the full source-controlled Startup Authority and sole canonical Git Engineering Continuation Ledger.
+- Every operator intent requires the exact returned authority acknowledgment and current ECL SHA; omitted or stale continuity is rejected before intent execution.
 - `execute_quant_lab_intent` is the Lensically-style control-plane entrypoint. It dispatches only source-defined intents through the execution kernel, capability directory, client-safety registry, lifecycle manifest, and durable receipts/audit logging.
 - Supported intents are `get_engineering_access_state`, `operator_status`, `read_continuation`, `write_continuation`, `inspect_repository`, `read_repo_file`, `list_repo_files`, `apply_repo_patch_set`, `create_repo_file`, `delete_repo_file`, `run_validation`, `list_github_actions_runs`, `trigger_github_workflow`, `monitor_github_workflow`, `deploy_cloudflare_worker`, `apply_d1_migrations`, and `validate_production_sha`.
 - GitHub/Cloudflare control follows the Lensically pattern: GPT calls `execute_quant_lab_intent`; the Worker validates source-defined closed schemas, writes durable receipts, and uses server-side GitHub credentials to call GitHub REST or dispatch allowlisted GitHub Actions.
@@ -66,6 +68,7 @@ The earlier private-operator/public-runner split is obsolete. The former `opmgde
 ## Remote Validation
 
 - Official validation is GitHub Actions on the public repository, not a required local startup path.
+- CI now runs Worker tests, Python core tests, and Wrangler validation as independent parallel jobs so failures are immediately isolated.
 - CI installs dependencies on a clean runner, runs Worker tests, runs Python `quant_core` tests, and performs a Wrangler dry-run.
 - Cloudflare is the runtime target; localhost and local Python/Node are diagnostics only.
 - Known passing CI after remote-first cleanup: run `30222233018`.

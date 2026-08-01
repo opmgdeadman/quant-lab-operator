@@ -43,8 +43,9 @@ Only advertised direct typed tools with closed schemas may execute. Unknown or i
 
 Advertised tools:
 
+- `get_quant_lab_startup_context`: mandatory read-first Startup Authority plus sole canonical Git Engineering Continuation Ledger.
 - `get_quant_lab_status`: read-only authenticated infrastructure status.
-- `execute_quant_lab_intent`: idempotent execution kernel entrypoint for source-defined bounded operator intents.
+- `execute_quant_lab_intent`: idempotent execution kernel entrypoint for source-defined bounded operator intents. Every call must include the exact governing-authority acknowledgment and the current canonical ECL SHA returned by `get_quant_lab_startup_context`; skipped or stale continuity fails closed.
 
 There are no shell, arbitrary SQL, arbitrary GitHub, arbitrary Cloudflare, generic router, or arbitrary code execution tools.
 
@@ -56,7 +57,7 @@ Repository mutation is bounded. File paths must pass the source-controlled allow
 
 ## Remote Validation
 
-Official validation is GitHub Actions on the public repository. CI installs dependencies from a clean runner, runs Worker tests, runs Python `quant_core` tests, and performs a Wrangler dry-run.
+Official validation is GitHub Actions on the public repository. CI runs Worker tests, Python `quant_core` tests, and the Wrangler dry-run as independent parallel jobs for faster, clearer failure diagnosis.
 
 The authenticated operator can dispatch allowlisted workflows:
 

@@ -52,6 +52,9 @@ Out of scope for this job:
 - `market_candles` and operator receipt tables present.
 - Existing website can display the latest stored BTC-USD 1-hour candle.
 - Quant Lab Startup Authority separated from this ledger at `docs/QUANT_LAB_STARTUP_AUTHORITY.md`.
+- Mandatory startup context loads the full authority and this sole Git ECL before operator work.
+- Every bounded operator intent requires the exact authority acknowledgment and this ledger's current Git SHA; skipped or stale continuity fails closed.
+- Startup enforcement regression tests and parallel CI diagnostics pass on commit `b384e488a3689de65e1ac08859f0122fa990de7f`.
 
 ## Current Action
 
