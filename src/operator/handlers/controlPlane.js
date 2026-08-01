@@ -4,6 +4,7 @@ import { commitRepoChanges, isAllowedWorkflowId, isExactSha, githubConfig, githu
 import { repoSnapshots } from "../repoSnapshots.js";
 import { commissionPaperLedger, executePaperDecision, getPaperAccountSummary } from "../../paperLedger.js";
 import { getBaselineBenchSummary, runProductionBaselineBench } from "../../baselineBench.js";
+import { getHostileJudgeSummary, runProductionHostileJudge } from "../../hostileJudge.js";
 
 export const handlers = {
   get_engineering_access_state,
@@ -12,6 +13,8 @@ export const handlers = {
   execute_paper_decision,
   get_baseline_bench,
   run_baseline_bench,
+  get_hostile_judge,
+  run_hostile_judge,
   read_continuation,
   write_continuation,
   inspect_repository,
@@ -112,6 +115,31 @@ async function run_baseline_bench(inputs, context) {
       live_capital_enabled: false,
       status: "baseline_bench_failed",
       error: error instanceof Error ? error.message : "baseline_bench_failed",
+    };
+  }
+}
+
+async function get_hostile_judge(inputs, context) {
+  const judge = await getHostileJudgeSummary(context.env);
+  return {
+    ok: Boolean(judge),
+    historical_paper_research: true,
+    promotion_performed: false,
+    live_capital_enabled: false,
+    judge,
+  };
+}
+
+async function run_hostile_judge(inputs, context) {
+  try {
+    return await runProductionHostileJudge(context.env);
+  } catch (error) {
+    return {
+      ok: false,
+      promotion_performed: false,
+      live_capital_enabled: false,
+      status: "hostile_judge_failed",
+      error: error instanceof Error ? error.message : "hostile_judge_failed",
     };
   }
 }
@@ -337,6 +365,24 @@ async function delete_repo_file(inputs, context) {
 }
 
 export async function runValidation(inputs, context) {
+  if (inputs.validation === "production hostile judge commission") {
+    try {
+      const judge = await runProductionHostileJudge(context.env);
+      return {
+        ok: judge.ok,
+        validation: inputs.validation,
+        status: judge.ok ? "passed" : "failed",
+        hostile_judge_commission: judge,
+      };
+    } catch (error) {
+      return {
+        ok: false,
+        validation: inputs.validation,
+        status: "production_hostile_judge_commission_failed",
+        error: error instanceof Error ? error.message : "hostile_judge_commission_failed",
+      };
+    }
+  }
   if (inputs.validation === "production baseline bench commission") {
     try {
       const bench = await runProductionBaselineBench(context.env);

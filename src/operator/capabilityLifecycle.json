@@ -17,6 +17,8 @@
     { "id": "paper.decision_execute.lifecycle", "intent": "execute_paper_decision" },
     { "id": "baseline.bench_read.lifecycle", "intent": "get_baseline_bench" },
     { "id": "baseline.bench_run.lifecycle", "intent": "run_baseline_bench" },
+    { "id": "hostile_judge.summary_read.lifecycle", "intent": "get_hostile_judge" },
+    { "id": "hostile_judge.batch_run.lifecycle", "intent": "run_hostile_judge" },
     { "id": "operating.continuation_read.lifecycle", "intent": "read_continuation" },
     { "id": "operating.continuation_write.lifecycle", "intent": "write_continuation" },
     { "id": "engineering.repository_inspection.lifecycle", "intent": "inspect_repository" },
