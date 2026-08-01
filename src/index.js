@@ -1,4 +1,5 @@
 import { getMarketDataHealth, runHourlyCandleIngestion } from "./marketData.js";
+import { getPaperAccountSummary } from "./paperLedger.js";
 import { executeQuantLabIntent } from "./operator/executionKernel.js";
 import { loadQuantStartupContext } from "./operator/startupAuthority.js";
 import { publicTools as operatorPublicTools } from "./operator/toolRegistry.js";
@@ -78,6 +79,7 @@ async function publicStatusPayload(env) {
     latestDeploymentSha: status.latestDeploymentSha,
     currentPhase: status.currentPhase,
     dataHealth: status.dataHealth,
+    paperAccount: status.paperAccount,
   };
 }
 
@@ -537,9 +539,10 @@ function mcpErrorObject(id, code, message) {
 }
 
 async function statusPayload(env) {
-  const [dbProbe, dataHealth] = await Promise.all([
+  const [dbProbe, dataHealth, paperAccount] = await Promise.all([
     databaseProbe(env),
     marketDataHealthForHome(env),
+    paperAccountForHome(env),
   ]);
   return {
     ok: dbProbe.connected,
@@ -549,6 +552,7 @@ async function statusPayload(env) {
     databaseConnected: dbProbe.connected,
     databaseProbe: dbProbe,
     dataHealth,
+    paperAccount,
     latestDeploymentSha: env.DEPLOYMENT_SHA || "unknown",
     currentPhase: env.CURRENT_PHASE || "unknown",
     boundaries: {
@@ -615,9 +619,10 @@ function constantTimeBytesEqual(left, right) {
 }
 
 async function renderHome(env) {
-  const [latest, health] = await Promise.all([
+  const [latest, health, paperAccount] = await Promise.all([
     latestCandleForHome(env),
     marketDataHealthForHome(env),
+    paperAccountForHome(env),
   ]);
   const healthMarkup = health ? `
     <section>
@@ -636,6 +641,29 @@ async function renderHome(env) {
     <section>
       <h2>BTC-USD 1h Data Health</h2>
       <p>Data-health state is unavailable until the latest migration is applied.</p>
+    </section>`;
+  const paperMarkup = paperAccount ? `
+    <section>
+      <h2>Paper Account</h2>
+      <p>Simulation only. No live capital is connected or authorized.</p>
+      <dl>
+        <div><dt>Status</dt><dd>${escapeHtml(paperAccount.status)}</dd></div>
+        <div><dt>Cash</dt><dd>${escapeHtml(paperAccount.cash_balance)}</dd></div>
+        <div><dt>BTC quantity</dt><dd>${escapeHtml(paperAccount.position_quantity)}</dd></div>
+        <div><dt>Average cost</dt><dd>${escapeHtml(paperAccount.average_cost)}</dd></div>
+        <div><dt>Realized P&amp;L</dt><dd>${escapeHtml(paperAccount.realized_pnl)}</dd></div>
+        <div><dt>Unrealized P&amp;L</dt><dd>${escapeHtml(paperAccount.unrealized_pnl)}</dd></div>
+        <div><dt>Fees</dt><dd>${escapeHtml(paperAccount.total_fees)}</dd></div>
+        <div><dt>Equity</dt><dd>${escapeHtml(paperAccount.equity)}</dd></div>
+        <div><dt>Portfolio version</dt><dd>${escapeHtml(paperAccount.portfolio_version)}</dd></div>
+        <div><dt>Cycles</dt><dd>${escapeHtml(paperAccount.cycle_count)}</dd></div>
+        <div><dt>Fills</dt><dd>${escapeHtml(paperAccount.fill_count)}</dd></div>
+        <div><dt>Reconciled</dt><dd>${escapeHtml(paperAccount.accounting_reconciled)}</dd></div>
+      </dl>
+    </section>` : `
+    <section>
+      <h2>Paper Account</h2>
+      <p>Paper-account state is unavailable until the Stage 2 migration is applied.</p>
     </section>`;
   const latestMarkup = latest ? `
     <section>
@@ -682,6 +710,7 @@ async function renderHome(env) {
       <span class="pill">${escapeHtml(env.ENVIRONMENT || "unknown")}</span>
       <span class="pill">${escapeHtml(env.CURRENT_PHASE || "unknown")}</span>
     </div>
+    ${paperMarkup}
     ${healthMarkup}
     ${latestMarkup}
   </main>
@@ -705,6 +734,14 @@ async function latestCandleForHome(env) {
   }
 }
 
+async function paperAccountForHome(env) {
+  try {
+    return await getPaperAccountSummary(env);
+  } catch {
+    return null;
+  }
+}
+
 function publicStatusSchema() {
   return {
     type: "object",
@@ -717,6 +754,12 @@ function publicStatusSchema() {
       databaseConnected: { type: "boolean" },
       latestDeploymentSha: { type: "string" },
       currentPhase: { type: "string" },
+      paperAccount: {
+        anyOf: [
+          { type: "null" },
+          { type: "object", additionalProperties: true },
+        ],
+      },
       dataHealth: {
         anyOf: [
           { type: "null" },
@@ -747,6 +790,7 @@ function publicStatusSchema() {
       "latestDeploymentSha",
       "currentPhase",
       "dataHealth",
+      "paperAccount",
     ],
   };
 }
