@@ -56,7 +56,7 @@ async function operator_status(inputs, context) {
     authenticated_mcp: true,
     deployment_sha: context.env.DEPLOYMENT_SHA || "unknown",
     database_connected: dbProbe.connected,
-    exposed_tool_count: 2,
+    exposed_tool_count: 3,
     supported_intents: supportedIntents,
     capability_count: capabilityDirectory.length,
   };

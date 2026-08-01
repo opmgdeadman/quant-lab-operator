@@ -90,6 +90,7 @@ test("operator mcp session remains valid across deployments", async () => {
 
   assert.equal(toolsBody.error, undefined);
   assert.deepEqual(toolsBody.result.tools.map((tool) => tool.name), [
+    "get_quant_lab_startup_context",
     "get_quant_lab_status",
     "execute_quant_lab_intent",
   ]);
@@ -115,18 +116,32 @@ test("operator mcp tools require valid session and expose status plus execute in
   const toolsBody = await mcp(env, sessionId, { jsonrpc: "2.0", id: 3, method: "tools/list" });
   assert.deepEqual(
     toolsBody.result.tools.map((tool) => tool.name),
-    ["get_quant_lab_status", "execute_quant_lab_intent"],
+    ["get_quant_lab_startup_context", "get_quant_lab_status", "execute_quant_lab_intent"],
   );
   for (const tool of toolsBody.result.tools) {
     assert.equal(tool.inputSchema.additionalProperties, false);
     assert.ok(tool.outputSchema);
   }
+  const startupTool = toolsBody.result.tools.find((tool) => tool.name === "get_quant_lab_startup_context");
   const statusTool = toolsBody.result.tools.find((tool) => tool.name === "get_quant_lab_status");
   const executeTool = toolsBody.result.tools.find((tool) => tool.name === "execute_quant_lab_intent");
+  assert.equal(startupTool.annotations.readOnlyHint, true);
   assert.equal(statusTool.annotations.readOnlyHint, true);
   assert.equal(executeTool.annotations.readOnlyHint, false);
   assert.equal(executeTool.annotations.destructiveHint, false);
   assert.equal(executeTool.annotations.idempotentHint, true);
+});
+
+test("operator mcp startup context loads authority and sole canonical Git ECL", async () => {
+  const env = createEnv();
+  const body = await callTool(env, "get_quant_lab_startup_context", {});
+  const context = body.result.structuredContent;
+
+  assert.equal(context.ok, true);
+  assert.match(context.startup_authority.content, /Quant Lab Startup Authority/);
+  assert.match(context.canonical_continuation.content, /Sole canonical engineering continuation ledger/);
+  assert.match(context.canonical_continuation.content, /Current Action/);
+  assert.ok(context.required_governing_authority_ack);
 });
 
 test("operator mcp status tool returns bounded status only", async () => {
@@ -136,6 +151,48 @@ test("operator mcp status tool returns bounded status only", async () => {
   assert.equal(body.result.structuredContent.system, "Quant Lab");
   assert.equal(body.result.structuredContent.databaseConnected, true);
   assert.equal(body.result.structuredContent.databaseProbe, undefined);
+});
+
+test("operator intents fail closed when startup authority is skipped or ECL SHA is stale", async () => {
+  const env = createEnv();
+  const initialize = await initializeMcpSession(env);
+  const sessionId = initialize.headers.get("mcp-session-id");
+
+  const skipped = await mcp(env, sessionId, {
+    jsonrpc: "2.0",
+    id: 21,
+    method: "tools/call",
+    params: {
+      name: "execute_quant_lab_intent",
+      arguments: { operation_id: "op-skipped-startup", intent: "operator_status", inputs: {} },
+    },
+  });
+  assert.equal(skipped.error.message, "governing_authority_ack_required");
+
+  const startup = await mcp(env, sessionId, {
+    jsonrpc: "2.0",
+    id: 22,
+    method: "tools/call",
+    params: { name: "get_quant_lab_startup_context", arguments: {} },
+  });
+  const context = startup.result.structuredContent;
+  const stale = await mcp(env, sessionId, {
+    jsonrpc: "2.0",
+    id: 23,
+    method: "tools/call",
+    params: {
+      name: "execute_quant_lab_intent",
+      arguments: {
+        operation_id: "op-stale-ecl",
+        intent: "operator_status",
+        inputs: {
+          governing_authority_ack: context.required_governing_authority_ack,
+          canonical_continuation_sha: "stale-sha",
+        },
+      },
+    },
+  });
+  assert.equal(stale.error.message, "canonical_continuation_sha_stale_or_missing");
 });
 
 test("operator mcp rejects unadvertised tools", async () => {
@@ -585,11 +642,30 @@ async function mcp(env, sessionId, payload) {
 
 async function callTool(env, name, args) {
   const initialize = await initializeMcpSession(env);
-  return mcp(env, initialize.headers.get("mcp-session-id"), {
+  const sessionId = initialize.headers.get("mcp-session-id");
+  let preparedArgs = args;
+  if (name === "execute_quant_lab_intent") {
+    const startup = await mcp(env, sessionId, {
+      jsonrpc: "2.0",
+      id: 19,
+      method: "tools/call",
+      params: { name: "get_quant_lab_startup_context", arguments: {} },
+    });
+    const context = startup.result.structuredContent;
+    preparedArgs = {
+      ...args,
+      inputs: {
+        ...(args.inputs || {}),
+        governing_authority_ack: context.required_governing_authority_ack,
+        canonical_continuation_sha: context.canonical_continuation.sha,
+      },
+    };
+  }
+  return mcp(env, sessionId, {
     jsonrpc: "2.0",
     id: 20,
     method: "tools/call",
-    params: { name, arguments: args },
+    params: { name, arguments: preparedArgs },
   });
 }
 

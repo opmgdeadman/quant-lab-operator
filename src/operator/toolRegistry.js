@@ -32,7 +32,7 @@ export function publicTools(publicStatusSchema, startupContextSchema, executeInt
     {
       name: "execute_quant_lab_intent",
       title: "Execute Quant Lab Intent",
-      description: "Execute one bounded source-defined Quant Lab operator intent. First call get_quant_lab_startup_context, then include its exact required_governing_authority_ack and canonical_continuation.sha inside inputs as governing_authority_ack and canonical_continuation_sha. Calls fail closed when authority is skipped or the Git ECL SHA is stale.";
+      description: "Execute one bounded source-defined Quant Lab operator intent. First call get_quant_lab_startup_context, then include its exact required_governing_authority_ack and canonical_continuation.sha inside inputs as governing_authority_ack and canonical_continuation_sha. Calls fail closed when authority is skipped or the Git ECL SHA is stale.",
       annotations: {
         readOnlyHint: false,
         destructiveHint: false,
