@@ -29,6 +29,8 @@
     { "id": "live_qualification.assessment_run.lifecycle", "intent": "run_live_qualification" },
     { "id": "rolling_research.summary_read.lifecycle", "intent": "get_rolling_research" },
     { "id": "rolling_research.epoch_run.lifecycle", "intent": "run_rolling_research" },
+    { "id": "historical_bootstrap.summary_read.lifecycle", "intent": "get_historical_bootstrap" },
+    { "id": "historical_bootstrap.attempt_run.lifecycle", "intent": "run_historical_bootstrap" },
     { "id": "operating.continuation_read.lifecycle", "intent": "read_continuation" },
     { "id": "operating.continuation_write.lifecycle", "intent": "write_continuation" },
     { "id": "engineering.repository_inspection.lifecycle", "intent": "inspect_repository" },

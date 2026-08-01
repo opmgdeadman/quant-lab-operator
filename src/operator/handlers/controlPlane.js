@@ -10,6 +10,7 @@ import { getChampionSelectionSummary, runProductionChampionSelection } from "../
 import { commissionForwardPaperOperation, getForwardOperationSummary, runProductionForwardPaperCycle } from "../../forwardPaper.js";
 import { getLiveQualificationSummary, runProductionLiveQualification } from "../../liveQualification.js";
 import { getRollingResearchSummary, runProductionRollingResearch } from "../../rollingResearch.js";
+import { getHistoricalBootstrapSummary, runProductionHistoricalBootstrap } from "../../historicalBootstrap.js";
 
 export const handlers = {
   get_engineering_access_state,
@@ -30,6 +31,8 @@ export const handlers = {
   run_live_qualification,
   get_rolling_research,
   run_rolling_research,
+  get_historical_bootstrap,
+  run_historical_bootstrap,
   read_continuation,
   write_continuation,
   inspect_repository,
@@ -290,6 +293,31 @@ async function run_rolling_research(inputs, context) {
   }
 }
 
+async function get_historical_bootstrap(inputs, context) {
+  const bootstrap = await getHistoricalBootstrapSummary(context.env);
+  return {
+    ok: true,
+    paper_only: true,
+    live_capital_enabled: false,
+    bootstrap,
+  };
+}
+
+async function run_historical_bootstrap(inputs, context) {
+  try {
+    return await runProductionHistoricalBootstrap(context.env);
+  } catch (error) {
+    return {
+      ok: false,
+      paper_only: true,
+      live_capital_enabled: false,
+      research_artifacts_created: false,
+      status: "historical_bootstrap_failed",
+      error: error instanceof Error ? error.message : "historical_bootstrap_failed",
+    };
+  }
+}
+
 async function read_continuation(inputs, context) {
   const row = await context.env.DB.prepare(
     "SELECT active_objective, current_phase, completed_evidence_json, next_action, updated_at FROM operator_continuation_state WHERE id = ?",
@@ -511,6 +539,24 @@ async function delete_repo_file(inputs, context) {
 }
 
 export async function runValidation(inputs, context) {
+  if (inputs.validation === "production historical bootstrap commission") {
+    try {
+      const bootstrap = await runProductionHistoricalBootstrap(context.env);
+      return {
+        ok: bootstrap.ok,
+        validation: inputs.validation,
+        status: bootstrap.ok ? "passed" : "failed",
+        historical_bootstrap_commission: bootstrap,
+      };
+    } catch (error) {
+      return {
+        ok: false,
+        validation: inputs.validation,
+        status: "production_historical_bootstrap_commission_failed",
+        error: error instanceof Error ? error.message : "historical_bootstrap_commission_failed",
+      };
+    }
+  }
   if (inputs.validation === "production rolling research commission") {
     try {
       const rolling = await runProductionRollingResearch(context.env);
