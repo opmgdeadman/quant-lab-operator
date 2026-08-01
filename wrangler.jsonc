@@ -20,7 +20,7 @@
     "GITHUB_DEPLOY_WORKFLOW_ID": "quant-lab-deploy.yml"
   },
   "triggers": {
-    "crons": ["5 * * * *"]
+    "crons": ["* * * * *"]
   },
   "d1_databases": [
     {

@@ -77,6 +77,7 @@ async function publicStatusPayload(env) {
     databaseConnected: status.databaseConnected,
     latestDeploymentSha: status.latestDeploymentSha,
     currentPhase: status.currentPhase,
+    dataHealth: status.dataHealth,
   };
 }
 
@@ -715,6 +716,26 @@ function publicStatusSchema() {
       databaseConnected: { type: "boolean" },
       latestDeploymentSha: { type: "string" },
       currentPhase: { type: "string" },
+      dataHealth: {
+        anyOf: [
+          { type: "null" },
+          {
+            type: "object",
+            additionalProperties: true,
+            properties: {
+              status: { type: "string" },
+              latest_closed_at: { anyOf: [{ type: "null" }, { type: "string" }] },
+              expected_latest_closed_at: { type: "string" },
+              stale_hours: { anyOf: [{ type: "null" }, { type: "number" }] },
+              missing_candles: { type: "number" },
+              last_attempt_at: { anyOf: [{ type: "null" }, { type: "string" }] },
+              last_success_at: { anyOf: [{ type: "null" }, { type: "string" }] },
+              last_error: { anyOf: [{ type: "null" }, { type: "string" }] },
+            },
+            required: ["status", "expected_latest_closed_at", "missing_candles"],
+          },
+        ],
+      },
     },
     required: [
       "ok",
@@ -724,6 +745,7 @@ function publicStatusSchema() {
       "databaseConnected",
       "latestDeploymentSha",
       "currentPhase",
+      "dataHealth",
     ],
   };
 }
