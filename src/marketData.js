@@ -251,16 +251,21 @@ async function fetchCoinbaseExchangeCandles({ startClosedAt, endClosedAt, expect
 
   const startClosedMs = dateMillis(startClosedAt, "start_closed_at");
   const endClosedMs = dateMillis(endClosedAt, "end_closed_at");
-  return payload.map((row) => {
+  const candles = [];
+  for (const row of payload) {
     if (!Array.isArray(row) || row.length < 6) {
       throw new Error("market_data_invalid_candle_shape");
     }
     const bucketStartMs = Number(row[0]) * 1000;
+    const closedMs = bucketStartMs + HOUR_MS;
+    if (closedMs < startClosedMs || closedMs > endClosedMs) {
+      continue;
+    }
     const candle = {
-      id: candleId(new Date(bucketStartMs + HOUR_MS).toISOString()),
+      id: candleId(new Date(closedMs).toISOString()),
       pair: PAIR,
       interval: INTERVAL,
-      closed_at: new Date(bucketStartMs + HOUR_MS).toISOString(),
+      closed_at: new Date(closedMs).toISOString(),
       open: Number(row[3]),
       high: Number(row[2]),
       low: Number(row[1]),
@@ -268,11 +273,9 @@ async function fetchCoinbaseExchangeCandles({ startClosedAt, endClosedAt, expect
       volume: Number(row[5]),
       source: "coinbase_exchange",
     };
-    return validateCompletedCandle(candle, expectedClosedAt);
-  }).filter((candle) => {
-    const closedMs = Date.parse(candle.closed_at);
-    return closedMs >= startClosedMs && closedMs <= endClosedMs;
-  });
+    candles.push(validateCompletedCandle(candle, expectedClosedAt));
+  }
+  return candles;
 }
 
 function deduplicateAndSort(candles) {
