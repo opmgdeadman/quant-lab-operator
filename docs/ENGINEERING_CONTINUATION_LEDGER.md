@@ -14,32 +14,31 @@ The governing mission, operator authority, owner boundary, and operating doctrin
 
 ## Active Job
 
-Job ID: `stage-5-controlled-strategy-factory`
-Priority: 5
+Job ID: `stage-6-champion-challenger-selection`
+Priority: 6
 State: ACTIVE
 
 Engineering objective:
 
-Build and production-validate a bounded strategy factory that creates a small, predeclared set of immutable candidate specifications, evaluates them on the frozen benchmark partitions, and submits their evidence to the hostile judge without adaptive tuning or promotion.
+Build and production-validate a deterministic, fail-closed champion/challenger selector that considers only hostile-judge-qualified candidates, records no champion when qualification evidence is absent, and never schedules paper execution or authorizes capital.
 
 Accepted scope:
 
-- immutable factory policy, candidate catalog, generation batch, and lineage hashes;
-- a small predeclared EMA and RSI candidate set only;
-- exact reuse of the frozen Stage 3 dataset, partitions, execution model, fees, and slippage;
-- deterministic candidate runs, trades, metrics, and artifacts;
-- hostile-judge evaluation using the immutable Stage 4 configuration;
-- durable candidate verdicts and reason codes;
-- idempotent generation and evaluation with no duplicate candidates or evidence;
-- bounded operator controls and truthful website factory visibility;
+- immutable selection policy, ranking formula, tie-breakers, and policy hash;
+- eligibility restricted to Stage 5 candidates with `qualified` hostile-judge verdicts;
+- deterministic champion and bounded challenger roster when qualified evidence exists;
+- explicit no-champion state and blocker reason codes when no candidate is eligible;
+- immutable selection batches, eligibility decisions, rankings, and evidence hashes;
+- idempotent selection with no duplicate or silent replacement;
+- bounded operator controls and truthful website selection visibility;
 - focused tests, CI, exact-SHA deployment, and production verification.
 
 Out of scope for this job:
 
-- open-ended search, random mutation, genetic optimization, or model-invented parameters;
-- changing candidates because results are weak;
-- champion/challenger selection or promotion;
-- forward paper scheduling;
+- changing judge verdicts or candidate evidence;
+- selecting an insufficient or rejected candidate;
+- forward paper scheduling or execution;
+- manual favoritism, result-dependent policy changes, or silent champion replacement;
 - leverage, derivatives, shorting, or live capital.
 
 ## Completed Evidence
@@ -79,10 +78,15 @@ Out of scope for this job:
 - Official CI passed and exact SHA `35b543d3dc17f2acddaf5c524bbab6db91bebcb3` deployed after migration success.
 - Production judged the three Stage 3 baselines: zero qualified, three insufficient-evidence, zero promoted. Replaying the batch returned the identical hash with no duplicate verdicts.
 - Stage 4 is complete. The website exposes verdicts and reason codes while explicitly denying promotion and live-capital authority.
+- Stage 5 implemented migration `0008_controlled_strategy_factory.sql`, an immutable eight-candidate catalog, fixed lineage, exact reuse of the frozen Stage 3 partitions and costs, 24 deterministic candidate runs, unchanged Stage 4 judging, and chunked idempotent evidence persistence.
+- Six focused tests proved catalog cardinality and immutability, deterministic candidate/run/verdict hashes, lineage, next-candle execution, exact partition reuse, non-expansion after weak results, and fail-closed source boundaries.
+- Official CI passed and exact SHA `8ef93039935c5075ab7ef3af67e5b32fd85e74d5` deployed after migration success.
+- Production generated and judged all eight predeclared candidates: zero qualified, eight insufficient-evidence, zero rejected, zero promoted. Replaying returned the identical factory batch hash without duplicate evidence.
+- Stage 5 is complete. The website truthfully shows all candidate verdicts and explicitly denies adaptive tuning, expansion, promotion, forward scheduling, and live capital.
 
 ## Current Action
 
-Define and freeze a small candidate catalog and generation policy, then implement immutable candidate specifications, exact frozen-partition backtests, hashed artifacts, hostile-judge evaluation, durable candidate verdicts, and idempotent production commissioning. Results may not alter the catalog or trigger promotion.
+Define and freeze the champion/challenger eligibility and ranking policy, then implement qualified-only selection, deterministic tie-breaking, explicit no-champion blockers, immutable selection evidence, idempotent production commissioning, and website visibility. Production must select nobody unless a Stage 5 verdict is `qualified`.
 
 ## Exit Gate
 
@@ -92,14 +96,14 @@ The active job is complete only when:
 - official GitHub Actions validation passes;
 - D1 migrations apply successfully;
 - an exact commit SHA is deployed and verified in production;
-- factory policy and every candidate parameter are immutable, predeclared, bounded, and hashed before results exist;
-- candidate lineage, frozen dataset, partitions, execution costs, runs, trades, and artifacts are reproducible;
-- repeated generation creates no duplicate candidates, runs, artifacts, or verdicts;
-- candidates are evaluated by the unchanged Stage 4 judge configuration;
-- weak or inactive candidates remain rejected or insufficient rather than triggering parameter changes;
-- the factory performs no selection, promotion, forward scheduling, or live-capital action;
-- website factory state reflects live D1 records truthfully and displays judge verdict reasons;
-- no result-dependent search-space expansion occurs.
+- selection policy, eligibility rules, ranking metrics, tie-breakers, roster limits, and hashes are immutable before selection;
+- only `qualified` Stage 5 verdicts can be eligible;
+- zero eligible candidates produces an explicit immutable no-champion state rather than fallback selection;
+- deterministic synthetic qualified evidence proves champion and challenger ranking can work;
+- repeated selection creates no duplicate batches or silent champion replacement;
+- selection performs no paper execution, scheduling, or live-capital action;
+- website selection state reflects live D1 records truthfully and displays blockers;
+- existing judge or factory evidence is never mutated.
 
 ## Unified Job Queue
 
@@ -107,8 +111,8 @@ The active job is complete only when:
 2. `stage-2-paper-execution-ledger` — COMPLETE
 3. `stage-3-baseline-strategy-bench` — COMPLETE
 4. `stage-4-hostile-strategy-judge` — COMPLETE
-5. `stage-5-controlled-strategy-factory` — ACTIVE
-6. `stage-6-champion-challenger-selection` — QUEUED
+5. `stage-5-controlled-strategy-factory` — COMPLETE
+6. `stage-6-champion-challenger-selection` — ACTIVE
 7. `stage-7-forward-paper-operation` — QUEUED
 8. `stage-8-live-capital-qualification` — QUEUED
 

@@ -67,4 +67,4 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           DEPLOYMENT_SHA: ${{ inputs.deploy_sha }}
           REPOSITORY_SHA: ${{ inputs.deploy_sha }}
-          CURRENT_PHASE: stage-5-controlled-strategy-factory
+          CURRENT_PHASE: stage-6-champion-challenger-selection
