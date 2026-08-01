@@ -4,6 +4,7 @@ import { getBaselineBenchSummary } from "./baselineBench.js";
 import { getHostileJudgeSummary } from "./hostileJudge.js";
 import { getStrategyFactorySummary } from "./strategyFactory.js";
 import { getChampionSelectionSummary } from "./championSelection.js";
+import { getForwardOperationSummary, runScheduledForwardOperation } from "./forwardPaper.js";
 import { executeQuantLabIntent } from "./operator/executionKernel.js";
 import { loadQuantStartupContext } from "./operator/startupAuthority.js";
 import { publicTools as operatorPublicTools } from "./operator/toolRegistry.js";
@@ -68,7 +69,7 @@ export default {
   },
   scheduled(controller, env, ctx) {
     const scheduledAt = new Date(controller.scheduledTime);
-    ctx.waitUntil(runHourlyCandleIngestion(env, { now: scheduledAt }));
+    ctx.waitUntil(runScheduledForwardOperation(env, scheduledAt));
   },
 };
 
@@ -88,6 +89,7 @@ async function publicStatusPayload(env) {
     hostileJudge: status.hostileJudge,
     strategyFactory: status.strategyFactory,
     championSelection: status.championSelection,
+    forwardOperation: status.forwardOperation,
   };
 }
 
@@ -547,7 +549,7 @@ function mcpErrorObject(id, code, message) {
 }
 
 async function statusPayload(env) {
-  const [dbProbe, dataHealth, paperAccount, baselineBench, hostileJudge, strategyFactory, championSelection] = await Promise.all([
+  const [dbProbe, dataHealth, paperAccount, baselineBench, hostileJudge, strategyFactory, championSelection, forwardOperation] = await Promise.all([
     databaseProbe(env),
     marketDataHealthForHome(env),
     paperAccountForHome(env),
@@ -555,6 +557,7 @@ async function statusPayload(env) {
     hostileJudgeForHome(env),
     strategyFactoryForHome(env),
     championSelectionForHome(env),
+    forwardOperationForHome(env),
   ]);
   return {
     ok: dbProbe.connected,
@@ -569,6 +572,7 @@ async function statusPayload(env) {
     hostileJudge,
     strategyFactory,
     championSelection,
+    forwardOperation,
     latestDeploymentSha: env.DEPLOYMENT_SHA || "unknown",
     currentPhase: env.CURRENT_PHASE || "unknown",
     boundaries: {
@@ -635,7 +639,7 @@ function constantTimeBytesEqual(left, right) {
 }
 
 async function renderHome(env) {
-  const [latest, health, paperAccount, baselineBench, hostileJudge, strategyFactory, championSelection] = await Promise.all([
+  const [latest, health, paperAccount, baselineBench, hostileJudge, strategyFactory, championSelection, forwardOperation] = await Promise.all([
     latestCandleForHome(env),
     marketDataHealthForHome(env),
     paperAccountForHome(env),
@@ -643,6 +647,7 @@ async function renderHome(env) {
     hostileJudgeForHome(env),
     strategyFactoryForHome(env),
     championSelectionForHome(env),
+    forwardOperationForHome(env),
   ]);
   const healthMarkup = health ? `
     <section>
@@ -770,6 +775,28 @@ async function renderHome(env) {
       <h2>Champion / Challenger Selection</h2>
       <p>No immutable selection batch has been commissioned yet.</p>
     </section>`;
+  const forwardCycle = forwardOperation?.latest_cycle || null;
+  const schedulerReceipt = forwardOperation?.latest_scheduler_receipt || null;
+  const forwardMarkup = forwardOperation ? `
+    <section>
+      <h2>Autonomous Forward Paper Operation</h2>
+      <p>Hourly paper-only operation. Market ingestion runs before the forward gate. No qualified champion means a durable idle cycle, not a fallback trade.</p>
+      <dl>
+        <div><dt>Latest cycle</dt><dd>${escapeHtml(forwardCycle?.cycle_id || "none")}</dd></div>
+        <div><dt>Cycle state</dt><dd>${escapeHtml(forwardCycle?.state || "none")}</dd></div>
+        <div><dt>Expected close</dt><dd>${escapeHtml(forwardCycle?.expected_closed_at || "none")}</dd></div>
+        <div><dt>Champion</dt><dd>${escapeHtml(forwardCycle?.champion_candidate_id || "none")}</dd></div>
+        <div><dt>Blockers</dt><dd>${escapeHtml(forwardCycle?.blocker_codes?.join(", ") || "none")}</dd></div>
+        <div><dt>Latest scheduler receipt</dt><dd>${escapeHtml(schedulerReceipt?.scheduler_receipt_id || "none")}</dd></div>
+        <div><dt>Scheduler ingestion</dt><dd>${escapeHtml(schedulerReceipt ? schedulerReceipt.ingestion_ok : "not yet proven")}</dd></div>
+        <div><dt>Paper only</dt><dd>true</dd></div>
+        <div><dt>Live capital</dt><dd>false</dd></div>
+      </dl>
+    </section>` : `
+    <section>
+      <h2>Autonomous Forward Paper Operation</h2>
+      <p>No forward cycle has been commissioned yet.</p>
+    </section>`;
   const latestMarkup = latest ? `
     <section>
       <h2>Latest Stored BTC-USD 1h Candle</h2>
@@ -820,6 +847,7 @@ async function renderHome(env) {
     ${judgeMarkup}
     ${factoryMarkup}
     ${selectionMarkup}
+    ${forwardMarkup}
     ${healthMarkup}
     ${latestMarkup}
   </main>
@@ -883,6 +911,14 @@ async function championSelectionForHome(env) {
   }
 }
 
+async function forwardOperationForHome(env) {
+  try {
+    return await getForwardOperationSummary(env);
+  } catch {
+    return null;
+  }
+}
+
 function publicStatusSchema() {
   return {
     type: "object",
@@ -925,6 +961,12 @@ function publicStatusSchema() {
           { type: "object", additionalProperties: true },
         ],
       },
+      forwardOperation: {
+        anyOf: [
+          { type: "null" },
+          { type: "object", additionalProperties: true },
+        ],
+      },
       dataHealth: {
         anyOf: [
           { type: "null" },
@@ -960,6 +1002,7 @@ function publicStatusSchema() {
       "hostileJudge",
       "strategyFactory",
       "championSelection",
+      "forwardOperation",
     ],
   };
 }
