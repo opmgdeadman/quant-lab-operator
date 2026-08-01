@@ -44,6 +44,31 @@ test("hourly ingestion stores only completed candles and is idempotent", async (
   assert.equal(health.missing_candles, 0);
 });
 
+test("hourly ingestion retries transient provider rate limits", async () => {
+  const env = createEnv();
+  const delays = [];
+  let attempts = 0;
+  const payload = [
+    coinbaseRow("2026-08-01T12:00:00.000Z", 102, 105, 101, 103, 11),
+  ];
+
+  const result = await runHourlyCandleIngestion(env, {
+    now: NOW,
+    fetchImpl: async () => {
+      attempts += 1;
+      return attempts < 3 ? jsonResponse({ error: "rate limited" }, 429) : jsonResponse(payload);
+    },
+    sleepImpl: async (milliseconds) => delays.push(milliseconds),
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(attempts, 3);
+  assert.deepEqual(delays, [500, 1000]);
+  assert.equal(result.inserted_count, 1);
+  assert.equal(result.health.status, "healthy");
+  assert.equal(result.health.last_error, null);
+});
+
 test("continuity health detects a missing closed candle", async () => {
   const env = createEnv();
   const payload = [

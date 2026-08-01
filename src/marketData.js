@@ -4,6 +4,9 @@ const HOUR_MS = 60 * 60 * 1000;
 const INITIAL_BACKFILL_HOURS = 72;
 const MAX_BACKFILL_HOURS_PER_RUN = 720;
 const PROVIDER_REQUEST_HOURS = 250;
+const PROVIDER_MAX_ATTEMPTS = 3;
+const PROVIDER_RETRY_BASE_MS = 500;
+const PROVIDER_RETRY_MAX_MS = 5000;
 const HEALTH_ROW_ID = `${PAIR}:${INTERVAL}`;
 
 export function expectedLatestClosedAt(now = new Date()) {
@@ -14,6 +17,7 @@ export function expectedLatestClosedAt(now = new Date()) {
 export async function runHourlyCandleIngestion(env, options = {}) {
   const now = options.now || new Date();
   const fetchImpl = options.fetchImpl || globalThis.fetch;
+  const sleepImpl = options.sleepImpl || sleep;
   const provider = env.MARKET_DATA_PROVIDER || "coinbase_exchange";
   const startedAt = new Date(dateMillis(now, "now")).toISOString();
   const expectedClosedAt = expectedLatestClosedAt(now);
@@ -42,6 +46,7 @@ export async function runHourlyCandleIngestion(env, options = {}) {
         endClosedAt: new Date(chunkEndMs).toISOString(),
         expectedClosedAt,
         fetchImpl,
+        sleepImpl,
       });
       providerCandles.push(...chunk);
     }
@@ -227,7 +232,13 @@ async function fetchProviderCandles(provider, request) {
   throw new Error(`unsupported_market_data_provider:${provider}`);
 }
 
-async function fetchCoinbaseExchangeCandles({ startClosedAt, endClosedAt, expectedClosedAt, fetchImpl }) {
+async function fetchCoinbaseExchangeCandles({
+  startClosedAt,
+  endClosedAt,
+  expectedClosedAt,
+  fetchImpl,
+  sleepImpl,
+}) {
   const startBucketMs = dateMillis(startClosedAt, "start_closed_at") - HOUR_MS;
   const endBucketMs = dateMillis(endClosedAt, "end_closed_at");
   const url = new URL("https://api.exchange.coinbase.com/products/BTC-USD/candles");
@@ -235,15 +246,7 @@ async function fetchCoinbaseExchangeCandles({ startClosedAt, endClosedAt, expect
   url.searchParams.set("start", new Date(startBucketMs).toISOString());
   url.searchParams.set("end", new Date(endBucketMs).toISOString());
 
-  const response = await fetchImpl(url.toString(), {
-    headers: {
-      accept: "application/json",
-      "user-agent": "quant-lab-operator/1.0",
-    },
-  });
-  if (!response.ok) {
-    throw new Error(`market_data_http_${response.status}`);
-  }
+  const response = await fetchProviderResponse(url.toString(), fetchImpl, sleepImpl);
   const payload = await response.json();
   if (!Array.isArray(payload)) {
     throw new Error("market_data_invalid_payload");
@@ -276,6 +279,44 @@ async function fetchCoinbaseExchangeCandles({ startClosedAt, endClosedAt, expect
     candles.push(validateCompletedCandle(candle, expectedClosedAt));
   }
   return candles;
+}
+
+async function fetchProviderResponse(url, fetchImpl, sleepImpl) {
+  let lastStatus = null;
+  for (let attempt = 1; attempt <= PROVIDER_MAX_ATTEMPTS; attempt += 1) {
+    const response = await fetchImpl(url, {
+      headers: {
+        accept: "application/json",
+        "user-agent": "quant-lab-operator/1.0",
+      },
+    });
+    if (response.ok) {
+      return response;
+    }
+
+    lastStatus = response.status;
+    const retryable = response.status === 429 || response.status >= 500;
+    if (!retryable || attempt === PROVIDER_MAX_ATTEMPTS) {
+      throw new Error(`market_data_http_${response.status}`);
+    }
+    await sleepImpl(providerRetryDelayMs(response, attempt));
+  }
+  throw new Error(`market_data_http_${lastStatus || "unknown"}`);
+}
+
+function providerRetryDelayMs(response, attempt) {
+  const retryAfter = response.headers.get("retry-after");
+  if (retryAfter) {
+    const seconds = Number(retryAfter);
+    if (Number.isFinite(seconds) && seconds >= 0) {
+      return Math.min(seconds * 1000, PROVIDER_RETRY_MAX_MS);
+    }
+  }
+  return Math.min(PROVIDER_RETRY_BASE_MS * (2 ** (attempt - 1)), PROVIDER_RETRY_MAX_MS);
+}
+
+function sleep(milliseconds) {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
 function deduplicateAndSort(candles) {
