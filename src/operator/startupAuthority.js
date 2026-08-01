@@ -34,6 +34,16 @@ export async function loadQuantStartupContext(env) {
 }
 
 async function loadCanonicalDocument(env, path) {
+  if (env.ENVIRONMENT === "test" && typeof repoSnapshots[path] === "string") {
+    return {
+      ok: true,
+      path,
+      sha: `test-snapshot-${path}`,
+      source: "bundled_test_snapshot",
+      content: repoSnapshots[path],
+    };
+  }
+
   if (env.GITHUB_TOKEN) {
     const remote = await readRepoContent(env, path);
     if (!remote.ok) {
@@ -45,16 +55,6 @@ async function loadCanonicalDocument(env, path) {
       return { ok: false, error: "invalid_github_document" };
     }
     return { ok: true, path, sha, source: "github", content };
-  }
-
-  if (env.ENVIRONMENT === "test" && typeof repoSnapshots[path] === "string") {
-    return {
-      ok: true,
-      path,
-      sha: `test-snapshot-${path}`,
-      source: "bundled_test_snapshot",
-      content: repoSnapshots[path],
-    };
   }
 
   return { ok: false, error: "github_token_not_configured" };
