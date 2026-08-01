@@ -7,6 +7,7 @@ import { getBaselineBenchSummary, runProductionBaselineBench } from "../../basel
 import { getHostileJudgeSummary, runProductionHostileJudge } from "../../hostileJudge.js";
 import { getStrategyFactorySummary, runProductionStrategyFactory } from "../../strategyFactory.js";
 import { getChampionSelectionSummary, runProductionChampionSelection } from "../../championSelection.js";
+import { commissionForwardPaperOperation, getForwardOperationSummary, runProductionForwardPaperCycle } from "../../forwardPaper.js";
 
 export const handlers = {
   get_engineering_access_state,
@@ -21,6 +22,8 @@ export const handlers = {
   run_strategy_factory,
   get_champion_selection,
   run_champion_selection,
+  get_forward_operation,
+  run_forward_operation,
   read_continuation,
   write_continuation,
   inspect_repository,
@@ -199,6 +202,30 @@ async function run_champion_selection(inputs, context) {
       live_capital_enabled: false,
       status: "champion_selection_failed",
       error: error instanceof Error ? error.message : "champion_selection_failed",
+    };
+  }
+}
+
+async function get_forward_operation(inputs, context) {
+  const forward = await getForwardOperationSummary(context.env);
+  return {
+    ok: Boolean(forward),
+    paper_only: true,
+    live_capital_enabled: false,
+    forward,
+  };
+}
+
+async function run_forward_operation(inputs, context) {
+  try {
+    return await runProductionForwardPaperCycle(context.env);
+  } catch (error) {
+    return {
+      ok: false,
+      paper_only: true,
+      live_capital_enabled: false,
+      status: "forward_operation_failed",
+      error: error instanceof Error ? error.message : "forward_operation_failed",
     };
   }
 }
@@ -424,6 +451,24 @@ async function delete_repo_file(inputs, context) {
 }
 
 export async function runValidation(inputs, context) {
+  if (inputs.validation === "production forward paper commission") {
+    try {
+      const forward = await commissionForwardPaperOperation(context.env);
+      return {
+        ok: forward.ok,
+        validation: inputs.validation,
+        status: forward.ok ? "passed" : "failed",
+        forward_paper_commission: forward,
+      };
+    } catch (error) {
+      return {
+        ok: false,
+        validation: inputs.validation,
+        status: "production_forward_paper_commission_failed",
+        error: error instanceof Error ? error.message : "forward_paper_commission_failed",
+      };
+    }
+  }
   if (inputs.validation === "production champion selection commission") {
     try {
       const selection = await runProductionChampionSelection(context.env);
