@@ -1,7 +1,7 @@
 # Quant Lab Engineering Continuation Ledger
 
 Last updated: 2026-08-01
-Status: STEADY_STATE
+Status: ACTIVE
 Authority: Sole canonical engineering continuation ledger
 
 ## Authority and Precedence
@@ -14,13 +14,13 @@ The governing mission, operator authority, owner boundary, and operating doctrin
 
 ## Active Job
 
-Job ID: `none`
-Priority: none
-State: COMPLETE
+Job ID: `stage-12-canonical-brand-identity`
+Priority: 12
+State: ACTIVE
 
 Engineering objective:
 
-No accepted incomplete engineering work remains. Quant Lab is in autonomous paper-only steady state.
+Integrate the owner-supplied Quant Lab logo as the canonical brand mark across the professional operating console, browser icons, web-app manifest, and social preview metadata; validate the exact implementation, deploy the exact SHA, and verify production alignment without changing trading logic or the paper-only boundary.
 
 Automatic operating scope:
 
@@ -118,7 +118,7 @@ Permanent boundaries:
 
 ## Current Action
 
-No engineering action is pending. Operate automatically under the deployed hourly schedule and professional public console. Create a new canonical engineering job only for a verified incident, evidence-backed improvement, or explicit owner scope change.
+Implement Stage 12 branding assets and routes, wire the canonical logo into the console and metadata, extend regression coverage, run official validation, deploy the exact SHA, verify production rendering and SHA alignment, then close the job back to steady state.
 
 ## Steady-State Operating Gate
 
@@ -147,6 +147,7 @@ Quant Lab remains healthy only while:
 9. `stage-9-autonomous-rolling-research` — COMPLETE
 10. `stage-10-bounded-historical-bootstrap` — COMPLETE
 11. `stage-11-professional-quant-console` — COMPLETE
+12. `stage-12-canonical-brand-identity` — ACTIVE
 
 Only one job may be ACTIVE. New work must be inserted into this queue with explicit precedence rather than stored in chat or D1 as a competing continuation source.
 
