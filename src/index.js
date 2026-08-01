@@ -3,6 +3,7 @@ import { getPaperAccountSummary } from "./paperLedger.js";
 import { getBaselineBenchSummary } from "./baselineBench.js";
 import { getHostileJudgeSummary } from "./hostileJudge.js";
 import { getStrategyFactorySummary } from "./strategyFactory.js";
+import { getChampionSelectionSummary } from "./championSelection.js";
 import { executeQuantLabIntent } from "./operator/executionKernel.js";
 import { loadQuantStartupContext } from "./operator/startupAuthority.js";
 import { publicTools as operatorPublicTools } from "./operator/toolRegistry.js";
@@ -86,6 +87,7 @@ async function publicStatusPayload(env) {
     baselineBench: status.baselineBench,
     hostileJudge: status.hostileJudge,
     strategyFactory: status.strategyFactory,
+    championSelection: status.championSelection,
   };
 }
 
@@ -545,13 +547,14 @@ function mcpErrorObject(id, code, message) {
 }
 
 async function statusPayload(env) {
-  const [dbProbe, dataHealth, paperAccount, baselineBench, hostileJudge, strategyFactory] = await Promise.all([
+  const [dbProbe, dataHealth, paperAccount, baselineBench, hostileJudge, strategyFactory, championSelection] = await Promise.all([
     databaseProbe(env),
     marketDataHealthForHome(env),
     paperAccountForHome(env),
     baselineBenchForHome(env),
     hostileJudgeForHome(env),
     strategyFactoryForHome(env),
+    championSelectionForHome(env),
   ]);
   return {
     ok: dbProbe.connected,
@@ -565,6 +568,7 @@ async function statusPayload(env) {
     baselineBench,
     hostileJudge,
     strategyFactory,
+    championSelection,
     latestDeploymentSha: env.DEPLOYMENT_SHA || "unknown",
     currentPhase: env.CURRENT_PHASE || "unknown",
     boundaries: {
@@ -631,13 +635,14 @@ function constantTimeBytesEqual(left, right) {
 }
 
 async function renderHome(env) {
-  const [latest, health, paperAccount, baselineBench, hostileJudge, strategyFactory] = await Promise.all([
+  const [latest, health, paperAccount, baselineBench, hostileJudge, strategyFactory, championSelection] = await Promise.all([
     latestCandleForHome(env),
     marketDataHealthForHome(env),
     paperAccountForHome(env),
     baselineBenchForHome(env),
     hostileJudgeForHome(env),
     strategyFactoryForHome(env),
+    championSelectionForHome(env),
   ]);
   const healthMarkup = health ? `
     <section>
@@ -744,6 +749,27 @@ async function renderHome(env) {
       <h2>Controlled Strategy Factory</h2>
       <p>No immutable candidate batch has been commissioned yet.</p>
     </section>`;
+  const selectionRankingRows = championSelection?.ranking?.map((entry) => `
+        <div><dt>${escapeHtml(entry.candidate_id)}</dt><dd>${escapeHtml(entry.selected_role)} · rank ${escapeHtml(entry.rank_position)} · score ${escapeHtml(entry.score)}</dd></div>`).join("") || "";
+  const selectionMarkup = championSelection ? `
+    <section>
+      <h2>Champion / Challenger Selection</h2>
+      <p>Only hostile-judge-qualified candidates are eligible. No fallback selection, paper execution, scheduling, or live capital occurs here.</p>
+      <dl>
+        <div><dt>State</dt><dd>${escapeHtml(championSelection.state)}</dd></div>
+        <div><dt>Champion</dt><dd>${escapeHtml(championSelection.champion_candidate_id || "none")}</dd></div>
+        <div><dt>Challengers</dt><dd>${escapeHtml(championSelection.challenger_candidate_ids.join(", ") || "none")}</dd></div>
+        <div><dt>Eligible candidates</dt><dd>${escapeHtml(championSelection.eligible_count)}</dd></div>
+        <div><dt>Blockers</dt><dd>${escapeHtml(championSelection.blocker_codes.join(", ") || "none")}</dd></div>
+        <div><dt>Paper execution started</dt><dd>${escapeHtml(championSelection.paper_execution_started)}</dd></div>
+        <div><dt>Scheduling started</dt><dd>${escapeHtml(championSelection.scheduling_started)}</dd></div>
+        ${selectionRankingRows}
+      </dl>
+    </section>` : `
+    <section>
+      <h2>Champion / Challenger Selection</h2>
+      <p>No immutable selection batch has been commissioned yet.</p>
+    </section>`;
   const latestMarkup = latest ? `
     <section>
       <h2>Latest Stored BTC-USD 1h Candle</h2>
@@ -793,6 +819,7 @@ async function renderHome(env) {
     ${baselineMarkup}
     ${judgeMarkup}
     ${factoryMarkup}
+    ${selectionMarkup}
     ${healthMarkup}
     ${latestMarkup}
   </main>
@@ -848,6 +875,14 @@ async function strategyFactoryForHome(env) {
   }
 }
 
+async function championSelectionForHome(env) {
+  try {
+    return await getChampionSelectionSummary(env);
+  } catch {
+    return null;
+  }
+}
+
 function publicStatusSchema() {
   return {
     type: "object",
@@ -879,6 +914,12 @@ function publicStatusSchema() {
         ],
       },
       strategyFactory: {
+        anyOf: [
+          { type: "null" },
+          { type: "object", additionalProperties: true },
+        ],
+      },
+      championSelection: {
         anyOf: [
           { type: "null" },
           { type: "object", additionalProperties: true },
@@ -918,6 +959,7 @@ function publicStatusSchema() {
       "baselineBench",
       "hostileJudge",
       "strategyFactory",
+      "championSelection",
     ],
   };
 }
