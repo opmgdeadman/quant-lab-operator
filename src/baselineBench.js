@@ -85,9 +85,9 @@ export async function getBaselineBenchSummary(env) {
   const row = await env.DB.prepare(
     `SELECT id, summary_json, created_at
      FROM baseline_benchmarks
-     ORDER BY created_at DESC
+     WHERE id = ?
      LIMIT 1`,
-  ).first();
+  ).bind(BENCHMARK_ID).first();
   if (!row) {
     return null;
   }

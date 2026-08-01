@@ -82,7 +82,14 @@ export async function runProductionRollingResearch(env, options = {}) {
 
   if (built.summary.state === "complete") {
     await persistBenchmark(env, built.benchmark);
-    await persistStrategyFactoryBatch(env, built.factory);
+    try {
+      await persistStrategyFactoryBatch(env, built.factory);
+    } catch (error) {
+      const storedFactory = await env.DB.prepare(
+        `SELECT batch_hash FROM strategy_factory_batches WHERE id = ?`,
+      ).bind(built.factory.batch.id).first();
+      if (!storedFactory || storedFactory.batch_hash !== built.factory.batch.batch_hash) throw error;
+    }
     const selection = await runChampionSelectionForFactoryBatch(env, built.factory.batch.id, {
       batchId: built.selection.batch.id,
       now: built.summary.created_at,
