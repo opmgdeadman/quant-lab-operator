@@ -4,6 +4,7 @@ const HOUR_MS = 60 * 60 * 1000;
 const INITIAL_BACKFILL_HOURS = 72;
 const MAX_BACKFILL_HOURS_PER_RUN = 720;
 const PROVIDER_REQUEST_HOURS = 250;
+export const MAX_HISTORICAL_WINDOW_HOURS = PROVIDER_REQUEST_HOURS;
 const PROVIDER_MAX_ATTEMPTS = 3;
 const PROVIDER_RETRY_BASE_MS = 500;
 const PROVIDER_RETRY_MAX_MS = 5000;
@@ -161,6 +162,116 @@ export async function runHourlyCandleIngestion(env, options = {}) {
       });
     } catch {
       // Preserve the original ingestion failure when health persistence is unavailable.
+    }
+    throw error;
+  }
+}
+
+export async function runHistoricalCandleWindow(env, options = {}) {
+  const now = options.now || new Date();
+  const fetchImpl = options.fetchImpl || globalThis.fetch;
+  const sleepImpl = options.sleepImpl || sleep;
+  const provider = options.provider || env.MARKET_DATA_PROVIDER || "coinbase_exchange";
+  const startedAt = new Date(dateMillis(options.startedAt || now, "started_at")).toISOString();
+  const expectedClosedAt = expectedLatestClosedAt(now);
+  const startClosedAt = new Date(dateMillis(options.startClosedAt, "start_closed_at")).toISOString();
+  const endClosedAt = new Date(dateMillis(options.endClosedAt, "end_closed_at")).toISOString();
+  const startMs = Date.parse(startClosedAt);
+  const endMs = Date.parse(endClosedAt);
+  const expectedMs = Date.parse(expectedClosedAt);
+  if (startMs % HOUR_MS !== 0 || endMs % HOUR_MS !== 0) throw new Error("historical_window_not_hour_aligned");
+  if (startMs > endMs) throw new Error("historical_window_order_invalid");
+  if (endMs > expectedMs) throw new Error("historical_window_incomplete_candle");
+  const windowHours = Math.round((endMs - startMs) / HOUR_MS) + 1;
+  if (windowHours < 1 || windowHours > MAX_HISTORICAL_WINDOW_HOURS) {
+    throw new Error("historical_window_size_invalid");
+  }
+  const runId = `market-data-bootstrap:${PAIR}:${INTERVAL}:${startClosedAt}:${endClosedAt}`;
+  let fetchedCount = 0;
+  let insertedCount = 0;
+  let duplicateCount = 0;
+  let effectiveProvider = provider;
+  try {
+    const chunkResult = await fetchProviderCandles(provider, {
+      startClosedAt,
+      endClosedAt,
+      expectedClosedAt,
+      fetchImpl,
+      sleepImpl,
+    });
+    effectiveProvider = chunkResult.provider;
+    const candles = deduplicateAndSort(chunkResult.candles);
+    fetchedCount = candles.length;
+    const existingRows = await storedCandlesBetween(env, startClosedAt, endClosedAt);
+    const existingByClosedAt = new Map(existingRows.map((row) => [row.closed_at, normalizeStoredCandle(row)]));
+    for (const candle of candles) {
+      const existing = existingByClosedAt.get(candle.closed_at);
+      if (existing) {
+        if (!sameCandleValues(existing, candle)) throw new Error(`stored_candle_conflict:${candle.closed_at}`);
+        duplicateCount += 1;
+        continue;
+      }
+      const insertResult = await insertCandle(env, candle, startedAt);
+      if (affectedRows(insertResult) > 0) {
+        insertedCount += 1;
+        existingByClosedAt.set(candle.closed_at, candle);
+        continue;
+      }
+      const raced = await findStoredCandle(env, candle.closed_at);
+      if (!raced || !sameCandleValues(normalizeStoredCandle(raced), candle)) {
+        throw new Error(`candle_insert_conflict:${candle.closed_at}`);
+      }
+      duplicateCount += 1;
+    }
+    const completedAt = new Date().toISOString();
+    const liveHealth = await calculateLiveHealth(env, expectedClosedAt);
+    await persistRun(env, {
+      id: runId,
+      provider: effectiveProvider,
+      started_at: startedAt,
+      completed_at: completedAt,
+      status: liveHealth.status,
+      requested_start_closed_at: startClosedAt,
+      requested_end_closed_at: endClosedAt,
+      fetched_count: fetchedCount,
+      inserted_count: insertedCount,
+      duplicate_count: duplicateCount,
+      missing_candles: liveHealth.missing_candles,
+      error: null,
+    });
+    return {
+      ok: true,
+      pair: PAIR,
+      interval: INTERVAL,
+      run_id: runId,
+      provider: effectiveProvider,
+      start_closed_at: startClosedAt,
+      end_closed_at: endClosedAt,
+      requested_hours: windowHours,
+      fetched_count: fetchedCount,
+      inserted_count: insertedCount,
+      duplicate_count: duplicateCount,
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "historical_window_failed";
+    try {
+      const liveHealth = await calculateLiveHealth(env, expectedClosedAt);
+      await persistRun(env, {
+        id: runId,
+        provider: effectiveProvider,
+        started_at: startedAt,
+        completed_at: new Date().toISOString(),
+        status: "error",
+        requested_start_closed_at: startClosedAt,
+        requested_end_closed_at: endClosedAt,
+        fetched_count: fetchedCount,
+        inserted_count: insertedCount,
+        duplicate_count: duplicateCount,
+        missing_candles: liveHealth.missing_candles,
+        error: message,
+      });
+    } catch {
+      // Preserve the source failure when telemetry persistence is unavailable.
     }
     throw error;
   }

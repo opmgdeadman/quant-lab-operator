@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   getMarketDataHealth,
+  runHistoricalCandleWindow,
   runHourlyCandleIngestion,
   validateCompletedCandle,
 } from "../src/marketData.js";
@@ -42,6 +43,65 @@ test("hourly ingestion stores only completed candles and is idempotent", async (
   assert.equal(health.status, "healthy");
   assert.equal(health.latest_closed_at, "2026-08-01T12:00:00.000Z");
   assert.equal(health.missing_candles, 0);
+});
+
+test("bounded historical window persists exact candles and replays as duplicates", async () => {
+  const env = createEnv();
+  const fetchImpl = async () => jsonResponse([
+    coinbaseRow("2026-07-30T02:00:00.000Z", 102, 105, 101, 103, 11),
+    coinbaseRow("2026-07-30T01:00:00.000Z", 101, 104, 100, 102, 10),
+    coinbaseRow("2026-07-30T00:00:00.000Z", 100, 103, 99, 101, 9),
+  ]);
+  const options = {
+    now: NOW,
+    startedAt: NOW,
+    startClosedAt: "2026-07-30T00:00:00.000Z",
+    endClosedAt: "2026-07-30T02:00:00.000Z",
+    fetchImpl,
+  };
+  const first = await runHistoricalCandleWindow(env, options);
+  const second = await runHistoricalCandleWindow(env, options);
+  assert.equal(first.requested_hours, 3);
+  assert.equal(first.fetched_count, 3);
+  assert.equal(first.inserted_count, 3);
+  assert.equal(first.duplicate_count, 0);
+  assert.equal(second.inserted_count, 0);
+  assert.equal(second.duplicate_count, 3);
+  assert.equal(env.DB.candles.size, 3);
+  assert.equal(env.DB.candles.get("2026-07-30T00:00:00.000Z").source, "coinbase_exchange");
+});
+
+test("historical window rejects future, oversized, and conflicting evidence", async () => {
+  const env = createEnv();
+  await assert.rejects(() => runHistoricalCandleWindow(env, {
+    now: NOW,
+    startClosedAt: "2026-08-01T13:00:00.000Z",
+    endClosedAt: "2026-08-01T13:00:00.000Z",
+    fetchImpl: async () => jsonResponse([]),
+  }), /historical_window_incomplete_candle/);
+  await assert.rejects(() => runHistoricalCandleWindow(env, {
+    now: NOW,
+    startClosedAt: "2026-07-20T00:00:00.000Z",
+    endClosedAt: "2026-08-01T12:00:00.000Z",
+    fetchImpl: async () => jsonResponse([]),
+  }), /historical_window_size_invalid/);
+  const first = async () => jsonResponse([
+    coinbaseRow("2026-07-30T00:00:00.000Z", 100, 103, 99, 101, 9),
+  ]);
+  await runHistoricalCandleWindow(env, {
+    now: NOW,
+    startClosedAt: "2026-07-30T00:00:00.000Z",
+    endClosedAt: "2026-07-30T00:00:00.000Z",
+    fetchImpl: first,
+  });
+  await assert.rejects(() => runHistoricalCandleWindow(env, {
+    now: NOW,
+    startClosedAt: "2026-07-30T00:00:00.000Z",
+    endClosedAt: "2026-07-30T00:00:00.000Z",
+    fetchImpl: async () => jsonResponse([
+      coinbaseRow("2026-07-30T00:00:00.000Z", 200, 203, 199, 201, 19),
+    ]),
+  }), /stored_candle_conflict/);
 });
 
 test("hourly ingestion retries transient provider rate limits", async () => {
