@@ -73,30 +73,65 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          base_url="https://quant-lab-operator.briangriffin355.workers.dev"
-          home="$(mktemp)"
-          manifest="$(mktemp)"
-          for attempt in {1..12}; do
-            if curl --fail --silent --show-error --location "$base_url/" --output "$home"; then
-              break
-            fi
-            if [[ "$attempt" == "12" ]]; then
-              echo "Production home did not become available"
-              exit 1
-            fi
-            sleep 5
-          done
-          grep -Fq '/quant-lab-logo.png' "$home"
-          grep -Fq '/site.webmanifest' "$home"
-          grep -Fq 'property="og:image"' "$home"
-          grep -Fq 'name="twitter:card" content="summary"' "$home"
-          curl --fail --silent --show-error --location "$base_url/site.webmanifest" --output "$manifest"
-          grep -Fq '"name":"Quant Lab"' "$manifest"
-          grep -Fq 'android-chrome-192x192.png' "$manifest"
-          grep -Fq 'android-chrome-512x512.png' "$manifest"
-          for asset in favicon.ico favicon-16x16.png favicon-32x32.png apple-touch-icon.png android-chrome-192x192.png android-chrome-512x512.png quant-lab-logo.png og-image.png; do
-            curl --fail --silent --show-error --location "$base_url/$asset" --output /dev/null
-          done
-          status="$(curl --fail --silent --show-error --location "$base_url/api/public/status")"
-          grep -Fq '"workerStatus":"online"' <<<"$status"
-          echo "Production branding smoke verification passed"
+          node <<'NODE'
+          const baseUrl = "https://quant-lab-operator.briangriffin355.workers.dev";
+          const requiredHomeMarkers = [
+            "/quant-lab-logo.png",
+            "/site.webmanifest",
+            'property="og:image"',
+            'name="twitter:card" content="summary"',
+          ];
+          const requiredAssets = [
+            "favicon.ico",
+            "favicon-16x16.png",
+            "favicon-32x32.png",
+            "apple-touch-icon.png",
+            "android-chrome-192x192.png",
+            "android-chrome-512x512.png",
+            "quant-lab-logo.png",
+            "og-image.png",
+          ];
+
+          async function fetchWithRetry(path, attempts = 12) {
+            let lastError;
+            for (let attempt = 1; attempt <= attempts; attempt += 1) {
+              try {
+                const response = await fetch(`${baseUrl}${path}`, { redirect: "follow" });
+                if (response.ok) return response;
+                lastError = new Error(`${path} returned HTTP ${response.status}`);
+              } catch (error) {
+                lastError = error;
+              }
+              if (attempt < attempts) await new Promise((resolve) => setTimeout(resolve, 5000));
+            }
+            throw lastError || new Error(`${path} unavailable`);
+          }
+
+          const home = await (await fetchWithRetry("/")).text();
+          for (const marker of requiredHomeMarkers) {
+            if (!home.includes(marker)) throw new Error(`Production home missing marker: ${marker}`);
+          }
+          console.log("Production home branding markers passed");
+
+          const manifest = await (await fetchWithRetry("/site.webmanifest")).json();
+          if (manifest.name !== "Quant Lab") throw new Error("Manifest name mismatch");
+          const iconSizes = new Set((manifest.icons || []).map((icon) => icon.sizes));
+          if (!iconSizes.has("192x192") || !iconSizes.has("512x512")) {
+            throw new Error("Manifest icon sizes incomplete");
+          }
+          console.log("Production manifest passed");
+
+          for (const asset of requiredAssets) {
+            const response = await fetchWithRetry(`/${asset}`);
+            const bytes = new Uint8Array(await response.arrayBuffer());
+            if (bytes.byteLength < 100) throw new Error(`${asset} response is unexpectedly small`);
+          }
+          console.log("Production brand assets passed");
+
+          const status = await (await fetchWithRetry("/api/public/status")).json();
+          if (status.ok !== true || status.workerStatus !== "online") {
+            throw new Error(`Public status unhealthy: ${JSON.stringify({ ok: status.ok, workerStatus: status.workerStatus })}`);
+          }
+          console.log("Production public status passed");
+          console.log("Production branding smoke verification passed");
+          NODE
