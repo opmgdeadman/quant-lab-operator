@@ -252,7 +252,16 @@ export function buildForwardCyclePlan({
   account,
   candles,
 }) {
-  const normalizedCandles = normalizeCandles(candles || []);
+  let normalizedCandles;
+  try {
+    normalizedCandles = normalizeCandles(candles || []);
+  } catch (error) {
+    return blockedPlan(
+      "blocked_data_unhealthy",
+      "unhealthy",
+      [error instanceof Error ? error.message : "market_data_invalid"],
+    );
+  }
   const dataBlockers = [];
   if (ingestionError) dataBlockers.push(`ingestion_error:${ingestionError}`);
   if (normalizedCandles.length === 0) dataBlockers.push("expected_candle_missing");
@@ -283,7 +292,16 @@ export function buildForwardCyclePlan({
   const executionCandle = normalizedCandles.at(-1);
   const signalCandle = normalizedCandles.at(-2);
   const signalCandles = normalizedCandles.slice(0, -1);
-  const signal = championSignal(championSpec, signalCandles, Number(account.position_quantity || 0));
+  let signal;
+  try {
+    signal = championSignal(championSpec, signalCandles, Number(account.position_quantity || 0));
+  } catch (error) {
+    return blockedPlan(
+      "blocked_invalid_champion",
+      "healthy",
+      [error instanceof Error ? error.message : "champion_signal_invalid"],
+    );
+  }
   const decisionId = `${cycleId}:decision`;
   const decision = {
     id: decisionId,
