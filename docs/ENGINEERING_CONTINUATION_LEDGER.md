@@ -14,32 +14,33 @@ The governing mission, operator authority, owner boundary, and operating doctrin
 
 ## Active Job
 
-Job ID: `stage-6-champion-challenger-selection`
-Priority: 6
+Job ID: `stage-7-forward-paper-operation`
+Priority: 7
 State: ACTIVE
 
 Engineering objective:
 
-Build and production-validate a deterministic, fail-closed champion/challenger selector that considers only hostile-judge-qualified candidates, records no champion when qualification evidence is absent, and never schedules paper execution or authorizes capital.
+Build and production-validate an autonomous hourly forward-paper operator that chains market-data ingestion, health verification, qualified-champion lookup, no-look-ahead signal execution, durable cycle receipts, and safe idle behavior without human intervention or live capital.
 
 Accepted scope:
 
-- immutable selection policy, ranking formula, tie-breakers, and policy hash;
-- eligibility restricted to Stage 5 candidates with `qualified` hostile-judge verdicts;
-- deterministic champion and bounded challenger roster when qualified evidence exists;
-- explicit no-champion state and blocker reason codes when no candidate is eligible;
-- immutable selection batches, eligibility decisions, rankings, and evidence hashes;
-- idempotent selection with no duplicate or silent replacement;
-- bounded operator controls and truthful website selection visibility;
+- immutable forward-operation policy and hash;
+- one idempotent cycle per BTC-USD hourly close;
+- market-data ingestion followed by health verification;
+- execution restricted to the immutable selected champion, if one exists;
+- signals computed only from candles closed before the execution candle;
+- fixed 10% cash allocation for buys and full-position exits for sells;
+- exact reuse of the Stage 2 paper ledger, fees, slippage, and duplicate protection;
+- durable hold, blocked, filled, rejected, and error cycle states;
+- hourly Cloudflare scheduled execution and website forward-state visibility;
 - focused tests, CI, exact-SHA deployment, and production verification.
 
 Out of scope for this job:
 
-- changing judge verdicts or candidate evidence;
-- selecting an insufficient or rejected candidate;
-- forward paper scheduling or execution;
-- manual favoritism, result-dependent policy changes, or silent champion replacement;
-- leverage, derivatives, shorting, or live capital.
+- selecting or replacing a champion;
+- changing candidate parameters, judge gates, or allocation after results;
+- leverage, derivatives, shorting, or multiple concurrent positions;
+- any live-capital execution or authorization.
 
 ## Completed Evidence
 
@@ -83,10 +84,16 @@ Out of scope for this job:
 - Official CI passed and exact SHA `8ef93039935c5075ab7ef3af67e5b32fd85e74d5` deployed after migration success.
 - Production generated and judged all eight predeclared candidates: zero qualified, eight insufficient-evidence, zero rejected, zero promoted. Replaying returned the identical factory batch hash without duplicate evidence.
 - Stage 5 is complete. The website truthfully shows all candidate verdicts and explicitly denies adaptive tuning, expansion, promotion, forward scheduling, and live capital.
+- Stage 6 implemented migration `0009_champion_challenger_selection.sql`, an immutable qualified-only policy, deterministic score and tie-breakers, one-champion/two-challenger limits, explicit no-champion blockers, and idempotent selection evidence.
+- Six focused tests proved policy immutability, no-champion behavior, qualified-only eligibility, deterministic ranking and tie-breaking, fixed score math, and fail-closed source/metric validation.
+- A diagnostic matrix isolated and permanently fixed a null-to-zero metric coercion; the temporary diagnostics were removed before release and all official CI jobs passed.
+- Exact SHA `3ae699c5c4c6fe53db41d01a726b2ed28d14d477` deployed after migration success.
+- Production evaluated all eight Stage 5 candidates, found zero eligible, and immutably recorded `no_champion` with blocker `no_qualified_candidates`; no paper execution, scheduling, fallback, or live-capital action occurred. Replay returned the identical selection hash.
+- Stage 6 is complete. The website truthfully displays the no-champion state and blocker.
 
 ## Current Action
 
-Define and freeze the champion/challenger eligibility and ranking policy, then implement qualified-only selection, deterministic tie-breaking, explicit no-champion blockers, immutable selection evidence, idempotent production commissioning, and website visibility. Production must select nobody unless a Stage 5 verdict is `qualified`.
+Define and freeze the hourly forward-paper policy, then implement ingestion-to-decision orchestration, data and selection gates, qualified-champion signal generation, next-candle execution through the Stage 2 ledger, idempotent cycle receipts, safe no-champion idle behavior, scheduler wiring, production commissioning, and truthful website visibility.
 
 ## Exit Gate
 
@@ -96,14 +103,15 @@ The active job is complete only when:
 - official GitHub Actions validation passes;
 - D1 migrations apply successfully;
 - an exact commit SHA is deployed and verified in production;
-- selection policy, eligibility rules, ranking metrics, tie-breakers, roster limits, and hashes are immutable before selection;
-- only `qualified` Stage 5 verdicts can be eligible;
-- zero eligible candidates produces an explicit immutable no-champion state rather than fallback selection;
-- deterministic synthetic qualified evidence proves champion and challenger ranking can work;
-- repeated selection creates no duplicate batches or silent champion replacement;
-- selection performs no paper execution, scheduling, or live-capital action;
-- website selection state reflects live D1 records truthfully and displays blockers;
-- existing judge or factory evidence is never mutated.
+- forward policy, allocation, timing, blocker states, and policy hash are immutable before operation;
+- each hourly close has at most one durable forward cycle and repeat execution is idempotent;
+- unhealthy or missing data, no champion, malformed champion evidence, and unsupported strategies fail closed without paper orders;
+- signals use only candles closed before the execution candle and all fills use Stage 2 next-candle execution;
+- a synthetic selected champion proves buy, sell, hold, and duplicate behavior without live capital;
+- the Cloudflare scheduler runs ingestion before the forward cycle and a live scheduled cycle is proven;
+- production safely records blocked no-champion cycles until qualified evidence exists;
+- website forward state reflects live D1 records truthfully;
+- no live-capital path is introduced or implied.
 
 ## Unified Job Queue
 
@@ -112,8 +120,8 @@ The active job is complete only when:
 3. `stage-3-baseline-strategy-bench` — COMPLETE
 4. `stage-4-hostile-strategy-judge` — COMPLETE
 5. `stage-5-controlled-strategy-factory` — COMPLETE
-6. `stage-6-champion-challenger-selection` — ACTIVE
-7. `stage-7-forward-paper-operation` — QUEUED
+6. `stage-6-champion-challenger-selection` — COMPLETE
+7. `stage-7-forward-paper-operation` — ACTIVE
 8. `stage-8-live-capital-qualification` — QUEUED
 
 Only one job may be ACTIVE. New work must be inserted into this queue with explicit precedence rather than stored in chat or D1 as a competing continuation source.
