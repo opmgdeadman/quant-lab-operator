@@ -452,6 +452,12 @@ function compactJob(job) {
     conclusion: job.conclusion,
     started_at: job.started_at,
     completed_at: job.completed_at,
+    steps: (job.steps || []).map((step) => ({
+      number: step.number,
+      name: step.name,
+      status: step.status,
+      conclusion: step.conclusion,
+    })),
   };
 }
 
