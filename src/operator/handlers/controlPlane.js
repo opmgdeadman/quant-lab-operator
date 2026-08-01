@@ -2,10 +2,13 @@ import { capabilityDirectory, supportedIntents } from "../capabilityDirectory.js
 import { allowedRepoDirectories, allowedRepoPaths, assertAllowedRepoPath, isAllowedRepoPath } from "../clientSafeRequests.js";
 import { commitRepoChanges, isAllowedWorkflowId, isExactSha, githubConfig, githubRequest, readRepoContent, repoApiPath } from "../githubApi.js";
 import { repoSnapshots } from "../repoSnapshots.js";
+import { commissionPaperLedger, executePaperDecision, getPaperAccountSummary } from "../../paperLedger.js";
 
 export const handlers = {
   get_engineering_access_state,
   operator_status,
+  get_paper_account,
+  execute_paper_decision,
   read_continuation,
   write_continuation,
   inspect_repository,
@@ -60,6 +63,30 @@ async function operator_status(inputs, context) {
     supported_intents: supportedIntents,
     capability_count: capabilityDirectory.length,
   };
+}
+
+async function get_paper_account(inputs, context) {
+  const account = await getPaperAccountSummary(context.env);
+  return {
+    ok: Boolean(account),
+    paper_only: true,
+    live_capital_enabled: false,
+    account,
+  };
+}
+
+async function execute_paper_decision(inputs, context) {
+  try {
+    return await executePaperDecision(context.env, inputs.decision);
+  } catch (error) {
+    return {
+      ok: false,
+      paper_only: true,
+      live_capital_enabled: false,
+      status: "paper_decision_failed",
+      error: error instanceof Error ? error.message : "paper_decision_failed",
+    };
+  }
 }
 
 async function read_continuation(inputs, context) {
@@ -283,6 +310,24 @@ async function delete_repo_file(inputs, context) {
 }
 
 export async function runValidation(inputs, context) {
+  if (inputs.validation === "production paper ledger commission") {
+    try {
+      const commission = await commissionPaperLedger(context.env);
+      return {
+        ok: commission.ok,
+        validation: inputs.validation,
+        status: commission.ok ? "passed" : commission.status,
+        paper_ledger_commission: commission,
+      };
+    } catch (error) {
+      return {
+        ok: false,
+        validation: inputs.validation,
+        status: "production_paper_ledger_commission_failed",
+        error: error instanceof Error ? error.message : "paper_ledger_commission_failed",
+      };
+    }
+  }
   if (inputs.validation === "production market data commission") {
     try {
       const ingestion = await context.marketDataIngestion(context.env);
