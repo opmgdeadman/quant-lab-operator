@@ -244,6 +244,7 @@ async function callPublicTool(name, args, env) {
       env,
       databaseProbe,
       startupContext,
+      marketDataIngestion: runHourlyCandleIngestion,
     });
   }
   throw new ToolInputError("public_direct_tool_required");

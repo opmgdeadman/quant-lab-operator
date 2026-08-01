@@ -14,7 +14,7 @@ export const handlers = {
   apply_repo_patch_set,
   create_repo_file,
   delete_repo_file,
-  run_validation,
+  run_validation: runValidation,
   list_github_actions_runs,
   trigger_github_workflow,
   monitor_github_workflow,
@@ -282,7 +282,33 @@ async function delete_repo_file(inputs, context) {
   return { ok: true, status: "file_deleted", path: inputs.path, commit_sha: commit.commit_sha };
 }
 
-async function run_validation(inputs) {
+export async function runValidation(inputs, context) {
+  if (inputs.validation === "production market data commission") {
+    try {
+      const ingestion = await context.marketDataIngestion(context.env);
+      return {
+        ok: ingestion.ok,
+        validation: inputs.validation,
+        status: ingestion.ok ? "passed" : "failed",
+        production_ingestion: {
+          run_id: ingestion.run_id,
+          requested_start_closed_at: ingestion.requested_start_closed_at,
+          requested_end_closed_at: ingestion.requested_end_closed_at,
+          fetched_count: ingestion.fetched_count,
+          inserted_count: ingestion.inserted_count,
+          duplicate_count: ingestion.duplicate_count,
+          health: ingestion.health,
+        },
+      };
+    } catch (error) {
+      return {
+        ok: false,
+        validation: inputs.validation,
+        status: "production_ingestion_failed",
+        error: error instanceof Error ? error.message : "market_data_ingestion_failed",
+      };
+    }
+  }
   return {
     ok: false,
     validation: inputs.validation,

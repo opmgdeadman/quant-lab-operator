@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { handleRequest } from "../src/index.js";
+import { runValidation } from "../src/operator/handlers/controlPlane.js";
 
 function createEnv() {
   return {
@@ -292,6 +293,35 @@ test("run_validation returns explicit worker runtime limitation", async () => {
 
   assert.equal(body.result.structuredContent.ok, false);
   assert.equal(body.result.structuredContent.result.status, "not_available_in_worker_runtime");
+});
+
+test("production market data commissioning uses the bounded ingestion dependency", async () => {
+  const expected = {
+    ok: true,
+    run_id: "market-data:test",
+    requested_start_closed_at: "2026-08-01T17:00:00.000Z",
+    requested_end_closed_at: "2026-08-01T17:00:00.000Z",
+    fetched_count: 1,
+    inserted_count: 1,
+    duplicate_count: 0,
+    health: { status: "healthy", missing_candles: 0, stale_hours: 0 },
+  };
+  const result = await runValidation(
+    { validation: "production market data commission" },
+    { env: { ENVIRONMENT: "test" }, marketDataIngestion: async () => expected },
+  );
+
+  assert.equal(result.ok, true);
+  assert.equal(result.status, "passed");
+  assert.deepEqual(result.production_ingestion, {
+    run_id: expected.run_id,
+    requested_start_closed_at: expected.requested_start_closed_at,
+    requested_end_closed_at: expected.requested_end_closed_at,
+    fetched_count: 1,
+    inserted_count: 1,
+    duplicate_count: 0,
+    health: expected.health,
+  });
 });
 
 test("validate_production_sha returns compact alignment fields", async () => {

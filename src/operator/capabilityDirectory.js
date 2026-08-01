@@ -190,7 +190,10 @@ export const capabilityDirectory = [
     operation_class: "mutation",
     handler_id: "run_validation",
     input_schema: objectSchema({
-      validation: { type: "string", enum: ["npm test", "npm run check"] },
+      validation: {
+        type: "string",
+        enum: ["npm test", "npm run check", "production market data commission"],
+      },
     }, ["validation"]),
     output_schema: objectSchema({ ok: { type: "boolean" } }, ["ok"]),
     allowed_actions: ["npm test", "npm run check"],
