@@ -1,5 +1,6 @@
 import { getMarketDataHealth, runHourlyCandleIngestion } from "./marketData.js";
 import { getPaperAccountSummary } from "./paperLedger.js";
+import { getBaselineBenchSummary } from "./baselineBench.js";
 import { executeQuantLabIntent } from "./operator/executionKernel.js";
 import { loadQuantStartupContext } from "./operator/startupAuthority.js";
 import { publicTools as operatorPublicTools } from "./operator/toolRegistry.js";
@@ -80,6 +81,7 @@ async function publicStatusPayload(env) {
     currentPhase: status.currentPhase,
     dataHealth: status.dataHealth,
     paperAccount: status.paperAccount,
+    baselineBench: status.baselineBench,
   };
 }
 
@@ -539,10 +541,11 @@ function mcpErrorObject(id, code, message) {
 }
 
 async function statusPayload(env) {
-  const [dbProbe, dataHealth, paperAccount] = await Promise.all([
+  const [dbProbe, dataHealth, paperAccount, baselineBench] = await Promise.all([
     databaseProbe(env),
     marketDataHealthForHome(env),
     paperAccountForHome(env),
+    baselineBenchForHome(env),
   ]);
   return {
     ok: dbProbe.connected,
@@ -553,6 +556,7 @@ async function statusPayload(env) {
     databaseProbe: dbProbe,
     dataHealth,
     paperAccount,
+    baselineBench,
     latestDeploymentSha: env.DEPLOYMENT_SHA || "unknown",
     currentPhase: env.CURRENT_PHASE || "unknown",
     boundaries: {
@@ -619,10 +623,11 @@ function constantTimeBytesEqual(left, right) {
 }
 
 async function renderHome(env) {
-  const [latest, health, paperAccount] = await Promise.all([
+  const [latest, health, paperAccount, baselineBench] = await Promise.all([
     latestCandleForHome(env),
     marketDataHealthForHome(env),
     paperAccountForHome(env),
+    baselineBenchForHome(env),
   ]);
   const healthMarkup = health ? `
     <section>
@@ -664,6 +669,28 @@ async function renderHome(env) {
     <section>
       <h2>Paper Account</h2>
       <p>Paper-account state is unavailable until the Stage 2 migration is applied.</p>
+    </section>`;
+  const baselineRows = baselineBench?.test_comparison?.map((entry) => `
+        <div><dt>${escapeHtml(entry.baseline_id)}</dt><dd>${escapeHtml(entry.metrics.total_return_percent)}% return · ${escapeHtml(entry.metrics.max_drawdown_percent)}% max drawdown · ${escapeHtml(entry.metrics.trade_count)} trades</dd></div>`).join("") || "";
+  const baselineMarkup = baselineBench ? `
+    <section>
+      <h2>Historical Baseline Research</h2>
+      <p>Fixed historical paper benchmarks only. This ordering is not a promotion, recommendation, or live-trading claim.</p>
+      <dl>
+        <div><dt>Benchmark</dt><dd>${escapeHtml(baselineBench.benchmark_id)}</dd></div>
+        <div><dt>Dataset candles</dt><dd>${escapeHtml(baselineBench.dataset_candle_count)}</dd></div>
+        <div><dt>Dataset start</dt><dd>${escapeHtml(baselineBench.dataset_start_closed_at)}</dd></div>
+        <div><dt>Dataset end</dt><dd>${escapeHtml(baselineBench.dataset_end_closed_at)}</dd></div>
+        <div><dt>Baselines</dt><dd>${escapeHtml(baselineBench.baseline_count)}</dd></div>
+        <div><dt>Partitioned runs</dt><dd>${escapeHtml(baselineBench.run_count)}</dd></div>
+        <div><dt>Tuning allowed</dt><dd>${escapeHtml(baselineBench.tuning_allowed)}</dd></div>
+        <div><dt>Promotion performed</dt><dd>${escapeHtml(baselineBench.promotion_performed)}</dd></div>
+        ${baselineRows}
+      </dl>
+    </section>` : `
+    <section>
+      <h2>Historical Baseline Research</h2>
+      <p>No frozen baseline benchmark has been commissioned yet.</p>
     </section>`;
   const latestMarkup = latest ? `
     <section>
@@ -711,6 +738,7 @@ async function renderHome(env) {
       <span class="pill">${escapeHtml(env.CURRENT_PHASE || "unknown")}</span>
     </div>
     ${paperMarkup}
+    ${baselineMarkup}
     ${healthMarkup}
     ${latestMarkup}
   </main>
@@ -742,6 +770,14 @@ async function paperAccountForHome(env) {
   }
 }
 
+async function baselineBenchForHome(env) {
+  try {
+    return await getBaselineBenchSummary(env);
+  } catch {
+    return null;
+  }
+}
+
 function publicStatusSchema() {
   return {
     type: "object",
@@ -755,6 +791,12 @@ function publicStatusSchema() {
       latestDeploymentSha: { type: "string" },
       currentPhase: { type: "string" },
       paperAccount: {
+        anyOf: [
+          { type: "null" },
+          { type: "object", additionalProperties: true },
+        ],
+      },
+      baselineBench: {
         anyOf: [
           { type: "null" },
           { type: "object", additionalProperties: true },
@@ -791,6 +833,7 @@ function publicStatusSchema() {
       "currentPhase",
       "dataHealth",
       "paperAccount",
+      "baselineBench",
     ],
   };
 }
