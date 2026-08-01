@@ -5,6 +5,7 @@ import { repoSnapshots } from "../repoSnapshots.js";
 import { commissionPaperLedger, executePaperDecision, getPaperAccountSummary } from "../../paperLedger.js";
 import { getBaselineBenchSummary, runProductionBaselineBench } from "../../baselineBench.js";
 import { getHostileJudgeSummary, runProductionHostileJudge } from "../../hostileJudge.js";
+import { getStrategyFactorySummary, runProductionStrategyFactory } from "../../strategyFactory.js";
 
 export const handlers = {
   get_engineering_access_state,
@@ -15,6 +16,8 @@ export const handlers = {
   run_baseline_bench,
   get_hostile_judge,
   run_hostile_judge,
+  get_strategy_factory,
+  run_strategy_factory,
   read_continuation,
   write_continuation,
   inspect_repository,
@@ -140,6 +143,33 @@ async function run_hostile_judge(inputs, context) {
       live_capital_enabled: false,
       status: "hostile_judge_failed",
       error: error instanceof Error ? error.message : "hostile_judge_failed",
+    };
+  }
+}
+
+async function get_strategy_factory(inputs, context) {
+  const factory = await getStrategyFactorySummary(context.env);
+  return {
+    ok: Boolean(factory),
+    historical_paper_research: true,
+    adaptive_tuning_allowed: false,
+    promotion_performed: false,
+    live_capital_enabled: false,
+    factory,
+  };
+}
+
+async function run_strategy_factory(inputs, context) {
+  try {
+    return await runProductionStrategyFactory(context.env);
+  } catch (error) {
+    return {
+      ok: false,
+      adaptive_tuning_allowed: false,
+      promotion_performed: false,
+      live_capital_enabled: false,
+      status: "strategy_factory_failed",
+      error: error instanceof Error ? error.message : "strategy_factory_failed",
     };
   }
 }
@@ -365,6 +395,24 @@ async function delete_repo_file(inputs, context) {
 }
 
 export async function runValidation(inputs, context) {
+  if (inputs.validation === "production strategy factory commission") {
+    try {
+      const factory = await runProductionStrategyFactory(context.env);
+      return {
+        ok: factory.ok,
+        validation: inputs.validation,
+        status: factory.ok ? "passed" : "failed",
+        strategy_factory_commission: factory,
+      };
+    } catch (error) {
+      return {
+        ok: false,
+        validation: inputs.validation,
+        status: "production_strategy_factory_commission_failed",
+        error: error instanceof Error ? error.message : "strategy_factory_commission_failed",
+      };
+    }
+  }
   if (inputs.validation === "production hostile judge commission") {
     try {
       const judge = await runProductionHostileJudge(context.env);
