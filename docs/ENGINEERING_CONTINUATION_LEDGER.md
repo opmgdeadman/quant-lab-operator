@@ -14,31 +14,29 @@ The governing mission, operator authority, owner boundary, and operating doctrin
 
 ## Active Job
 
-Job ID: `stage-9-autonomous-rolling-research`
-Priority: 9
+Job ID: `stage-10-bounded-historical-bootstrap`
+Priority: 10
 State: ACTIVE
 
 Engineering objective:
 
-Build and production-validate an autonomous daily rolling-research loop that converts growing market history into immutable research epochs, evaluates only the predeclared eight-strategy catalog under unchanged costs and hostile-judge gates, and publishes a new qualified-only selection for future forward hours without human intervention.
+Build and production-validate a one-time, bounded historical market-data bootstrap that fills the immutable BTC-USD hourly table to at least 720 contiguous completed candles from the existing free provider path, allowing the next UTC-day rolling-research epoch to begin immediately rather than waiting roughly 27 days.
 
 Accepted scope:
 
-- immutable rolling-research policy, daily epoch identity, and policy hash;
-- eligibility only after 720 contiguous BTC-USD hourly candles exist;
-- trailing 720-candle datasets with fixed 60/20/20 chronological partitions;
-- exactly eight epoch-scoped instances of the existing EMA/RSI catalog with unchanged parameters;
-- deterministic next-candle backtests, hostile-judge verdicts, doubled/tripled cost stress, and qualified-only ranking;
-- immutable benchmark, factory, verdict, selection, and epoch evidence using existing canonical tables plus an epoch ledger;
-- one idempotent epoch per UTC date, executed after the hourly forward and qualification cycle so new research cannot affect the same execution candle;
-- safe waiting states while history is insufficient, bounded operator controls, and truthful website visibility;
-- focused tests, CI, exact-SHA deployment, scheduler proof, and production verification.
+- immutable bootstrap policy, target window, chunk limits, provider order, and policy hash;
+- completed BTC-USD 1-hour candles only, ending no later than the current expected close;
+- bounded backward pagination through the existing Coinbase Exchange provider with an exact-source fallback only where already approved;
+- reuse of Stage 1 OHLCV validation, immutable idempotent persistence, provider-transition checks, gap detection, and health telemetry;
+- durable chunk and bootstrap receipts with resumable idempotency;
+- automatic stop at 720 contiguous candles or a hard provider/safety blocker;
+- no overwrite of conflicting candles and no synthetic interpolation;
+- bounded operator controls, focused tests, CI, exact-SHA deployment, production commissioning, and truthful website visibility.
 
 Out of scope for this job:
 
-- changing candidate parameters, adding strategy families, random search, genetic optimization, or model-invented strategies;
-- lowering judge, selection, or live-qualification gates because results are weak;
-- retroactively changing an epoch, using research results on the same execution candle, or silently replacing evidence;
+- invented candles, gap filling by interpolation, future or incomplete candles, paid data, or hidden provider substitutions;
+- changes to research candidates, judge gates, selection rules, forward policy, or qualification thresholds;
 - leverage, derivatives, shorting, owner approval, or live capital.
 
 ## Completed Evidence
@@ -100,10 +98,16 @@ Out of scope for this job:
 - Official CI passed and exact SHA `0d035d0351fa148ac63b9ed481bea88bba642694` deployed after migration success.
 - Production assessed itself as `not_qualified` with six truthful blockers, eight passed gates, zero owner approval, zero authorization, and no funding, credential, or live-order capability. Replay returned the identical assessment and evidence hashes.
 - Stage 8 is complete. The website and authenticated status expose every blocker while preserving the permanent paper-only boundary.
+- Stage 9 implemented migration `0012_autonomous_rolling_research.sql`, immutable daily epoch and scheduler ledgers, trailing 720-candle windows, fixed 432/144/144 partitions, eight epoch-scoped instances of the unchanged catalog, reused next-candle simulation and hostile judging, and generic qualified-only selection.
+- Eight focused tests proved immutable policy, waiting with zero artifacts, exact complete-epoch cardinality, epoch-scoped lineage, non-expansion after weak results, safe waiting on gapped history, as-of boundaries, and deterministic hashes.
+- Official CI passed and final exact SHA `92b4fba0f854e7e94e3706698e4ae9252859bfa5` deployed after migration success.
+- Production created and replayed one immutable `waiting_for_history` epoch at 75/720 candles with zero benchmark, candidates, runs, verdicts, or selection changes.
+- A real scheduled invocation at `2026-08-01T20:05:18.000Z` ingested first, ran the no-champion forward gate, reassessed live qualification, and finally wrote rolling scheduler receipt `rolling-research-scheduler:2026-08-01T20:05:18.000Z` without same-candle activation.
+- Stage 9 is complete. The laboratory can now grow history, research daily, select only qualified evidence, forward-test, and reassess qualification autonomously.
 
 ## Current Action
 
-Define and freeze the rolling-research policy, then implement a daily epoch ledger, 720-candle contiguous-window construction, fixed 432/144/144 partitions, eight immutable epoch-scoped candidate instances, deterministic candidate runs and artifacts, unchanged hostile-judge verdicts, generic qualified-only selection, scheduler orchestration after forward/qualification, safe insufficient-history waiting, replay protection, and website visibility.
+Inspect the existing Stage 1 provider and persistence boundaries, then define and freeze a bootstrap policy that walks backward in bounded chunks until at least 720 contiguous completed candles are present. Implement resumable receipts, exact-source validation, duplicate-safe persistence, conflict rejection, gap-aware progress, bounded operator controls, production commissioning, and website visibility. The next UTC-day rolling epoch—not the bootstrap—must create research evidence.
 
 ## Exit Gate
 
@@ -113,15 +117,16 @@ The active job is complete only when:
 - official GitHub Actions validation passes;
 - D1 migrations apply successfully;
 - an exact commit SHA is deployed and verified in production;
-- rolling policy, minimum history, window length, partition sizes, catalog, cadence, costs, and policy hash are immutable before the first epoch;
-- fewer than 720 contiguous hourly candles produces a durable waiting state without candidate runs or selection changes;
-- an eligible synthetic epoch creates exactly one benchmark, eight epoch-scoped candidates, 24 runs, eight unchanged-judge verdicts, and one qualified-only selection;
-- rolling research uses only completed candles and a new selection cannot affect the same forward execution candle;
-- weak or inactive results produce no champion and never expand or retune the catalog;
-- repeated daily execution creates no duplicate epoch, benchmark, candidate, run, verdict, ranking, or selection evidence;
-- the scheduler executes rolling research after forward operation and qualification, with a real scheduled epoch or waiting receipt proven;
-- website rolling-research state reflects live D1 records truthfully;
-- no leverage, derivatives, shorting, owner approval, or live-capital path is introduced.
+- bootstrap policy, target count, provider order, request bounds, chunk sizes, stop rules, and policy hash are immutable before execution;
+- every stored candle is completed, valid BTC-USD 1-hour OHLCV from an approved exact source;
+- existing immutable candles replay as duplicates and conflicting payloads fail closed;
+- bootstrap can resume after partial progress without duplicate effects;
+- provider failure produces a durable blocker rather than fabricated history;
+- production reaches at least 720 contiguous hourly candles or records the exact external blocker preventing it;
+- market-data health is healthy with zero gaps across the research window;
+- rolling research remains the only component permitted to create candidate, verdict, or selection evidence;
+- website bootstrap state reflects live D1 records truthfully;
+- no paid service, synthetic data, leverage, derivatives, shorting, owner approval, or live-capital path is introduced.
 
 ## Unified Job Queue
 
@@ -133,7 +138,8 @@ The active job is complete only when:
 6. `stage-6-champion-challenger-selection` — COMPLETE
 7. `stage-7-forward-paper-operation` — COMPLETE
 8. `stage-8-live-capital-qualification` — COMPLETE
-9. `stage-9-autonomous-rolling-research` — ACTIVE
+9. `stage-9-autonomous-rolling-research` — COMPLETE
+10. `stage-10-bounded-historical-bootstrap` — ACTIVE
 
 Only one job may be ACTIVE. New work must be inserted into this queue with explicit precedence rather than stored in chat or D1 as a competing continuation source.
 
