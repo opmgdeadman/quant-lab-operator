@@ -19,6 +19,36 @@ jobs:
       - name: Run Worker tests
         run: npm test
 
+  selection-diagnostics:
+    name: selection-${{ matrix.case }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - case: policy
+            pattern: selection policy is frozen
+          - case: no-champion
+            pattern: zero qualified candidates
+          - case: qualified-only
+            pattern: only qualified candidates
+          - case: deterministic-ranking
+            pattern: ranking is deterministic
+          - case: score
+            pattern: score formula
+          - case: fail-closed
+            pattern: source identity
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+      - name: Install dependencies
+        run: npm ci
+      - name: Run isolated selection test
+        run: node --test --test-name-pattern="${{ matrix.pattern }}" test/champion-selection.test.js
+
   quant-core-tests:
     runs-on: ubuntu-latest
     steps:
