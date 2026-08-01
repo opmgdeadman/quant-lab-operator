@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { handleRequest } from "../src/index.js";
+import { renderProfessionalConsole } from "../src/professionalConsole.js";
 import { runValidation } from "../src/operator/handlers/controlPlane.js";
 
 function createEnv() {
@@ -57,6 +58,21 @@ test("public live status is safe and does not require operator credentials", asy
   assert.equal(body.system, "Quant Lab");
   assert.equal(body.boundaries, undefined);
   assert.equal(body.workerStatus, "online");
+});
+
+test("professional console escapes runtime identifiers by default", () => {
+  const body = renderProfessionalConsole({
+    forwardOperation: {
+      latest_cycle: {
+        state: "blocked_no_champion",
+        cycle_id: "<img src=x onerror=alert(1)>",
+        blocker_codes: ["no_qualified_champion"],
+      },
+    },
+  });
+
+  assert.doesNotMatch(body, /<img src=x/);
+  assert.match(body, /&lt;img src=x onerror=alert\(1\)&gt;/);
 });
 
 test("legacy public proof routes are removed", async () => {
