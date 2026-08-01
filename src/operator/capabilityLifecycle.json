@@ -15,6 +15,8 @@
     { "id": "operating.operator_status.lifecycle", "intent": "operator_status" },
     { "id": "paper.account_read.lifecycle", "intent": "get_paper_account" },
     { "id": "paper.decision_execute.lifecycle", "intent": "execute_paper_decision" },
+    { "id": "baseline.bench_read.lifecycle", "intent": "get_baseline_bench" },
+    { "id": "baseline.bench_run.lifecycle", "intent": "run_baseline_bench" },
     { "id": "operating.continuation_read.lifecycle", "intent": "read_continuation" },
     { "id": "operating.continuation_write.lifecycle", "intent": "write_continuation" },
     { "id": "engineering.repository_inspection.lifecycle", "intent": "inspect_repository" },
