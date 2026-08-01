@@ -659,7 +659,7 @@ function constantTimeBytesEqual(left, right) {
 }
 
 async function renderHome(env) {
-  const [latest, health, paperAccount, baselineBench, hostileJudge, strategyFactory, championSelection, forwardOperation, liveQualification, rollingResearch] = await Promise.all([
+  const [latest, health, paperAccount, baselineBench, hostileJudge, strategyFactory, championSelection, forwardOperation, liveQualification, rollingResearch, historicalBootstrap] = await Promise.all([
     latestCandleForHome(env),
     marketDataHealthForHome(env),
     paperAccountForHome(env),
@@ -670,6 +670,7 @@ async function renderHome(env) {
     forwardOperationForHome(env),
     liveQualificationForHome(env),
     rollingResearchForHome(env),
+    historicalBootstrapForHome(env),
   ]);
   const healthMarkup = health ? `
     <section>
@@ -861,6 +862,29 @@ async function renderHome(env) {
       <h2>Autonomous Rolling Research</h2>
       <p>No rolling-research epoch has been recorded yet.</p>
     </section>`;
+  const bootstrapProgress = historicalBootstrap?.progress || null;
+  const bootstrapAttempt = historicalBootstrap?.latest_attempt || null;
+  const bootstrapMarkup = historicalBootstrap ? `
+    <section>
+      <h2>Historical Research Bootstrap</h2>
+      <p>Backward-only ingestion of completed BTC-USD hourly candles. No synthetic interpolation, paid data, research artifacts, or live capital.</p>
+      <dl>
+        <div><dt>State</dt><dd>${escapeHtml(bootstrapProgress?.state || "unknown")}</dd></div>
+        <div><dt>Contiguous candles</dt><dd>${escapeHtml(bootstrapProgress?.contiguous_candle_count ?? 0)}</dd></div>
+        <div><dt>Target candles</dt><dd>${escapeHtml(bootstrapProgress?.target_contiguous_candles ?? 720)}</dd></div>
+        <div><dt>Remaining candles</dt><dd>${escapeHtml(bootstrapProgress?.remaining_candles ?? 720)}</dd></div>
+        <div><dt>Earliest contiguous close</dt><dd>${escapeHtml(bootstrapProgress?.earliest_contiguous_closed_at || "none")}</dd></div>
+        <div><dt>Latest attempt</dt><dd>${escapeHtml(bootstrapAttempt?.attempt_id || "none")}</dd></div>
+        <div><dt>Attempt state</dt><dd>${escapeHtml(bootstrapAttempt?.state || "not yet run")}</dd></div>
+        <div><dt>Blockers</dt><dd>${escapeHtml(bootstrapProgress?.blocker_codes?.join(", ") || bootstrapAttempt?.blocker_codes?.join(", ") || "none")}</dd></div>
+        <div><dt>Synthetic data</dt><dd>false</dd></div>
+        <div><dt>Live capital</dt><dd>false</dd></div>
+      </dl>
+    </section>` : `
+    <section>
+      <h2>Historical Research Bootstrap</h2>
+      <p>No bootstrap progress has been recorded yet.</p>
+    </section>`;
   const latestMarkup = latest ? `
     <section>
       <h2>Latest Stored BTC-USD 1h Candle</h2>
@@ -914,6 +938,7 @@ async function renderHome(env) {
     ${forwardMarkup}
     ${qualificationMarkup}
     ${rollingMarkup}
+    ${bootstrapMarkup}
     ${healthMarkup}
     ${latestMarkup}
   </main>
@@ -1001,6 +1026,14 @@ async function rollingResearchForHome(env) {
   }
 }
 
+async function historicalBootstrapForHome(env) {
+  try {
+    return await getHistoricalBootstrapSummary(env);
+  } catch {
+    return null;
+  }
+}
+
 function publicStatusSchema() {
   return {
     type: "object",
@@ -1061,6 +1094,12 @@ function publicStatusSchema() {
           { type: "object", additionalProperties: true },
         ],
       },
+      historicalBootstrap: {
+        anyOf: [
+          { type: "null" },
+          { type: "object", additionalProperties: true },
+        ],
+      },
       dataHealth: {
         anyOf: [
           { type: "null" },
@@ -1099,6 +1138,7 @@ function publicStatusSchema() {
       "forwardOperation",
       "liveQualification",
       "rollingResearch",
+      "historicalBootstrap",
     ],
   };
 }
