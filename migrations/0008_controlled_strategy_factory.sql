@@ -33,8 +33,7 @@ CREATE TABLE IF NOT EXISTS strategy_candidates (
   spec_hash TEXT NOT NULL UNIQUE,
   lineage_hash TEXT NOT NULL,
   created_at TEXT NOT NULL,
-  UNIQUE(batch_id, id),
-  FOREIGN KEY (batch_id) REFERENCES strategy_factory_batches(id)
+  UNIQUE(batch_id, id)
 );
 
 CREATE TABLE IF NOT EXISTS strategy_candidate_runs (
@@ -51,7 +50,6 @@ CREATE TABLE IF NOT EXISTS strategy_candidate_runs (
   trade_count INTEGER NOT NULL CHECK (trade_count >= 0),
   created_at TEXT NOT NULL,
   UNIQUE(batch_id, candidate_id, partition_name),
-  FOREIGN KEY (batch_id) REFERENCES strategy_factory_batches(id),
   FOREIGN KEY (candidate_id) REFERENCES strategy_candidates(id)
 );
 
@@ -94,7 +92,6 @@ CREATE TABLE IF NOT EXISTS strategy_candidate_verdicts (
   summary_json TEXT NOT NULL,
   created_at TEXT NOT NULL,
   UNIQUE(batch_id, candidate_id),
-  FOREIGN KEY (batch_id) REFERENCES strategy_factory_batches(id),
   FOREIGN KEY (candidate_id) REFERENCES strategy_candidates(id)
 );
 
