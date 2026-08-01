@@ -17,7 +17,7 @@ function candles(closes) {
       closed_at: new Date(START + index * 60 * 60 * 1000).toISOString(),
       open,
       high: Math.max(open, close) + 1,
-      low: Math.min(open, close) - 1,
+      low: Math.max(0.0001, Math.min(open, close) - 1),
       close,
       volume: 100,
       source: "test",
