@@ -9,10 +9,7 @@ import { getLiveQualificationSummary, runProductionLiveQualification } from "./l
 import { getRollingResearchSummary, runScheduledRollingResearch } from "./rollingResearch.js";
 import { getHistoricalBootstrapSummary, runScheduledHistoricalBootstrap } from "./historicalBootstrap.js";
 import { renderProfessionalConsole } from "./professionalConsole.js";
-import { BRAND_SMALL_ASSETS } from "./brandAssetsSmall.js";
-import { BRAND_APPLE_ASSET } from "./brandAppleAsset.js";
-import { BRAND_ANDROID_192_ASSET } from "./brandAndroid192Asset.js";
-import { BRAND_ANDROID_512_ASSET, BRAND_MANIFEST } from "./brandAndroid512Asset.js";
+import { BRAND_ASSETS as CANONICAL_BRAND_ASSETS, BRAND_MANIFEST } from "./brandAssetsCanonical.js";
 import { executeQuantLabIntent } from "./operator/executionKernel.js";
 import { loadQuantStartupContext } from "./operator/startupAuthority.js";
 import { publicTools as operatorPublicTools } from "./operator/toolRegistry.js";
@@ -26,11 +23,8 @@ const OPERATOR_ACCESS_TOKEN_TTL_SECONDS = 24 * 60 * 60;
 const OPERATOR_REFRESH_TOKEN_TTL_SECONDS = 365 * 24 * 60 * 60;
 const MCP_SESSION_TTL_SECONDS = 30 * 24 * 60 * 60;
 const BRAND_ASSETS = Object.freeze({
-  ...BRAND_SMALL_ASSETS,
-  "/apple-touch-icon.png": BRAND_APPLE_ASSET,
-  "/android-chrome-192x192.png": BRAND_ANDROID_192_ASSET,
-  "/android-chrome-512x512.png": BRAND_ANDROID_512_ASSET,
-  "/og-image.png": BRAND_ANDROID_512_ASSET,
+  ...CANONICAL_BRAND_ASSETS,
+  "/og-image.png": CANONICAL_BRAND_ASSETS["/android-chrome-512x512.png"],
 });
 
 export async function handleRequest(request, env) {
