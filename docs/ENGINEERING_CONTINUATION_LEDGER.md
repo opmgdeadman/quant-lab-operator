@@ -55,10 +55,13 @@ Out of scope for this job:
 - Mandatory startup context loads the full authority and this sole Git ECL before operator work.
 - Every bounded operator intent requires the exact authority acknowledgment and this ledger's current Git SHA; skipped or stale continuity fails closed.
 - Startup enforcement regression tests and parallel CI diagnostics pass on commit `b384e488a3689de65e1ac08859f0122fa990de7f`.
+- Stage 1 market-data implementation now includes Coinbase Exchange BTC-USD 1-hour retrieval behind a provider boundary, completed-candle and OHLCV validation, immutable idempotent D1 persistence, gap/stale/error health state, bounded backfill, ingestion-run telemetry, protected manual execution, website health visibility, and hourly cron wiring.
+- Deterministic Worker tests, quant-core tests, and Wrangler validation passed on implementation SHA `ee04077607be099a12206d1ecbb3121038d9ba7a`; D1 migration `0004_market_data_health.sql` applied successfully and that SHA deployed with repository/deployment alignment proven.
+- Commissioning SHA `6203eed2b8183cb22024afe6147312cb05bceb25` passed all CI jobs and deployed successfully with bounded public health telemetry and corrected production phase labeling; the temporary commissioning cadence is being restored to the permanent hourly schedule before final verification.
 
 ## Current Action
 
-Inspect the existing candle ingestion path and tests, then implement one coherent Stage 1 change set covering production data retrieval, validation, idempotent persistence, gap/stale health state, scheduled execution, and website visibility.
+Refresh the Quant Lab MCP after the final Stage 1 deployment, then verify exact production SHA alignment, the live website data-health panel, at least one successful hourly scheduled ingestion, duplicate-safe repeat execution, and truthful stale/gap state. If all checks pass, record Stage 1 completion once and activate `stage-2-paper-execution-ledger`.
 
 ## Exit Gate
 
