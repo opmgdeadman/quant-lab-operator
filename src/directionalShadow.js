@@ -452,13 +452,24 @@ export function applySignedRebalance({
   const fillPrice = fillDirection === 0
     ? open
     : open * (1 + fillDirection * SLIPPAGE_BPS / 10000);
-  let desiredQuantity = target * Math.min(MAX_GROSS_EXPOSURE, Math.abs(target)) * equityBeforeTrade / fillPrice;
+  const equityAtFillBeforeFee = Math.max(
+    0,
+    cash + p.position_quantity * (fillPrice - p.average_entry),
+  );
+  let desiredQuantity = target
+    * Math.min(MAX_GROSS_EXPOSURE, Math.abs(target))
+    * equityAtFillBeforeFee
+    / fillPrice;
   const feeRate = FEE_BPS / 10000;
-  for (let iteration = 0; iteration < 4; iteration += 1) {
+  for (let iteration = 0; iteration < 8; iteration += 1) {
     const estimatedFee = Math.abs(desiredQuantity - p.position_quantity) * fillPrice * feeRate;
-    const safeEntryNotional = Math.max(0, equityBeforeTrade - estimatedFee);
-    if (Math.abs(desiredQuantity * fillPrice) <= safeEntryNotional + EPSILON) break;
-    desiredQuantity = Math.sign(desiredQuantity) * safeEntryNotional / fillPrice;
+    const safeEntryNotional = Math.max(0, equityAtFillBeforeFee - estimatedFee);
+    const nextDesired = Math.sign(target) * safeEntryNotional / fillPrice;
+    if (Math.abs(nextDesired - desiredQuantity) <= EPSILON) {
+      desiredQuantity = nextDesired;
+      break;
+    }
+    desiredQuantity = nextDesired;
   }
   const quantityDelta = desiredQuantity - p.position_quantity;
   const fee = Math.abs(quantityDelta) * fillPrice * feeRate;
