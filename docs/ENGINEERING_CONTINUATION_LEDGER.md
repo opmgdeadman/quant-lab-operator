@@ -1,7 +1,7 @@
 # Quant Lab Engineering Continuation Ledger
 
-Last updated: 2026-08-01
-Status: STEADY_STATE
+Last updated: 2026-08-02
+Status: ACTIVE
 Authority: Sole canonical engineering continuation ledger
 
 ## Authority and Precedence
@@ -14,28 +14,30 @@ The governing mission, operator authority, owner boundary, and operating doctrin
 
 ## Active Job
 
-Job ID: `none`
-Priority: none
-State: COMPLETE
+Job ID: `stage-13-directional-shadow-paper-research`
+Priority: P0
+State: ACTIVE
 
 Engineering objective:
 
-No accepted incomplete engineering work remains. Quant Lab is in autonomous paper-only steady state.
+End the safe-idle failure mode by turning Quant Lab into an active directional paper-research system. Every bounded candidate must be able to gather real forward-paper evidence in an isolated account, take either long or short BTC-USD exposure, and compete for promotion without waiting for a prequalified champion before any trading occurs.
 
-Automatic operating scope:
+Required scope:
 
-- hourly completed-candle ingestion and health verification;
-- qualified-champion forward-paper execution or explicit safe idle;
-- immutable live-capital evidence reassessment with owner approval kept separate;
-- one immutable rolling-research epoch per UTC date using the fixed eight-strategy catalog;
-- professional public operating console with live market context and truthful research evidence;
-- incident-driven engineering only when new evidence proves a defect or an owner decision changes scope.
+- add signed long/flat/short paper positions with conservative, explicit short carry, fees, slippage, next-candle execution, and accounting reconciliation;
+- cap every candidate at 1.0x gross exposure with no leverage above paper equity, no live derivatives, and no live-capital path;
+- run each approved research candidate hourly in its own isolated shadow paper portfolio so failed candidates lose paper money and useful evidence accumulates immediately;
+- expand beyond four EMA and four RSI variants into predeclared trend, breakout, momentum, volatility, and mean-reversion families that can express both directions;
+- use longer history and multiple immutable walk-forward windows rather than relying on one 30-day split;
+- select champions using cost-adjusted historical robustness plus independent forward-paper evidence;
+- keep the canonical `paper-main` portfolio qualification-gated while exposing every shadow account, position, trade, return, drawdown, and blocker on the website;
+- preserve completed-candle-only data, no look-ahead, immutable strategy lineage, duplicate protection, and hostile judging.
 
 Permanent boundaries:
 
 - paper only until explicit owner approval after evidence eligibility;
-- no leverage, derivatives, shorting, paid data, synthetic candles, hidden parameter tuning, or silent threshold changes;
-- no engineering work may be invented merely to keep the queue nonempty.
+- simulated 1.0x long and short exposure is allowed for research; leverage above 1.0x, live derivatives, paid data, synthetic candles, hidden parameter tuning, and silent threshold changes remain prohibited;
+- no strategy may be promoted merely to create activity, but bounded candidates must trade in isolated shadow paper accounts to generate forward evidence.
 
 ## Completed Evidence
 
@@ -124,7 +126,7 @@ Permanent boundaries:
 
 ## Current Action
 
-No engineering action is pending. Operate automatically under the deployed hourly schedule and professional public console. Create a new canonical engineering job only for a verified incident, evidence-backed improvement, or explicit owner scope change.
+Design and implement the Stage 13 immutable execution and research contract: signed 1.0x long/short shadow portfolios, conservative short-cost accounting, concurrent hourly candidate forward-paper cycles, broader predeclared directional strategy families, walk-forward evidence, and website visibility. Validate accounting and no-look-ahead behavior before production deployment.
 
 ## Steady-State Operating Gate
 
@@ -154,6 +156,7 @@ Quant Lab remains healthy only while:
 10. `stage-10-bounded-historical-bootstrap` — COMPLETE
 11. `stage-11-professional-quant-console` — COMPLETE
 12. `stage-12-canonical-brand-identity` — COMPLETE
+13. `stage-13-directional-shadow-paper-research` — ACTIVE
 
 Only one job may be ACTIVE. New work must be inserted into this queue with explicit precedence rather than stored in chat or D1 as a competing continuation source.
 
