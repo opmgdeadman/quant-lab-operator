@@ -211,12 +211,27 @@ test("operator mcp startup context loads authority and sole canonical Git ECL", 
   assert.ok(context.required_governing_authority_ack);
 });
 
-test("operator mcp status tool returns bounded status only", async () => {
+test("operator mcp status response exists", async () => {
   const env = createEnv();
   const body = await callTool(env, "get_quant_lab_status", {});
+  assert.ok(body.result?.structuredContent);
+});
 
+test("operator mcp status reports system identity", async () => {
+  const env = createEnv();
+  const body = await callTool(env, "get_quant_lab_status", {});
   assert.equal(body.result.structuredContent.system, "Quant Lab");
+});
+
+test("operator mcp status reports database connectivity", async () => {
+  const env = createEnv();
+  const body = await callTool(env, "get_quant_lab_status", {});
   assert.equal(body.result.structuredContent.databaseConnected, true);
+});
+
+test("operator mcp status omits private database probe", async () => {
+  const env = createEnv();
+  const body = await callTool(env, "get_quant_lab_status", {});
   assert.equal(body.result.structuredContent.databaseProbe, undefined);
 });
 

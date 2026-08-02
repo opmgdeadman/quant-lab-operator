@@ -21,9 +21,18 @@ jobs:
           - group: worker-mcp-startup
             files: test/worker.test.js
             pattern: operator mcp startup context
-          - group: worker-mcp-status
+          - group: worker-mcp-status-response
             files: test/worker.test.js
-            pattern: operator mcp status tool
+            pattern: operator mcp status response exists
+          - group: worker-mcp-status-identity
+            files: test/worker.test.js
+            pattern: operator mcp status reports system identity
+          - group: worker-mcp-status-database
+            files: test/worker.test.js
+            pattern: operator mcp status reports database connectivity
+          - group: worker-mcp-status-privacy
+            files: test/worker.test.js
+            pattern: operator mcp status omits private database probe
           - group: worker-mcp-intents
             files: test/worker.test.js
             pattern: operator intents|operator mcp rejects unadvertised|execute_quant_lab_intent
