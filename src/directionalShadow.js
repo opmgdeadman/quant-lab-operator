@@ -1,4 +1,4 @@
-const POLICY_ID = "directional-shadow-paper-v1";
+const POLICY_ID = "directional-shadow-paper-v2";
 const MARKET = "BTC-USD";
 const INTERVAL = "1h";
 const MAX_GROSS_EXPOSURE = 1;
@@ -19,8 +19,9 @@ export const DIRECTIONAL_SHADOW_POLICY = deepFreeze({
   paper_only: true,
   initial_virtual_equity_usd: INITIAL_EQUITY,
   allowed_directions: ["long", "flat", "short"],
-  max_gross_exposure_multiple: MAX_GROSS_EXPOSURE,
-  leverage_above_equity_allowed: false,
+  max_entry_gross_exposure_multiple: MAX_GROSS_EXPOSURE,
+  leverage_above_entry_equity_allowed: false,
+  marked_short_exposure_may_drift_between_hourly_rebalances: true,
   target_exposure_multiple: TARGET_EXPOSURE,
   execution: "next_completed_candle_open",
   valuation: "execution_candle_close",
@@ -153,6 +154,7 @@ export async function runProductionDirectionalShadowCycle(env, options = {}) {
       status: transition.status,
       position_quantity: transition.position_quantity,
       exposure_side: signedExposure(transition.position_quantity),
+      entry_gross_exposure_multiple: transition.entry_gross_exposure_multiple,
       gross_exposure_multiple: transition.gross_exposure_multiple,
       equity: transition.equity,
       return_percent: ((transition.equity / portfolio.initial_equity) - 1) * 100,
@@ -334,7 +336,8 @@ export async function getDirectionalShadowSummary(env) {
   return {
     paper_only: true,
     live_capital_enabled: false,
-    max_gross_exposure_multiple: MAX_GROSS_EXPOSURE,
+    max_entry_gross_exposure_multiple: MAX_GROSS_EXPOSURE,
+    marked_exposure_rebalanced_hourly: true,
     initial_virtual_equity_per_candidate: INITIAL_EQUITY,
     candidate_count: accountRows.length || DIRECTIONAL_STRATEGIES.length,
     history_candle_count: Number(candleCount?.count || 0),
@@ -449,9 +452,16 @@ export function applySignedRebalance({
   const fillPrice = fillDirection === 0
     ? open
     : open * (1 + fillDirection * SLIPPAGE_BPS / 10000);
-  const desiredQuantity = target * Math.min(MAX_GROSS_EXPOSURE, Math.abs(target)) * equityBeforeTrade / fillPrice;
+  let desiredQuantity = target * Math.min(MAX_GROSS_EXPOSURE, Math.abs(target)) * equityBeforeTrade / fillPrice;
+  const feeRate = FEE_BPS / 10000;
+  for (let iteration = 0; iteration < 4; iteration += 1) {
+    const estimatedFee = Math.abs(desiredQuantity - p.position_quantity) * fillPrice * feeRate;
+    const safeEntryNotional = Math.max(0, equityBeforeTrade - estimatedFee);
+    if (Math.abs(desiredQuantity * fillPrice) <= safeEntryNotional + EPSILON) break;
+    desiredQuantity = Math.sign(desiredQuantity) * safeEntryNotional / fillPrice;
+  }
   const quantityDelta = desiredQuantity - p.position_quantity;
-  const fee = Math.abs(quantityDelta) * fillPrice * FEE_BPS / 10000;
+  const fee = Math.abs(quantityDelta) * fillPrice * feeRate;
 
   const positionTransition = transitionPosition(
     p.position_quantity,
@@ -461,6 +471,13 @@ export function applySignedRebalance({
   );
   cash += positionTransition.realized_pnl_delta - fee;
   const unrealized = positionTransition.quantity * (mark - positionTransition.average_entry);
+  const equityAtFill = Math.max(0, cash + positionTransition.quantity * (fillPrice - positionTransition.average_entry));
+  const entryGross = equityAtFill > EPSILON
+    ? Math.abs(positionTransition.quantity * fillPrice) / equityAtFill
+    : 0;
+  if (entryGross > MAX_GROSS_EXPOSURE + 1e-7) {
+    throw new Error("directional_shadow_entry_exposure_above_1x");
+  }
   const equity = Math.max(0, cash + unrealized);
   const peakEquity = Math.max(p.peak_equity, equity);
   const drawdown = peakEquity > 0 ? ((peakEquity - equity) / peakEquity) * 100 : 0;
@@ -481,6 +498,7 @@ export function applySignedRebalance({
     equity,
     peak_equity: peakEquity,
     max_drawdown_percent: Math.max(p.max_drawdown_percent, drawdown),
+    entry_gross_exposure_multiple: entryGross,
     gross_exposure_multiple: gross,
     quantity_delta: quantityDelta,
     execution_price: fillPrice,

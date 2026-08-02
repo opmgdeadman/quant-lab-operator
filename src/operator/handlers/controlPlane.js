@@ -266,7 +266,7 @@ async function get_directional_shadow(inputs, context) {
     ok: Boolean(shadow),
     paper_only: true,
     live_capital_enabled: false,
-    max_gross_exposure_multiple: 1,
+    max_entry_gross_exposure_multiple: 1,
     shadow,
   };
 }
@@ -279,7 +279,7 @@ async function run_directional_shadow(inputs, context) {
       ok: false,
       paper_only: true,
       live_capital_enabled: false,
-      max_gross_exposure_multiple: 1,
+      max_entry_gross_exposure_multiple: 1,
       status: "directional_shadow_failed",
       error: error instanceof Error ? error.message : "directional_shadow_failed",
     };

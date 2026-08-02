@@ -46,7 +46,7 @@ function candles(closes) {
 }
 
 test("directional catalog is fixed, diversified, and capped at 1x", () => {
-  assert.equal(DIRECTIONAL_SHADOW_POLICY.max_gross_exposure_multiple, 1);
+  assert.equal(DIRECTIONAL_SHADOW_POLICY.max_entry_gross_exposure_multiple, 1);
   assert.equal(DIRECTIONAL_SHADOW_POLICY.live_capital_enabled, false);
   assert.equal(DIRECTIONAL_STRATEGIES.length, 12);
   assert.deepEqual(
@@ -86,7 +86,8 @@ test("long paper exposure earns marked profit without exceeding entry equity", (
   assert.ok(result.equity > 10000);
   assert.ok(result.fee > 0);
   assert.equal(result.carry, 0);
-  assert.ok(Math.abs(result.position_quantity * result.execution_price) <= 10000.000001);
+  assert.ok(result.entry_gross_exposure_multiple <= 1);
+  assert.ok(Math.abs(result.position_quantity * result.execution_price) < 10000);
 });
 
 test("short paper exposure earns when price falls and pays explicit carry", () => {
