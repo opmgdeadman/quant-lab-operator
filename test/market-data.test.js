@@ -94,6 +94,39 @@ test("historical window falls back from incomplete Coinbase to exact Bitstamp BT
   assert.equal(env.DB.candles.size, 3);
 });
 
+test("historical fallback preserves immutable Coinbase overlap and fills only missing hours", async () => {
+  const env = createEnv();
+  await runHistoricalCandleWindow(env, {
+    now: NOW,
+    startClosedAt: "2026-07-30T00:00:00.000Z",
+    endClosedAt: "2026-07-30T00:00:00.000Z",
+    fetchImpl: async () => jsonResponse([
+      coinbaseRow("2026-07-30T00:00:00.000Z", 100, 103, 99, 101, 9),
+    ]),
+  });
+  const result = await runHistoricalCandleWindow(env, {
+    now: NOW,
+    startClosedAt: "2026-07-30T00:00:00.000Z",
+    endClosedAt: "2026-07-30T02:00:00.000Z",
+    fetchImpl: async (url) => url.includes("bitstamp.net")
+      ? jsonResponse({ data: { ohlc: [
+          bitstampRow("2026-07-30T00:00:00.000Z", 200, 203, 199, 201, 19),
+          bitstampRow("2026-07-30T01:00:00.000Z", 201, 204, 200, 202, 20),
+          bitstampRow("2026-07-30T02:00:00.000Z", 202, 205, 201, 203, 21),
+        ] } })
+      : jsonResponse([
+          coinbaseRow("2026-07-30T02:00:00.000Z", 102, 105, 101, 103, 11),
+          coinbaseRow("2026-07-30T01:00:00.000Z", 101, 104, 100, 102, 10),
+        ]),
+  });
+  assert.equal(result.provider, "bitstamp_btcusd");
+  assert.equal(result.inserted_count, 2);
+  assert.equal(result.duplicate_count, 1);
+  assert.equal(env.DB.candles.get("2026-07-30T00:00:00.000Z").source, "coinbase_exchange");
+  assert.equal(env.DB.candles.get("2026-07-30T00:00:00.000Z").open, 100);
+  assert.equal(env.DB.candles.get("2026-07-30T01:00:00.000Z").source, "bitstamp_btcusd");
+});
+
 test("historical window rejects incomplete evidence from both providers before persistence", async () => {
   const env = createEnv();
   await assert.rejects(() => runHistoricalCandleWindow(env, {

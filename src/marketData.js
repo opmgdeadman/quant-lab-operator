@@ -218,7 +218,9 @@ export async function runHistoricalCandleWindow(env, options = {}) {
     for (const candle of candles) {
       const existing = existingByClosedAt.get(candle.closed_at);
       if (existing) {
-        if (!sameCandleValues(existing, candle)) throw new Error(`stored_candle_conflict:${candle.closed_at}`);
+        if (existing.source === candle.source && !sameCandleValues(existing, candle)) {
+          throw new Error(`stored_candle_conflict:${candle.closed_at}`);
+        }
         duplicateCount += 1;
         continue;
       }
