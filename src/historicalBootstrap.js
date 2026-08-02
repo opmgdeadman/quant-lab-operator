@@ -110,7 +110,7 @@ export async function runProductionHistoricalBootstrap(env, options = {}) {
     currentCloses = await readRecentCloses(env, TARGET_CONTIGUOUS_CANDLES);
     currentPlan = buildHistoricalBootstrapPlan(currentCloses, expectedClosedAt);
     const after = currentPlan.contiguous_candle_count;
-    if (after - before !== window.requested_hours) {
+    if (after - before < window.requested_hours) {
       blockerCodes = ["provider_window_incomplete"];
       break;
     }
