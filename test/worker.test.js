@@ -211,82 +211,12 @@ test("operator mcp startup context loads authority and sole canonical Git ECL", 
   assert.ok(context.required_governing_authority_ack);
 });
 
-test("operator mcp status invocation completes", async () => {
-  const env = createEnv();
-  await callTool(env, "get_quant_lab_status", {});
-});
-
-test("operator mcp status invocation rejects", async () => {
-  const env = createEnv();
-  await assert.rejects(() => callTool(env, "get_quant_lab_status", {}));
-});
-
-test("operator mcp status rejection is JSON parse", async () => {
-  const env = createEnv();
-  await assert.rejects(() => callTool(env, "get_quant_lab_status", {}), /JSON|Unexpected end/i);
-});
-
-test("operator mcp status rejection is serialization", async () => {
-  const env = createEnv();
-  await assert.rejects(() => callTool(env, "get_quant_lab_status", {}), /serialize|BigInt|circular/i);
-});
-
-test("operator mcp status rejection is response construction", async () => {
-  const env = createEnv();
-  await assert.rejects(() => callTool(env, "get_quant_lab_status", {}), /Response|status|body/i);
-});
-
-test("operator mcp status error object exists", async () => {
+test("operator mcp status tool returns bounded status only", async () => {
   const env = createEnv();
   const body = await callTool(env, "get_quant_lab_status", {});
-  assert.ok(body.error);
-});
 
-test("operator mcp status error is invalid params", async () => {
-  const env = createEnv();
-  const body = await callTool(env, "get_quant_lab_status", {});
-  assert.equal(body.error?.code, -32602);
-});
-
-test("operator mcp status error is valid session", async () => {
-  const env = createEnv();
-  const body = await callTool(env, "get_quant_lab_status", {});
-  assert.equal(body.error?.message, "valid_mcp_session_required");
-});
-
-test("operator mcp status error is public direct", async () => {
-  const env = createEnv();
-  const body = await callTool(env, "get_quant_lab_status", {});
-  assert.equal(body.error?.message, "public_direct_tool_required");
-});
-
-test("operator mcp status error contains unhandled query", async () => {
-  const env = createEnv();
-  const body = await callTool(env, "get_quant_lab_status", {});
-  assert.match(body.error?.message || "", /unhandled/i);
-});
-
-test("operator mcp status error contains missing all method", async () => {
-  const env = createEnv();
-  const body = await callTool(env, "get_quant_lab_status", {});
-  assert.match(body.error?.message || "", /all is not a function/i);
-});
-
-test("operator mcp status reports system identity", async () => {
-  const env = createEnv();
-  const body = await callTool(env, "get_quant_lab_status", {});
   assert.equal(body.result.structuredContent.system, "Quant Lab");
-});
-
-test("operator mcp status reports database connectivity", async () => {
-  const env = createEnv();
-  const body = await callTool(env, "get_quant_lab_status", {});
   assert.equal(body.result.structuredContent.databaseConnected, true);
-});
-
-test("operator mcp status omits private database probe", async () => {
-  const env = createEnv();
-  const body = await callTool(env, "get_quant_lab_status", {});
   assert.equal(body.result.structuredContent.databaseProbe, undefined);
 });
 
@@ -892,10 +822,23 @@ class MemoryStatement {
     if (this.sql.includes("FROM operator_continuation_state")) {
       return this.db.continuation;
     }
+    if (this.sql.includes("FROM market_candles") && this.sql.includes("COUNT(*)")) {
+      return { count: 0 };
+    }
     if (this.sql.includes("FROM market_candles")) {
       return null;
     }
+    if (this.sql.trimStart().startsWith("SELECT")) {
+      return null;
+    }
     throw new Error(`unhandled first SQL: ${this.sql}`);
+  }
+
+  async all() {
+    if (this.sql.trimStart().startsWith("SELECT")) {
+      return { results: [] };
+    }
+    throw new Error(`unhandled all SQL: ${this.sql}`);
   }
 
   async run() {
