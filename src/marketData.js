@@ -192,17 +192,27 @@ export async function runHistoricalCandleWindow(env, options = {}) {
   let duplicateCount = 0;
   let effectiveProvider = provider;
   try {
-    const chunkResult = await fetchProviderCandles(provider, {
+    const request = {
       startClosedAt,
       endClosedAt,
       expectedClosedAt,
       fetchImpl,
       sleepImpl,
-    });
+    };
+    let chunkResult = await fetchProviderCandles(provider, request);
+    let candles = deduplicateAndSort(chunkResult.candles);
+    try {
+      assertExactHistoricalCoverage(candles, startClosedAt, endClosedAt, windowHours);
+    } catch (error) {
+      if (provider !== "coinbase_exchange" || !(error instanceof Error) || error.message !== "historical_provider_window_incomplete") {
+        throw error;
+      }
+      chunkResult = await fetchProviderCandles("binance_us", request);
+      candles = deduplicateAndSort(chunkResult.candles);
+      assertExactHistoricalCoverage(candles, startClosedAt, endClosedAt, windowHours);
+    }
     effectiveProvider = chunkResult.provider;
-    const candles = deduplicateAndSort(chunkResult.candles);
     fetchedCount = candles.length;
-    assertExactHistoricalCoverage(candles, startClosedAt, endClosedAt, windowHours);
     const existingRows = await storedCandlesBetween(env, startClosedAt, endClosedAt);
     const existingByClosedAt = new Map(existingRows.map((row) => [row.closed_at, normalizeStoredCandle(row)]));
     for (const candle of candles) {

@@ -71,7 +71,30 @@ test("bounded historical window persists exact candles and replays as duplicates
   assert.equal(env.DB.candles.get("2026-07-30T00:00:00.000Z").source, "coinbase_exchange");
 });
 
-test("historical window rejects incomplete provider evidence before persistence", async () => {
+test("historical window falls back from incomplete Coinbase to exact Binance evidence", async () => {
+  const env = createEnv();
+  const fetchImpl = async (url) => url.includes("binance.us")
+    ? jsonResponse([
+        binanceRow("2026-07-30T00:00:00.000Z", 100, 103, 99, 101, 9),
+        binanceRow("2026-07-30T01:00:00.000Z", 101, 104, 100, 102, 10),
+        binanceRow("2026-07-30T02:00:00.000Z", 102, 105, 101, 103, 11),
+      ])
+    : jsonResponse([
+        coinbaseRow("2026-07-30T02:00:00.000Z", 102, 105, 101, 103, 11),
+        coinbaseRow("2026-07-30T01:00:00.000Z", 101, 104, 100, 102, 10),
+      ]);
+  const result = await runHistoricalCandleWindow(env, {
+    now: NOW,
+    startClosedAt: "2026-07-30T00:00:00.000Z",
+    endClosedAt: "2026-07-30T02:00:00.000Z",
+    fetchImpl,
+  });
+  assert.equal(result.provider, "binance_us");
+  assert.equal(result.inserted_count, 3);
+  assert.equal(env.DB.candles.size, 3);
+});
+
+test("historical window rejects incomplete evidence from both providers before persistence", async () => {
   const env = createEnv();
   await assert.rejects(() => runHistoricalCandleWindow(env, {
     now: NOW,
@@ -249,6 +272,17 @@ test("completed-candle validator rejects misaligned timestamps and impossible ra
     source: "coinbase_exchange",
   }, "2026-08-01T12:00:00.000Z"), /invalid_candle_high/);
 });
+
+function binanceRow(closedAt, open, high, low, close, volume) {
+  return [
+    Date.parse(closedAt) - 60 * 60 * 1000,
+    String(open),
+    String(high),
+    String(low),
+    String(close),
+    String(volume),
+  ];
+}
 
 function coinbaseRow(closedAt, open, high, low, close, volume) {
   const bucketStartSeconds = (Date.parse(closedAt) - 60 * 60 * 1000) / 1000;
