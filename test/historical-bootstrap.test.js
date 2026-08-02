@@ -18,7 +18,7 @@ function closes(count, end = EXPECTED) {
 test("historical bootstrap policy is immutable and bounded", () => {
   assert.equal(Object.isFrozen(HISTORICAL_BOOTSTRAP_POLICY), true);
   assert.equal(Object.isFrozen(HISTORICAL_BOOTSTRAP_POLICY.provider_order), true);
-  assert.equal(HISTORICAL_BOOTSTRAP_POLICY.target_contiguous_candles, 720);
+  assert.equal(HISTORICAL_BOOTSTRAP_POLICY.target_contiguous_candles, 4320);
   assert.equal(HISTORICAL_BOOTSTRAP_POLICY.window_hours, 200);
   assert.equal(HISTORICAL_BOOTSTRAP_POLICY.max_windows_per_attempt, 2);
   assert.deepEqual(HISTORICAL_BOOTSTRAP_POLICY.provider_order, [
@@ -51,18 +51,18 @@ test("76 candles plans two adjacent 200-hour backward windows", () => {
   assert.equal(Date.parse(plan.windows[0].end_closed_at) < Date.parse(plan.earliest_contiguous_closed_at), true);
 });
 
-test("476 candles plans the exact remaining 200 and 44 hours", () => {
-  const plan = buildHistoricalBootstrapPlan(closes(476), EXPECTED);
+test("4076 candles plans the exact remaining 200 and 44 hours", () => {
+  const plan = buildHistoricalBootstrapPlan(closes(4076), EXPECTED);
   assert.equal(plan.state, "in_progress");
   assert.deepEqual(plan.windows.map((window) => window.requested_hours), [200, 44]);
   const total = plan.windows.reduce((sum, window) => sum + window.requested_hours, 0);
   assert.equal(total, 244);
 });
 
-test("720 contiguous candles stop bootstrap with no windows", () => {
-  const plan = buildHistoricalBootstrapPlan(closes(720), EXPECTED);
+test("4320 contiguous candles stop bootstrap with no windows", () => {
+  const plan = buildHistoricalBootstrapPlan(closes(4320), EXPECTED);
   assert.equal(plan.state, "complete");
-  assert.equal(plan.contiguous_candle_count, 720);
+  assert.equal(plan.contiguous_candle_count, 4320);
   assert.deepEqual(plan.blocker_codes, []);
   assert.deepEqual(plan.windows, []);
 });

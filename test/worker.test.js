@@ -44,7 +44,7 @@ test("home renders the professional paper-only Quant Lab console", async () => {
   assert.match(body, /Autonomous Research Console/);
   assert.match(body, /PAPER ONLY/);
   assert.match(body, /TradingView/);
-  assert.match(body, /Controlled strategy factory/);
+  assert.match(body, /Live shadow-paper competition/);
   assert.match(body, /Live orders disabled/);
   assert.match(body, /\/quant-lab-logo\.png/);
   assert.match(body, /\/site\.webmanifest/);
