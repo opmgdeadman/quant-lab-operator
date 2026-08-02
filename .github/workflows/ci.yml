@@ -8,6 +8,25 @@ on:
 jobs:
   worker-tests:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - group: worker-console
+            files: test/worker.test.js
+          - group: directional-shadow
+            files: test/directional-shadow.test.js
+          - group: historical-bootstrap
+            files: test/historical-bootstrap.test.js
+          - group: operator
+            files: test/operator-capability-directory.test.js test/operator-client-safety.test.js
+          - group: market-paper
+            files: test/market-data.test.js test/paper-ledger.test.js
+          - group: historical-research
+            files: test/baseline-bench.test.js test/hostile-judge.test.js test/strategy-factory.test.js test/champion-selection.test.js
+          - group: forward-qualification
+            files: test/forward-paper.test.js test/live-qualification.test.js test/rolling-research.test.js
+    name: worker-tests (${{ matrix.group }})
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -16,8 +35,8 @@ jobs:
           cache: "npm"
       - name: Install dependencies
         run: npm ci
-      - name: Run Worker tests
-        run: npm test
+      - name: Run ${{ matrix.group }} tests
+        run: node --test ${{ matrix.files }}
 
   quant-core-tests:
     runs-on: ubuntu-latest
