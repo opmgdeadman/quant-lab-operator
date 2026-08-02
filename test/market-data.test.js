@@ -71,6 +71,20 @@ test("bounded historical window persists exact candles and replays as duplicates
   assert.equal(env.DB.candles.get("2026-07-30T00:00:00.000Z").source, "coinbase_exchange");
 });
 
+test("historical window rejects incomplete provider evidence before persistence", async () => {
+  const env = createEnv();
+  await assert.rejects(() => runHistoricalCandleWindow(env, {
+    now: NOW,
+    startClosedAt: "2026-07-30T00:00:00.000Z",
+    endClosedAt: "2026-07-30T02:00:00.000Z",
+    fetchImpl: async () => jsonResponse([
+      coinbaseRow("2026-07-30T02:00:00.000Z", 102, 105, 101, 103, 11),
+      coinbaseRow("2026-07-30T01:00:00.000Z", 101, 104, 100, 102, 10),
+    ]),
+  }), /historical_provider_window_incomplete/);
+  assert.equal(env.DB.candles.size, 0);
+});
+
 test("historical window rejects future, oversized, and conflicting evidence", async () => {
   const env = createEnv();
   await assert.rejects(() => runHistoricalCandleWindow(env, {

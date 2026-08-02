@@ -202,6 +202,7 @@ export async function runHistoricalCandleWindow(env, options = {}) {
     effectiveProvider = chunkResult.provider;
     const candles = deduplicateAndSort(chunkResult.candles);
     fetchedCount = candles.length;
+    assertExactHistoricalCoverage(candles, startClosedAt, endClosedAt, windowHours);
     const existingRows = await storedCandlesBetween(env, startClosedAt, endClosedAt);
     const existingByClosedAt = new Map(existingRows.map((row) => [row.closed_at, normalizeStoredCandle(row)]));
     for (const candle of candles) {
@@ -297,6 +298,23 @@ export async function getMarketDataHealth(env, now = new Date()) {
     duplicate_count: Number(persisted?.duplicate_count || 0),
     updated_at: persisted?.updated_at || null,
   };
+}
+
+function assertExactHistoricalCoverage(candles, startClosedAt, endClosedAt, expectedHours) {
+  if (candles.length !== expectedHours) {
+    throw new Error("historical_provider_window_incomplete");
+  }
+  const startMs = Date.parse(startClosedAt);
+  const endMs = Date.parse(endClosedAt);
+  for (let index = 0; index < candles.length; index += 1) {
+    const expectedMs = startMs + index * HOUR_MS;
+    if (candles[index].closed_at !== new Date(expectedMs).toISOString()) {
+      throw new Error("historical_provider_window_incomplete");
+    }
+  }
+  if (Date.parse(candles.at(-1).closed_at) !== endMs) {
+    throw new Error("historical_provider_window_incomplete");
+  }
 }
 
 export function validateCompletedCandle(candle, expectedClosedAt) {
