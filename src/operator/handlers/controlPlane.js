@@ -220,23 +220,40 @@ async function run_champion_selection(inputs, context) {
 }
 
 async function get_forward_operation(inputs, context) {
-  const forward = await getForwardOperationSummary(context.env);
+  const [forward, directionalShadow] = await Promise.all([
+    getForwardOperationSummary(context.env),
+    getDirectionalShadowSummary(context.env),
+  ]);
   return {
-    ok: Boolean(forward),
+    ok: Boolean(forward) && Boolean(directionalShadow),
     paper_only: true,
     live_capital_enabled: false,
+    max_gross_exposure_multiple: 1,
     forward,
+    directional_shadow: directionalShadow,
   };
 }
 
 async function run_forward_operation(inputs, context) {
   try {
-    return await runProductionForwardPaperCycle(context.env);
+    const [forward, directionalShadow] = await Promise.all([
+      runProductionForwardPaperCycle(context.env),
+      runProductionDirectionalShadowCycle(context.env),
+    ]);
+    return {
+      ok: Boolean(forward?.ok) && Boolean(directionalShadow?.ok),
+      paper_only: true,
+      live_capital_enabled: false,
+      max_gross_exposure_multiple: 1,
+      forward,
+      directional_shadow: directionalShadow,
+    };
   } catch (error) {
     return {
       ok: false,
       paper_only: true,
       live_capital_enabled: false,
+      max_gross_exposure_multiple: 1,
       status: "forward_operation_failed",
       error: error instanceof Error ? error.message : "forward_operation_failed",
     };
