@@ -15,9 +15,18 @@ jobs:
           - group: worker-public-console
             files: test/worker.test.js
             pattern: internal status|home renders|canonical Quant|public live|professional console|legacy public
-          - group: worker-mcp
+          - group: worker-mcp-session
             files: test/worker.test.js
-            pattern: operator mcp|operator intents|execute_quant_lab_intent
+            pattern: operator mcp rejects unauthenticated|operator mcp initialize|operator mcp session|operator mcp tools
+          - group: worker-mcp-startup
+            files: test/worker.test.js
+            pattern: operator mcp startup context
+          - group: worker-mcp-status
+            files: test/worker.test.js
+            pattern: operator mcp status tool
+          - group: worker-mcp-intents
+            files: test/worker.test.js
+            pattern: operator intents|operator mcp rejects unadvertised|execute_quant_lab_intent
           - group: worker-engineering
             files: test/worker.test.js
             pattern: read_repo_file|forbidden public|run_validation|production market|validate_production_sha|list_github_actions|engineering access|repo file list|apply_repo_patch|create_repo_file|inspect_repository|GitHub Actions
