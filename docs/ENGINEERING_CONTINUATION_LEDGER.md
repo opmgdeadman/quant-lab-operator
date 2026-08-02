@@ -123,10 +123,18 @@ Permanent boundaries:
 - Exact SHA `2bce3f332575cdf579d36e17e485b84184cada62` deployed successfully in workflow run `30723744571`. Its post-deploy production smoke gate fetched the live console, manifest, all eight brand assets, and public status route and passed every assertion.
 - Repository and production deployment SHAs were proven aligned at `2bce3f332575cdf579d36e17e485b84184cada62`. No trading logic, strategy evidence, paper accounting, scheduler behavior, or live-capital authority changed.
 - Stage 12 is complete. Quant Lab now carries one consistent owner-approved visual identity across the live console, browser surfaces, installed-app surfaces, and link previews.
+- Stage 13 implemented migration `0014_directional_shadow_paper.sql`, twelve isolated virtual-$10,000 paper portfolios, signed long/flat/short accounting, 10 bps fees, 5 bps slippage, explicit short carry, next-completed-candle execution, and a strict 1.0x entry-gross-exposure ceiling with no live-capital path.
+- The immutable directional catalog spans six predeclared families: EMA trend, Donchian breakout, price momentum, volatility breakout, RSI mean reversion, and Bollinger mean reversion. Every candidate runs independently instead of waiting for a qualified paper-main champion.
+- Focused tests prove long and short signals, profitable and losing signed positions, short carry, long-to-short flips, fee-reserved entry sizing, rejection above 1.0x, immutable catalog behavior, and full Worker/quant-core/Wrangler integration.
+- Production commissioning created cycle `directional-shadow:2026-08-02T16:00:00.000Z` with twelve candidates, three virtual trades, one long account, two short accounts, nine flat accounts, and no real capital or live derivatives.
+- The professional console and authenticated forward-operation surface expose shadow positions, virtual equity, returns, drawdowns, fees, carry, trade counts, and hourly cycle state while `paper-main` remains qualification-gated.
+- Historical policy v4 expanded the target from 720 to 4,320 contiguous hourly candles and hardened exact-window ingestion: atomic pre-persistence coverage validation, 100-hour sealed windows, four-window attempts, immutable cross-provider overlap, and Bitstamp BTC/USD fallback only when Coinbase returns incomplete history.
+- Exact production history reached 4,320 contiguous completed BTC-USD hourly candles from `2026-02-03T18:00:00.000Z` through `2026-08-02T17:00:00.000Z`, with zero remaining bootstrap work, zero synthetic candles, and no overwrite of existing provider rows.
+- Exact SHA `f43760f0c4dd1c0278ca71ce80bd76c94e976ee3` passed Worker tests, quant-core tests, and Wrangler validation and deployed successfully before final production bootstrap completion.
 
 ## Current Action
 
-Design and implement the Stage 13 immutable execution and research contract: signed 1.0x long/short shadow portfolios, conservative short-cost accounting, concurrent hourly candidate forward-paper cycles, broader predeclared directional strategy families, walk-forward evidence, and website visibility. Validate accounting and no-look-ahead behavior before production deployment.
+Implement the remaining Stage 13 research layer over the completed 4,320-candle history: multiple immutable walk-forward windows, cost-stressed long/short backtests for all twelve directional candidates, hostile-judge integration, and champion scoring that combines historical robustness with independent shadow-forward evidence. Preserve the active hourly shadow portfolios and do not promote a strategy merely to create activity.
 
 ## Steady-State Operating Gate
 
