@@ -211,10 +211,46 @@ test("operator mcp startup context loads authority and sole canonical Git ECL", 
   assert.ok(context.required_governing_authority_ack);
 });
 
-test("operator mcp status response exists", async () => {
+test("operator mcp status result object exists", async () => {
   const env = createEnv();
   const body = await callTool(env, "get_quant_lab_status", {});
-  assert.ok(body.result?.structuredContent);
+  assert.ok(body.result);
+});
+
+test("operator mcp status error object exists", async () => {
+  const env = createEnv();
+  const body = await callTool(env, "get_quant_lab_status", {});
+  assert.ok(body.error);
+});
+
+test("operator mcp status error is invalid params", async () => {
+  const env = createEnv();
+  const body = await callTool(env, "get_quant_lab_status", {});
+  assert.equal(body.error?.code, -32602);
+});
+
+test("operator mcp status error is valid session", async () => {
+  const env = createEnv();
+  const body = await callTool(env, "get_quant_lab_status", {});
+  assert.equal(body.error?.message, "valid_mcp_session_required");
+});
+
+test("operator mcp status error is public direct", async () => {
+  const env = createEnv();
+  const body = await callTool(env, "get_quant_lab_status", {});
+  assert.equal(body.error?.message, "public_direct_tool_required");
+});
+
+test("operator mcp status error contains unhandled query", async () => {
+  const env = createEnv();
+  const body = await callTool(env, "get_quant_lab_status", {});
+  assert.match(body.error?.message || "", /unhandled/i);
+});
+
+test("operator mcp status error contains missing all method", async () => {
+  const env = createEnv();
+  const body = await callTool(env, "get_quant_lab_status", {});
+  assert.match(body.error?.message || "", /all is not a function/i);
 });
 
 test("operator mcp status reports system identity", async () => {

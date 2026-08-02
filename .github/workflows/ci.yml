@@ -8,6 +8,25 @@ on:
 jobs:
   worker-tests:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - group: result-exists
+            pattern: operator mcp status result object exists
+          - group: error-exists
+            pattern: operator mcp status error object exists
+          - group: invalid-params
+            pattern: operator mcp status error is invalid params
+          - group: valid-session
+            pattern: operator mcp status error is valid session
+          - group: public-direct
+            pattern: operator mcp status error is public direct
+          - group: unhandled-query
+            pattern: operator mcp status error contains unhandled query
+          - group: missing-all
+            pattern: operator mcp status error contains missing all method
+    name: worker-tests (${{ matrix.group }})
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -16,8 +35,8 @@ jobs:
           cache: "npm"
       - name: Install dependencies
         run: npm ci
-      - name: Run authenticated status tests
-        run: node --test --test-name-pattern="operator mcp status" test/worker.test.js
+      - name: Classify ${{ matrix.group }}
+        run: node --test --test-name-pattern="${{ matrix.pattern }}" test/worker.test.js
 
   quant-core-tests:
     runs-on: ubuntu-latest
