@@ -16,6 +16,18 @@ jobs:
           cache: "npm"
       - name: Install dependencies
         run: npm ci
+      - name: Diagnose worker console tests
+        continue-on-error: true
+        run: node --test test/worker.test.js
+      - name: Diagnose directional shadow tests
+        continue-on-error: true
+        run: node --test test/directional-shadow.test.js
+      - name: Diagnose historical bootstrap tests
+        continue-on-error: true
+        run: node --test test/historical-bootstrap.test.js
+      - name: Diagnose operator directory tests
+        continue-on-error: true
+        run: node --test test/operator-capability-directory.test.js test/operator-client-safety.test.js
       - name: Run Worker tests
         run: npm test
 

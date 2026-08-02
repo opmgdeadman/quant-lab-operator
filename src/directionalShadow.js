@@ -257,7 +257,7 @@ export async function runProductionDirectionalShadowCycle(env, options = {}) {
     candidates: ranked,
   };
   const cycleHash = await stableHash(summary);
-  statements.push(env.DB.prepare(
+  statements.unshift(env.DB.prepare(
     `INSERT INTO directional_shadow_cycles (
        id, policy_id, policy_hash, scheduled_at, signal_closed_at,
        execution_candle_closed_at, candidate_count, long_count, flat_count,
