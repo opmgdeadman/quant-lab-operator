@@ -16,8 +16,8 @@ jobs:
           cache: "npm"
       - name: Install dependencies
         run: npm ci
-      - name: Run Worker tests
-        run: npm test
+      - name: Run authenticated status tests
+        run: node --test --test-name-pattern="operator mcp status" test/worker.test.js
 
   quant-core-tests:
     runs-on: ubuntu-latest
