@@ -207,7 +207,7 @@ export async function runHistoricalCandleWindow(env, options = {}) {
       if (provider !== "coinbase_exchange" || !(error instanceof Error) || error.message !== "historical_provider_window_incomplete") {
         throw error;
       }
-      chunkResult = await fetchProviderCandles("binance_us", request);
+      chunkResult = await fetchProviderCandles("bitstamp_btcusd", request);
       candles = deduplicateAndSort(chunkResult.candles);
       assertExactHistoricalCoverage(candles, startClosedAt, endClosedAt, windowHours);
     }
@@ -382,6 +382,9 @@ async function fetchProviderCandles(provider, request) {
   if (provider === "binance_us") {
     return { provider, candles: await fetchBinanceUsCandles(request) };
   }
+  if (provider === "bitstamp_btcusd") {
+    return { provider, candles: await fetchBitstampCandles(request) };
+  }
   throw new Error(`unsupported_market_data_provider:${provider}`);
 }
 
@@ -433,6 +436,54 @@ async function fetchCoinbaseExchangeCandles({
       close: Number(row[4]),
       volume: Number(row[5]),
       source: "coinbase_exchange",
+    };
+    candles.push(validateCompletedCandle(candle, expectedClosedAt));
+  }
+  return candles;
+}
+
+async function fetchBitstampCandles({
+  startClosedAt,
+  endClosedAt,
+  expectedClosedAt,
+  fetchImpl,
+  sleepImpl,
+}) {
+  const startBucketSeconds = Math.floor((dateMillis(startClosedAt, "start_closed_at") - HOUR_MS) / 1000);
+  const endBucketSeconds = Math.floor((dateMillis(endClosedAt, "end_closed_at") - HOUR_MS) / 1000);
+  const requestedHours = Math.round((endBucketSeconds - startBucketSeconds) / 3600) + 1;
+  const url = new URL("https://www.bitstamp.net/api/v2/ohlc/btcusd/");
+  url.searchParams.set("step", "3600");
+  url.searchParams.set("limit", String(requestedHours));
+  url.searchParams.set("start", String(startBucketSeconds));
+  url.searchParams.set("end", String(endBucketSeconds));
+  url.searchParams.set("exclude_current_candle", "true");
+
+  const response = await fetchProviderResponse(url.toString(), fetchImpl, sleepImpl);
+  const payload = await response.json();
+  const rows = payload?.data?.ohlc;
+  if (!Array.isArray(rows)) {
+    throw new Error("market_data_invalid_payload");
+  }
+
+  const startClosedMs = dateMillis(startClosedAt, "start_closed_at");
+  const endClosedMs = dateMillis(endClosedAt, "end_closed_at");
+  const candles = [];
+  for (const row of rows) {
+    const bucketStartMs = Number(row?.timestamp) * 1000;
+    const closedMs = bucketStartMs + HOUR_MS;
+    if (closedMs < startClosedMs || closedMs > endClosedMs) continue;
+    const candle = {
+      id: candleId(new Date(closedMs).toISOString()),
+      pair: PAIR,
+      interval: INTERVAL,
+      closed_at: new Date(closedMs).toISOString(),
+      open: Number(row.open),
+      high: Number(row.high),
+      low: Number(row.low),
+      close: Number(row.close),
+      volume: Number(row.volume),
+      source: "bitstamp_btcusd",
     };
     candles.push(validateCompletedCandle(candle, expectedClosedAt));
   }

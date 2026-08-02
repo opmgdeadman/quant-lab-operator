@@ -3,7 +3,7 @@ import {
   runHistoricalCandleWindow,
 } from "./marketData.js";
 
-const POLICY_ID = "bounded-historical-bootstrap-v3";
+const POLICY_ID = "bounded-historical-bootstrap-v4";
 const MARKET = "BTC-USD";
 const INTERVAL = "1h";
 const TARGET_CONTIGUOUS_CANDLES = 4320;
@@ -13,13 +13,13 @@ const HOUR_MS = 60 * 60 * 1000;
 
 export const HISTORICAL_BOOTSTRAP_POLICY = deepFreeze({
   id: POLICY_ID,
-  version: 3,
+  version: 4,
   market: MARKET,
   interval: INTERVAL,
   target_contiguous_candles: TARGET_CONTIGUOUS_CANDLES,
   window_hours: WINDOW_HOURS,
   max_windows_per_attempt: MAX_WINDOWS_PER_ATTEMPT,
-  provider_order: ["coinbase_exchange", "binance_us_exact_fallback"],
+  provider_order: ["coinbase_exchange", "bitstamp_btcusd_exact_fallback"],
   completed_candles_only: true,
   backward_only: true,
   overwrite_allowed: false,

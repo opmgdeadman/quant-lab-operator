@@ -23,7 +23,7 @@ test("historical bootstrap policy is immutable and bounded", () => {
   assert.equal(HISTORICAL_BOOTSTRAP_POLICY.max_windows_per_attempt, 4);
   assert.deepEqual(HISTORICAL_BOOTSTRAP_POLICY.provider_order, [
     "coinbase_exchange",
-    "binance_us_exact_fallback",
+    "bitstamp_btcusd_exact_fallback",
   ]);
   assert.equal(HISTORICAL_BOOTSTRAP_POLICY.completed_candles_only, true);
   assert.equal(HISTORICAL_BOOTSTRAP_POLICY.backward_only, true);

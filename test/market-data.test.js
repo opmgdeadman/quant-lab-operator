@@ -71,14 +71,14 @@ test("bounded historical window persists exact candles and replays as duplicates
   assert.equal(env.DB.candles.get("2026-07-30T00:00:00.000Z").source, "coinbase_exchange");
 });
 
-test("historical window falls back from incomplete Coinbase to exact Binance evidence", async () => {
+test("historical window falls back from incomplete Coinbase to exact Bitstamp BTCUSD evidence", async () => {
   const env = createEnv();
-  const fetchImpl = async (url) => url.includes("binance.us")
-    ? jsonResponse([
-        binanceRow("2026-07-30T00:00:00.000Z", 100, 103, 99, 101, 9),
-        binanceRow("2026-07-30T01:00:00.000Z", 101, 104, 100, 102, 10),
-        binanceRow("2026-07-30T02:00:00.000Z", 102, 105, 101, 103, 11),
-      ])
+  const fetchImpl = async (url) => url.includes("bitstamp.net")
+    ? jsonResponse({ data: { ohlc: [
+        bitstampRow("2026-07-30T00:00:00.000Z", 100, 103, 99, 101, 9),
+        bitstampRow("2026-07-30T01:00:00.000Z", 101, 104, 100, 102, 10),
+        bitstampRow("2026-07-30T02:00:00.000Z", 102, 105, 101, 103, 11),
+      ] } })
     : jsonResponse([
         coinbaseRow("2026-07-30T02:00:00.000Z", 102, 105, 101, 103, 11),
         coinbaseRow("2026-07-30T01:00:00.000Z", 101, 104, 100, 102, 10),
@@ -89,7 +89,7 @@ test("historical window falls back from incomplete Coinbase to exact Binance evi
     endClosedAt: "2026-07-30T02:00:00.000Z",
     fetchImpl,
   });
-  assert.equal(result.provider, "binance_us");
+  assert.equal(result.provider, "bitstamp_btcusd");
   assert.equal(result.inserted_count, 3);
   assert.equal(env.DB.candles.size, 3);
 });
@@ -100,10 +100,15 @@ test("historical window rejects incomplete evidence from both providers before p
     now: NOW,
     startClosedAt: "2026-07-30T00:00:00.000Z",
     endClosedAt: "2026-07-30T02:00:00.000Z",
-    fetchImpl: async () => jsonResponse([
-      coinbaseRow("2026-07-30T02:00:00.000Z", 102, 105, 101, 103, 11),
-      coinbaseRow("2026-07-30T01:00:00.000Z", 101, 104, 100, 102, 10),
-    ]),
+    fetchImpl: async (url) => url.includes("bitstamp.net")
+      ? jsonResponse({ data: { ohlc: [
+          bitstampRow("2026-07-30T01:00:00.000Z", 101, 104, 100, 102, 10),
+          bitstampRow("2026-07-30T02:00:00.000Z", 102, 105, 101, 103, 11),
+        ] } })
+      : jsonResponse([
+          coinbaseRow("2026-07-30T02:00:00.000Z", 102, 105, 101, 103, 11),
+          coinbaseRow("2026-07-30T01:00:00.000Z", 101, 104, 100, 102, 10),
+        ]),
   }), /historical_provider_window_incomplete/);
   assert.equal(env.DB.candles.size, 0);
 });
@@ -272,6 +277,17 @@ test("completed-candle validator rejects misaligned timestamps and impossible ra
     source: "coinbase_exchange",
   }, "2026-08-01T12:00:00.000Z"), /invalid_candle_high/);
 });
+
+function bitstampRow(closedAt, open, high, low, close, volume) {
+  return {
+    timestamp: String((Date.parse(closedAt) - 60 * 60 * 1000) / 1000),
+    open: String(open),
+    high: String(high),
+    low: String(low),
+    close: String(close),
+    volume: String(volume),
+  };
+}
 
 function coinbaseRow(closedAt, open, high, low, close, volume) {
   const bucketStartSeconds = (Date.parse(closedAt) - 60 * 60 * 1000) / 1000;
