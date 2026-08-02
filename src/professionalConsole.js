@@ -6,13 +6,15 @@ export function renderProfessionalConsole(model = {}) {
     latest = null, candles = [], health = null, paperAccount = null,
     baselineBench = null, hostileJudge = null, strategyFactory = null,
     championSelection = null, forwardOperation = null, liveQualification = null,
-    rollingResearch = null, historicalBootstrap = null,
+    rollingResearch = null, historicalBootstrap = null, directionalShadow = null,
   } = model;
 
   const forward = forwardOperation?.latest_cycle || null;
   const scheduler = forwardOperation?.latest_scheduler_receipt || null;
   const epoch = rollingResearch?.latest_epoch || null;
   const bootstrap = historicalBootstrap?.progress || null;
+  const shadowCycle = directionalShadow?.latest_cycle || null;
+  const shadowAccounts = directionalShadow?.accounts || [];
   const price = num(latest?.close);
   const open = num(latest?.open);
   const candleMove = price !== null && open ? ((price / open) - 1) * 100 : null;
@@ -45,6 +47,16 @@ export function renderProfessionalConsole(model = {}) {
     <td class="numeric">${pct(entry.metrics?.max_drawdown_percent)}</td>
     <td class="numeric">${integer(entry.metrics?.trade_count)}</td>
     <td class="numeric">${integer(entry.metrics?.fill_count)}</td>
+  </tr>`).join("");
+
+  const shadowRows = shadowAccounts.map((entry) => `<tr>
+    <td><div class="strategy-name">${esc(strategyName(entry.candidate_id))}</div><div class="strategy-id">${esc(entry.candidate_id)}</div></td>
+    <td><span class="family">${esc(human(entry.family))}</span></td>
+    <td>${badge(entry.exposure_side > 0 ? "long" : entry.exposure_side < 0 ? "short" : "flat")}</td>
+    <td class="numeric">${money(entry.equity)}</td>
+    <td class="numeric ${tone(entry.return_percent)}">${pct(entry.return_percent)}</td>
+    <td class="numeric">${pct(entry.max_drawdown_percent)}</td>
+    <td class="numeric">${integer(entry.cycle_count)}</td>
   </tr>`).join("");
 
   return `<!doctype html>
@@ -101,8 +113,8 @@ export function renderProfessionalConsole(model = {}) {
 
     <main class="content" id="overview">
       <section class="hero">
-        <div><h1>Evidence first. Capital never assumed.</h1><p>Quant Lab ingests completed BTC-USD candles, evaluates a fixed strategy catalog under hostile evidence gates, selects only qualified research, and operates a reconciled paper account. No champion means safe idle—not a forced trade.</p><div class="hero-actions"><a class="btn primary" href="#market">Open market terminal</a><a class="btn" href="#research">Review research evidence</a></div></div>
-        <div class="posture"><div class="label">Current operating posture</div><strong>${esc(human(forward?.state || "safe_idle"))}</strong><div class="posture-grid">
+        <div><h1>Directional strategies compete every hour.</h1><p>Quant Lab now runs isolated long, flat, and short paper accounts at a strict 1× entry-exposure ceiling. Shadow candidates gather forward evidence immediately while the qualification-gated paper-main account remains protected.</p><div class="hero-actions"><a class="btn primary" href="#market">Open market terminal</a><a class="btn" href="#research">Review active competition</a></div></div>
+        <div class="posture"><div class="label">Current operating posture</div><strong>${esc(human(shadowCycle?.state || forward?.state || "initializing"))}</strong><div class="posture-grid">
           ${posture("Environment", environment)}${posture("Phase", human(currentPhase))}${posture("Data", human(health?.status || "unknown"))}${posture("Accounting", paperAccount?.accounting_reconciled ? "Reconciled" : "Unverified")}
         </div></div>
       </section>
@@ -110,7 +122,7 @@ export function renderProfessionalConsole(model = {}) {
       <section class="kpis" aria-label="Executive summary">
         ${kpi("BTC-USD", money(price), candleMove === null ? "Awaiting completed candle" : `${pct(candleMove)} this candle`, candleMove, icon("bitcoin"), "price")}
         ${kpi("Paper equity", money(equity), `${money(realized)} realized P&L`, realized, icon("wallet"), "equity")}
-        ${kpi("Active champion", champion ? strategyName(champion) : "No champion", champion ? "Qualified selection active" : "Safe idle enforced", champion ? 1 : null, icon("crown"), "champion")}
+        ${kpi("Shadow competitors", integer(directionalShadow?.candidate_count || 0), shadowCycle ? `${shadowCycle.long_count || 0} long · ${shadowCycle.short_count || 0} short · ${shadowCycle.flat_count || 0} flat` : "Initializing isolated paper accounts", shadowCycle ? 1 : null, icon("cycle"), "shadow")} 
         ${kpi("Live qualification", human(qState), `${qPassed}/${qTotal} evidence gates passed`, qState === "eligible_for_owner_review" ? 1 : null, icon("shield"), "qualification")}
       </section>
 
@@ -130,9 +142,10 @@ export function renderProfessionalConsole(model = {}) {
       </section>
 
       <section class="section" id="operations">
-        ${sectionHead("Autonomous operations", "The hourly chain ingests first, gates forward execution, reassesses qualification, seals daily research, and preserves immutable receipts.", `<span data-live="refresh">Rendered ${esc(date(new Date().toISOString()))}</span>`)}
+        ${sectionHead("Autonomous operations", "The hourly chain ingests first, executes every directional shadow candidate, gates paper-main, reassesses qualification, seals daily research, and preserves immutable receipts.", `<span data-live="refresh">Rendered ${esc(date(new Date().toISOString()))}</span>`)}
         <div class="ops">
-          ${op("Forward cycle", human(forward?.state || "none"), forward?.cycle_id || "No cycle", forward?.state)}
+          ${op("Shadow competition", human(shadowCycle?.state || "initializing"), shadowCycle?.cycle_id || "No cycle", shadowCycle?.state)}
+          ${op("Paper-main gate", human(forward?.state || "none"), forward?.cycle_id || "No cycle", forward?.state)}
           ${op("Scheduler", scheduler?.ingestion_ok ? "Ingestion verified" : "Awaiting proof", scheduler?.scheduler_receipt_id || "No receipt", scheduler?.ingestion_ok ? "healthy" : "warning")}
           ${op("Market data", human(health?.status || "unknown"), `${health?.missing_candles ?? "—"} missing · ${health?.stale_hours ?? "—"} stale hours`, health?.status)}
           ${op("Historical bootstrap", human(bootstrap?.state || "unknown"), `${bootstrap?.contiguous_candle_count ?? 0}/${bootstrap?.target_contiguous_candles ?? 720} contiguous candles`, bootstrap?.state)}
@@ -143,14 +156,15 @@ export function renderProfessionalConsole(model = {}) {
       </section>
 
       <section class="section" id="research">
-        ${sectionHead("Research laboratory", "Immutable historical evidence, hostile judging, fixed candidate generation, and qualified-only selection—without adaptive rescue or retroactive tuning.", "Fixed catalog · 8 candidates")}
+        ${sectionHead("Research laboratory", "Twelve predeclared directional candidates now gather independent hourly long/short forward evidence while historical hostile judging remains intact.", "Directional catalog · 12 candidates")}
         <div class="research-cards">
           ${research("Historical benchmark", "Frozen reference strategies on chronological partitions.", [["Candles", baselineBench?.dataset_candle_count],["Runs", baselineBench?.run_count]])}
           ${research("Hostile evidence gates", "Activity, return, drawdown, integrity, and cost-stress gates.", [["Qualified", hostileJudge?.qualified_count],["Rejected", hostileJudge?.rejected_count]])}
-          ${research("Controlled candidates", "Exactly eight predeclared EMA and RSI candidates. No expansion.", [["Candidates", strategyFactory?.candidate_count],["Runs", strategyFactory?.run_count]])}
+          ${research("Directional shadow accounts", "Twelve isolated 1× long/short paper competitors across six strategy families.", [["Candidates", directionalShadow?.candidate_count],["Latest trades", shadowCycle?.trade_count]])}
           ${research("Champion selection", "Only qualified evidence enters deterministic ranking.", [["Eligible", championSelection?.eligible_count],["Champion", champion ? 1 : 0]])}
         </div>
-        <article class="panel table-panel"><div class="panel-head"><div class="panel-title"><b>Controlled strategy factory</b><span>Expandable evidence replaces raw overflowing diagnostics</span></div>${badge(strategyFactory?.qualified_count ? "qualified" : "insufficient_evidence")}</div><div class="table-scroll"><table><thead><tr><th>Candidate</th><th>Family</th><th>Verdict</th><th>Blockers</th><th>Evidence</th></tr></thead><tbody>${candidateRows || '<tr><td colspan="5">No strategy-factory batch is available.</td></tr>'}</tbody></table></div></article>
+        <article class="panel table-panel"><div class="panel-head"><div class="panel-title"><b>Live shadow-paper competition</b><span>Every balance is virtual. Long and short exposure is capped at 1× entry equity.</span></div>${badge(shadowCycle?.state || "initializing")}</div><div class="table-scroll"><table><thead><tr><th>Candidate</th><th>Family</th><th>Exposure</th><th>Virtual equity</th><th>Return</th><th>Drawdown</th><th>Cycles</th></tr></thead><tbody>${shadowRows || '<tr><td colspan="7">Shadow portfolios are initializing.</td></tr>'}</tbody></table></div></article>
+        <article class="panel table-panel"><div class="panel-head"><div class="panel-title"><b>Controlled historical factory</b><span>Legacy hostile-judge evidence remains visible and cannot self-promote</span></div>${badge(strategyFactory?.qualified_count ? "qualified" : "insufficient_evidence")}</div><div class="table-scroll"><table><thead><tr><th>Candidate</th><th>Family</th><th>Verdict</th><th>Blockers</th><th>Evidence</th></tr></thead><tbody>${candidateRows || '<tr><td colspan="5">No strategy-factory batch is available.</td></tr>'}</tbody></table></div></article>
         <article class="panel table-panel"><div class="panel-head"><div class="panel-title"><b>Historical baseline comparison</b><span>Paper research context only—not promotion or a live-trading claim</span></div><span class="family">${esc(baselineBench?.benchmark_id || "not commissioned")}</span></div><div class="table-scroll"><table><thead><tr><th>Baseline</th><th>Test return</th><th>Max drawdown</th><th>Trades</th><th>Fills</th></tr></thead><tbody>${baselineRows || '<tr><td colspan="5">No baseline benchmark is available.</td></tr>'}</tbody></table></div></article>
         <article class="panel table-panel"><div class="panel-head"><div class="panel-title"><b>Selection state</b><span>Fallback selection is prohibited</span></div>${badge(championSelection?.state || "none")}</div><div class="list">${listRow("crown", "Champion", `<span data-live="champion">${esc(champion || "None — safe idle")}</span>`, true)}${listRow("check", "Qualified candidates", integer(championSelection?.eligible_count))}${listRow("alert", "Selection blockers", reasons(championSelection?.blocker_codes), true)}</div></article>
       </section>
