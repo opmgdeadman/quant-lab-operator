@@ -8,6 +8,7 @@ import { getHostileJudgeSummary, runProductionHostileJudge } from "../../hostile
 import { getStrategyFactorySummary, runProductionStrategyFactory } from "../../strategyFactory.js";
 import { getChampionSelectionSummary, runProductionChampionSelection } from "../../championSelection.js";
 import { commissionForwardPaperOperation, getForwardOperationSummary, runProductionForwardPaperCycle } from "../../forwardPaper.js";
+import { getDirectionalShadowSummary, runProductionDirectionalShadowCycle } from "../../directionalShadow.js";
 import { getLiveQualificationSummary, runProductionLiveQualification } from "../../liveQualification.js";
 import { getRollingResearchSummary, runProductionRollingResearch } from "../../rollingResearch.js";
 import { getHistoricalBootstrapSummary, runProductionHistoricalBootstrap } from "../../historicalBootstrap.js";
@@ -28,6 +29,8 @@ export const handlers = {
   run_champion_selection,
   get_forward_operation,
   run_forward_operation,
+  get_directional_shadow,
+  run_directional_shadow,
   get_live_qualification,
   run_live_qualification,
   get_rolling_research,
@@ -236,6 +239,32 @@ async function run_forward_operation(inputs, context) {
       live_capital_enabled: false,
       status: "forward_operation_failed",
       error: error instanceof Error ? error.message : "forward_operation_failed",
+    };
+  }
+}
+
+async function get_directional_shadow(inputs, context) {
+  const shadow = await getDirectionalShadowSummary(context.env);
+  return {
+    ok: Boolean(shadow),
+    paper_only: true,
+    live_capital_enabled: false,
+    max_gross_exposure_multiple: 1,
+    shadow,
+  };
+}
+
+async function run_directional_shadow(inputs, context) {
+  try {
+    return await runProductionDirectionalShadowCycle(context.env);
+  } catch (error) {
+    return {
+      ok: false,
+      paper_only: true,
+      live_capital_enabled: false,
+      max_gross_exposure_multiple: 1,
+      status: "directional_shadow_failed",
+      error: error instanceof Error ? error.message : "directional_shadow_failed",
     };
   }
 }
