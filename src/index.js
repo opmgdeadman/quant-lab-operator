@@ -8,6 +8,7 @@ import { getForwardOperationSummary, runScheduledForwardOperation } from "./forw
 import { getLiveQualificationSummary, runProductionLiveQualification } from "./liveQualification.js";
 import { getRollingResearchSummary, runScheduledRollingResearch } from "./rollingResearch.js";
 import { getHistoricalBootstrapSummary, runScheduledHistoricalBootstrap } from "./historicalBootstrap.js";
+import { getDirectionalShadowSummary, runScheduledDirectionalShadow } from "./directionalShadow.js";
 import { renderProfessionalConsole } from "./professionalConsole.js";
 import { BRAND_ASSETS as CANONICAL_BRAND_ASSETS, BRAND_MANIFEST } from "./brandAssetsCanonical.js";
 import { executeQuantLabIntent } from "./operator/executionKernel.js";
@@ -93,10 +94,11 @@ export default {
 
 async function runScheduledQuantLabOperation(env, scheduledAt) {
   const forward = await runScheduledForwardOperation(env, scheduledAt);
+  const directionalShadow = await runScheduledDirectionalShadow(env, scheduledAt);
   const qualification = await runProductionLiveQualification(env);
   const rollingResearch = await runScheduledRollingResearch(env, scheduledAt);
   const historicalBootstrap = await runScheduledHistoricalBootstrap(env, scheduledAt);
-  return { forward, qualification, rollingResearch, historicalBootstrap };
+  return { forward, directionalShadow, qualification, rollingResearch, historicalBootstrap };
 }
 
 async function publicStatusPayload(env) {
@@ -119,6 +121,7 @@ async function publicStatusPayload(env) {
     liveQualification: status.liveQualification,
     rollingResearch: status.rollingResearch,
     historicalBootstrap: status.historicalBootstrap,
+    directionalShadow: status.directionalShadow,
   };
 }
 
@@ -578,7 +581,7 @@ function mcpErrorObject(id, code, message) {
 }
 
 async function statusPayload(env) {
-  const [dbProbe, dataHealth, paperAccount, baselineBench, hostileJudge, strategyFactory, championSelection, forwardOperation, liveQualification, rollingResearch, historicalBootstrap] = await Promise.all([
+  const [dbProbe, dataHealth, paperAccount, baselineBench, hostileJudge, strategyFactory, championSelection, forwardOperation, liveQualification, rollingResearch, historicalBootstrap, directionalShadow] = await Promise.all([
     databaseProbe(env),
     marketDataHealthForHome(env),
     paperAccountForHome(env),
@@ -590,6 +593,7 @@ async function statusPayload(env) {
     liveQualificationForHome(env),
     rollingResearchForHome(env),
     historicalBootstrapForHome(env),
+    directionalShadowForHome(env),
   ]);
   return {
     ok: dbProbe.connected,
@@ -608,6 +612,7 @@ async function statusPayload(env) {
     liveQualification,
     rollingResearch,
     historicalBootstrap,
+    directionalShadow,
     latestDeploymentSha: env.DEPLOYMENT_SHA || "unknown",
     currentPhase: env.CURRENT_PHASE || "unknown",
     boundaries: {
@@ -674,7 +679,7 @@ function constantTimeBytesEqual(left, right) {
 }
 
 async function renderHome(env, siteOrigin) {
-  const [latest, candles, health, paperAccount, baselineBench, hostileJudge, strategyFactory, championSelection, forwardOperation, liveQualification, rollingResearch, historicalBootstrap] = await Promise.all([
+  const [latest, candles, health, paperAccount, baselineBench, hostileJudge, strategyFactory, championSelection, forwardOperation, liveQualification, rollingResearch, historicalBootstrap, directionalShadow] = await Promise.all([
     latestCandleForHome(env),
     recentCandlesForHome(env),
     marketDataHealthForHome(env),
@@ -687,6 +692,7 @@ async function renderHome(env, siteOrigin) {
     liveQualificationForHome(env),
     rollingResearchForHome(env),
     historicalBootstrapForHome(env),
+    directionalShadowForHome(env),
   ]);
   return renderProfessionalConsole({
     siteOrigin,
@@ -705,6 +711,7 @@ async function renderHome(env, siteOrigin) {
     liveQualification,
     rollingResearch,
     historicalBootstrap,
+    directionalShadow,
   });
 }
 
@@ -1108,6 +1115,14 @@ async function historicalBootstrapForHome(env) {
   }
 }
 
+async function directionalShadowForHome(env) {
+  try {
+    return await getDirectionalShadowSummary(env);
+  } catch {
+    return null;
+  }
+}
+
 function publicStatusSchema() {
   return {
     type: "object",
@@ -1174,6 +1189,12 @@ function publicStatusSchema() {
           { type: "object", additionalProperties: true },
         ],
       },
+      directionalShadow: {
+        anyOf: [
+          { type: "null" },
+          { type: "object", additionalProperties: true },
+        ],
+      },
       dataHealth: {
         anyOf: [
           { type: "null" },
@@ -1213,6 +1234,7 @@ function publicStatusSchema() {
       "liveQualification",
       "rollingResearch",
       "historicalBootstrap",
+      "directionalShadow",
     ],
   };
 }
