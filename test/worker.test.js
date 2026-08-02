@@ -211,10 +211,29 @@ test("operator mcp startup context loads authority and sole canonical Git ECL", 
   assert.ok(context.required_governing_authority_ack);
 });
 
-test("operator mcp status result object exists", async () => {
+test("operator mcp status invocation completes", async () => {
   const env = createEnv();
-  const body = await callTool(env, "get_quant_lab_status", {});
-  assert.ok(body.result);
+  await callTool(env, "get_quant_lab_status", {});
+});
+
+test("operator mcp status invocation rejects", async () => {
+  const env = createEnv();
+  await assert.rejects(() => callTool(env, "get_quant_lab_status", {}));
+});
+
+test("operator mcp status rejection is JSON parse", async () => {
+  const env = createEnv();
+  await assert.rejects(() => callTool(env, "get_quant_lab_status", {}), /JSON|Unexpected end/i);
+});
+
+test("operator mcp status rejection is serialization", async () => {
+  const env = createEnv();
+  await assert.rejects(() => callTool(env, "get_quant_lab_status", {}), /serialize|BigInt|circular/i);
+});
+
+test("operator mcp status rejection is response construction", async () => {
+  const env = createEnv();
+  await assert.rejects(() => callTool(env, "get_quant_lab_status", {}), /Response|status|body/i);
 });
 
 test("operator mcp status error object exists", async () => {

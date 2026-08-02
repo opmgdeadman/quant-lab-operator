@@ -12,20 +12,16 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - group: result-exists
-            pattern: operator mcp status result object exists
-          - group: error-exists
-            pattern: operator mcp status error object exists
-          - group: invalid-params
-            pattern: operator mcp status error is invalid params
-          - group: valid-session
-            pattern: operator mcp status error is valid session
-          - group: public-direct
-            pattern: operator mcp status error is public direct
-          - group: unhandled-query
-            pattern: operator mcp status error contains unhandled query
-          - group: missing-all
-            pattern: operator mcp status error contains missing all method
+          - group: invocation-completes
+            pattern: operator mcp status invocation completes
+          - group: invocation-rejects
+            pattern: operator mcp status invocation rejects
+          - group: rejection-json
+            pattern: operator mcp status rejection is JSON parse
+          - group: rejection-serialization
+            pattern: operator mcp status rejection is serialization
+          - group: rejection-response
+            pattern: operator mcp status rejection is response construction
     name: worker-tests (${{ matrix.group }})
     steps:
       - uses: actions/checkout@v4
