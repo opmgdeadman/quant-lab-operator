@@ -273,17 +273,6 @@ test("completed-candle validator rejects misaligned timestamps and impossible ra
   }, "2026-08-01T12:00:00.000Z"), /invalid_candle_high/);
 });
 
-function binanceRow(closedAt, open, high, low, close, volume) {
-  return [
-    Date.parse(closedAt) - 60 * 60 * 1000,
-    String(open),
-    String(high),
-    String(low),
-    String(close),
-    String(volume),
-  ];
-}
-
 function coinbaseRow(closedAt, open, high, low, close, volume) {
   const bucketStartSeconds = (Date.parse(closedAt) - 60 * 60 * 1000) / 1000;
   return [bucketStartSeconds, low, high, open, close, volume];
