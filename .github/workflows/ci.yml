@@ -28,6 +28,15 @@ jobs:
       - name: Diagnose operator directory tests
         continue-on-error: true
         run: node --test test/operator-capability-directory.test.js test/operator-client-safety.test.js
+      - name: Diagnose market and paper ledger tests
+        continue-on-error: true
+        run: node --test test/market-data.test.js test/paper-ledger.test.js
+      - name: Diagnose historical research tests
+        continue-on-error: true
+        run: node --test test/baseline-bench.test.js test/hostile-judge.test.js test/strategy-factory.test.js test/champion-selection.test.js
+      - name: Diagnose forward and qualification tests
+        continue-on-error: true
+        run: node --test test/forward-paper.test.js test/live-qualification.test.js test/rolling-research.test.js
       - name: Run Worker tests
         run: npm test
 
