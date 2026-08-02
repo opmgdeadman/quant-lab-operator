@@ -102,27 +102,51 @@ async function runScheduledQuantLabOperation(env, scheduledAt) {
 }
 
 async function publicStatusPayload(env) {
-  const status = await statusPayload(env);
-  return {
-    ok: status.ok,
-    system: status.system,
-    environment: status.environment,
-    workerStatus: status.workerStatus,
-    databaseConnected: status.databaseConnected,
-    latestDeploymentSha: status.latestDeploymentSha,
-    currentPhase: status.currentPhase,
-    dataHealth: status.dataHealth,
-    paperAccount: status.paperAccount,
-    baselineBench: status.baselineBench,
-    hostileJudge: status.hostileJudge,
-    strategyFactory: status.strategyFactory,
-    championSelection: status.championSelection,
-    forwardOperation: status.forwardOperation,
-    liveQualification: status.liveQualification,
-    rollingResearch: status.rollingResearch,
-    historicalBootstrap: status.historicalBootstrap,
-    directionalShadow: status.directionalShadow,
-  };
+  try {
+    const status = await statusPayload(env);
+    return {
+      ok: status.ok,
+      system: status.system,
+      environment: status.environment,
+      workerStatus: status.workerStatus,
+      databaseConnected: status.databaseConnected,
+      latestDeploymentSha: status.latestDeploymentSha,
+      currentPhase: status.currentPhase,
+      dataHealth: status.dataHealth,
+      paperAccount: status.paperAccount,
+      baselineBench: status.baselineBench,
+      hostileJudge: status.hostileJudge,
+      strategyFactory: status.strategyFactory,
+      championSelection: status.championSelection,
+      forwardOperation: status.forwardOperation,
+      liveQualification: status.liveQualification,
+      rollingResearch: status.rollingResearch,
+      historicalBootstrap: status.historicalBootstrap,
+      directionalShadow: status.directionalShadow,
+    };
+  } catch {
+    const dbProbe = await databaseProbe(env);
+    return {
+      ok: dbProbe.connected,
+      system: SYSTEM_NAME,
+      environment: env.ENVIRONMENT || "unknown",
+      workerStatus: "online",
+      databaseConnected: dbProbe.connected,
+      latestDeploymentSha: env.DEPLOYMENT_SHA || "unknown",
+      currentPhase: env.CURRENT_PHASE || "unknown",
+      dataHealth: null,
+      paperAccount: null,
+      baselineBench: null,
+      hostileJudge: null,
+      strategyFactory: null,
+      championSelection: null,
+      forwardOperation: null,
+      liveQualification: null,
+      rollingResearch: null,
+      historicalBootstrap: null,
+      directionalShadow: null,
+    };
+  }
 }
 
 async function handleOperatorMcpRequest(request, env) {
