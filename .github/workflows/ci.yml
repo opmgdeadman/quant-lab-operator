@@ -12,8 +12,18 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - group: worker-console
+          - group: worker-public-console
             files: test/worker.test.js
+            pattern: internal status|home renders|canonical Quant|public live|professional console|legacy public
+          - group: worker-mcp
+            files: test/worker.test.js
+            pattern: operator mcp|operator intents|execute_quant_lab_intent
+          - group: worker-engineering
+            files: test/worker.test.js
+            pattern: read_repo_file|forbidden public|run_validation|production market|validate_production_sha|list_github_actions|engineering access|repo file list|apply_repo_patch|create_repo_file|inspect_repository|GitHub Actions
+          - group: worker-oauth
+            files: test/worker.test.js
+            pattern: oauth
           - group: directional-shadow
             files: test/directional-shadow.test.js
           - group: historical-bootstrap
@@ -36,7 +46,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
       - name: Run ${{ matrix.group }} tests
+        if: ${{ matrix.pattern == '' }}
         run: node --test ${{ matrix.files }}
+      - name: Run ${{ matrix.group }} patterned tests
+        if: ${{ matrix.pattern != '' }}
+        run: node --test --test-name-pattern="${{ matrix.pattern }}" ${{ matrix.files }}
 
   quant-core-tests:
     runs-on: ubuntu-latest
