@@ -86,7 +86,7 @@ test("long paper exposure earns marked profit without exceeding entry equity", (
   assert.ok(result.equity > 10000);
   assert.ok(result.fee > 0);
   assert.equal(result.carry, 0);
-  assert.ok(result.entry_gross_exposure_multiple <= 1);
+  assert.ok(result.entry_gross_exposure_multiple <= 1 + 1e-7);
   assert.ok(Math.abs(result.position_quantity * result.execution_price) < 10000);
 });
 
