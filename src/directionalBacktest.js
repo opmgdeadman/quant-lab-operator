@@ -61,7 +61,8 @@ function simulate(candles, testStart, strategy, policy, costMultiplier) {
     const execution = candles[executionIndex];
     const markBefore = candles[executionIndex - 1].close;
     const equityBefore = cash + quantity * markBefore;
-    const currentExposure = Math.abs(equityBefore) <= EPSILON ? 0 : (quantity * markBefore) / equityBefore;
+    const markedExposure = Math.abs(equityBefore) <= EPSILON ? 0 : (quantity * markBefore) / equityBefore;
+    const currentExposure = clamp(markedExposure);
     const decision = directionalSignal(strategy, signalRows, currentExposure);
     const targetExposure = clamp(decision.target_exposure);
     const rawFill = execution.open * (targetExposure >= currentExposure ? 1 + slippageRate : 1 - slippageRate);
