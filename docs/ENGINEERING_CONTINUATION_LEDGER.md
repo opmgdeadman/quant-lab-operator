@@ -8,9 +8,19 @@ Authority: Sole canonical engineering continuation ledger
 
 This file contains Quant Lab's accepted incomplete engineering work, queue precedence, one active job, and one current action.
 
-No chat context, model memory, D1 continuation summary, runtime receipt, website state, operating-memory note, or other document may override this ledger.
+No chat context, model memory, D1 continuation summary, runtime receipt, website state, operating-memory note, scheduled-task narration, or other document may override this ledger.
 
-The governing mission, operator authority, owner boundary, and operating doctrine are defined separately in `docs/QUANT_LAB_STARTUP_AUTHORITY.md`.
+Mandatory startup authority is defined in `docs/QUANT_LAB_STARTUP_AUTHORITY.md`. The full institutional mission, division model, hourly operating doctrine, paper-to-capital path, and long-horizon end state are defined in `docs/QUANT_LAB_INSTITUTIONAL_OPERATING_SYSTEM.md`.
+
+The engineering queue serves the institution. It is not the institution. Completion of one stage must immediately advance the highest-value accepted institutional capability rather than return the operator to passive monitoring.
+
+## Institutional Operating Mandate
+
+Quant Lab is now governed as an industrial quantitative research organization rather than a user-managed project.
+
+Every scheduled operator run must use the maximum available execution budget to advance the active job through research, implementation, hostile validation, deployment, production verification, repair, or durable rejection. Status-only work is prohibited while a safe executable action exists.
+
+The current Stage 13 bridge has absolute precedence because the new twelve-candidate directional paper operation is running while canonical champion selection still relies on the legacy eight-candidate, 720-candle system. Until this split is closed, the institution does not possess one coherent research-to-portfolio authority.
 
 ## Active Job
 
@@ -134,7 +144,18 @@ Permanent boundaries:
 
 ## Current Action
 
-Implement the remaining Stage 13 research layer over the completed 4,320-candle history: multiple immutable walk-forward windows, cost-stressed long/short backtests for all twelve directional candidates, hostile-judge integration, and champion scoring that combines historical robustness with independent shadow-forward evidence. Preserve the active hourly shadow portfolios and do not promote a strategy merely to create activity.
+Complete the institutional Stage 13 bridge over the full directional research system:
+
+1. implement multiple immutable walk-forward windows over the completed 4,320-candle history;
+2. run cost-stressed long/short backtests for all twelve directional candidates with fees, spread/slippage, carry, next-candle execution, and no look-ahead;
+3. integrate an independent hostile judge with activity, robustness, regime, cost, fragility, and evidence-integrity gates;
+4. combine historical robustness with independent shadow-forward evidence without allowing recent paper profit to rewrite historical gates;
+5. create one canonical directional champion/challenger and paper-portfolio authority;
+6. retire the legacy eight-candidate, 720-candle selection path from canonical promotion authority after migration proof;
+7. expose hypotheses, windows, verdicts, rejection reasons, forward evidence, portfolio eligibility, and blockers through the operating console;
+8. validate, migrate, deploy, commission production, prove repository/deployment alignment, and update this ledger with exact evidence.
+
+Preserve active hourly shadow portfolios during the transition. Do not promote a strategy merely to create activity. Do not stop after design or partial implementation while executable work remains.
 
 ## Steady-State Operating Gate
 
@@ -165,8 +186,13 @@ Quant Lab remains healthy only while:
 11. `stage-11-professional-quant-console` — COMPLETE
 12. `stage-12-canonical-brand-identity` — COMPLETE
 13. `stage-13-directional-shadow-paper-research` — ACTIVE
+14. `stage-14-institutional-research-portfolio` — PLANNED; hypothesis registry, preregistration, lifecycle, rejection memory, research-throughput scorecard, and bounded hypothesis factory
+15. `stage-15-multi-market-data-and-feature-platform` — PLANNED; justified market/timeframe expansion, feature lineage, provider reconciliation, regime evidence, and data-quality economics
+16. `stage-16-portfolio-execution-and-independent-risk` — PLANNED; correlation-aware paper portfolios, execution realism, capacity, risk veto, decay detection, and anomaly response
+17. `stage-17-autonomous-institutional-control-plane` — PLANNED; hourly CIO allocation across research, validation, engineering, portfolio, risk, and incident workstreams with durable metrics
+18. `stage-18-owner-funded-live-readiness` — BLOCKED ON EVIDENCE AND OWNER APPROVAL; harden qualification, implement micro-live adapter, paper-shadow comparison, venue reconciliation, kill switches, and bounded scaling
 
-Only one job may be ACTIVE. New work must be inserted into this queue with explicit precedence rather than stored in chat or D1 as a competing continuation source.
+Only one engineering job may be ACTIVE. The institution may maintain multiple research hypotheses and evidence-collection workstreams in D1, but no competing Git engineering authority is permitted. New engineering work must be inserted into this queue with explicit precedence rather than stored in chat or D1 as a competing continuation source.
 
 ## Completion Recording
 
