@@ -196,11 +196,11 @@ async function persistResearch(env, data) {
 
 async function readExactHistory(env, asOfClosedAt, required) {
   const result = await env.DB.prepare(
-    `SELECT market, interval, closed_at, open, high, low, close, volume
+    `SELECT pair AS market, interval, closed_at, open, high, low, close, volume
      FROM (
-       SELECT market, interval, closed_at, open, high, low, close, volume
+       SELECT pair, interval, closed_at, open, high, low, close, volume
        FROM market_candles
-       WHERE market = ? AND interval = ? AND closed_at <= ?
+       WHERE pair = ? AND interval = ? AND closed_at <= ?
        ORDER BY closed_at DESC LIMIT ?
      ) ORDER BY closed_at ASC`,
   ).bind(MARKET, INTERVAL, asOfClosedAt, required).all();
@@ -214,7 +214,7 @@ async function readExactHistory(env, asOfClosedAt, required) {
 
 async function latestClosedAt(env) {
   const row = await env.DB.prepare(
-    `SELECT closed_at FROM market_candles WHERE market = ? AND interval = ? ORDER BY closed_at DESC LIMIT 1`,
+    `SELECT closed_at FROM market_candles WHERE pair = ? AND interval = ? ORDER BY closed_at DESC LIMIT 1`,
   ).bind(MARKET, INTERVAL).first();
   return row?.closed_at || null;
 }
