@@ -14,7 +14,7 @@ export async function runProductionDirectionalInstitutionalResearch(env, options
     : await latestClosedAt(env);
   if (!asOfClosedAt) throw new Error("directional_research_market_history_missing");
 
-  const batchId = `${DIRECTIONAL_RESEARCH_POLICY.id}:${asOfClosedAt}`;
+  const batchId = `${DIRECTIONAL_RESEARCH_POLICY.id}:${asOfClosedAt.slice(0, 10)}`;
   const existing = await readBatch(env, batchId);
   if (existing) return { ...existing, replayed: true };
 

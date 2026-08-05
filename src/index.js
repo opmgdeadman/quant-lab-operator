@@ -9,6 +9,7 @@ import { getLiveQualificationSummary, runProductionLiveQualification } from "./l
 import { getRollingResearchSummary, runScheduledRollingResearch } from "./rollingResearch.js";
 import { getHistoricalBootstrapSummary, runScheduledHistoricalBootstrap } from "./historicalBootstrap.js";
 import { getDirectionalShadowSummary, runScheduledDirectionalShadow } from "./directionalShadow.js";
+import { getDirectionalInstitutionalResearchSummary, runProductionDirectionalInstitutionalResearch } from "./directionalInstitutionalResearch.js";
 import { renderProfessionalConsole } from "./professionalConsole.js";
 import { BRAND_ASSETS as CANONICAL_BRAND_ASSETS, BRAND_MANIFEST } from "./brandAssetsCanonical.js";
 import { executeQuantLabIntent } from "./operator/executionKernel.js";
@@ -95,10 +96,11 @@ export default {
 async function runScheduledQuantLabOperation(env, scheduledAt) {
   const forward = await runScheduledForwardOperation(env, scheduledAt);
   const directionalShadow = await runScheduledDirectionalShadow(env, scheduledAt);
+  const directionalResearch = await runProductionDirectionalInstitutionalResearch(env, { now: scheduledAt });
   const qualification = await runProductionLiveQualification(env);
   const rollingResearch = await runScheduledRollingResearch(env, scheduledAt);
   const historicalBootstrap = await runScheduledHistoricalBootstrap(env, scheduledAt);
-  return { forward, directionalShadow, qualification, rollingResearch, historicalBootstrap };
+  return { forward, directionalShadow, directionalResearch, qualification, rollingResearch, historicalBootstrap };
 }
 
 async function publicStatusPayload(env) {
@@ -123,6 +125,7 @@ async function publicStatusPayload(env) {
       rollingResearch: status.rollingResearch,
       historicalBootstrap: status.historicalBootstrap,
       directionalShadow: status.directionalShadow,
+      directionalResearch: status.directionalResearch,
     };
   } catch {
     const dbProbe = await databaseProbe(env);
@@ -145,6 +148,7 @@ async function publicStatusPayload(env) {
       rollingResearch: null,
       historicalBootstrap: null,
       directionalShadow: null,
+      directionalResearch: null,
     };
   }
 }
