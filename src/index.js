@@ -609,7 +609,7 @@ function mcpErrorObject(id, code, message) {
 }
 
 async function statusPayload(env) {
-  const [dbProbe, dataHealth, paperAccount, baselineBench, hostileJudge, strategyFactory, championSelection, forwardOperation, liveQualification, rollingResearch, historicalBootstrap, directionalShadow] = await Promise.all([
+  const [dbProbe, dataHealth, paperAccount, baselineBench, hostileJudge, strategyFactory, championSelection, forwardOperation, liveQualification, rollingResearch, historicalBootstrap, directionalShadow, directionalResearch] = await Promise.all([
     databaseProbe(env),
     marketDataHealthForHome(env),
     paperAccountForHome(env),
@@ -622,6 +622,7 @@ async function statusPayload(env) {
     rollingResearchForHome(env),
     historicalBootstrapForHome(env),
     directionalShadowForHome(env),
+    directionalResearchForHome(env),
   ]);
   return {
     ok: dbProbe.connected,
@@ -641,6 +642,7 @@ async function statusPayload(env) {
     rollingResearch,
     historicalBootstrap,
     directionalShadow,
+    directionalResearch,
     latestDeploymentSha: env.DEPLOYMENT_SHA || "unknown",
     currentPhase: env.CURRENT_PHASE || "unknown",
     boundaries: {
@@ -1151,6 +1153,14 @@ async function directionalShadowForHome(env) {
   }
 }
 
+async function directionalResearchForHome(env) {
+  try {
+    return await getDirectionalInstitutionalResearchSummary(env);
+  } catch {
+    return null;
+  }
+}
+
 function publicStatusSchema() {
   return {
     type: "object",
@@ -1223,6 +1233,12 @@ function publicStatusSchema() {
           { type: "object", additionalProperties: true },
         ],
       },
+      directionalResearch: {
+        anyOf: [
+          { type: "null" },
+          { type: "object", additionalProperties: true },
+        ],
+      },
       dataHealth: {
         anyOf: [
           { type: "null" },
@@ -1263,6 +1279,7 @@ function publicStatusSchema() {
       "rollingResearch",
       "historicalBootstrap",
       "directionalShadow",
+      "directionalResearch",
     ],
   };
 }
