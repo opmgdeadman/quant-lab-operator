@@ -142,14 +142,15 @@ Permanent boundaries:
 - Exact production history reached 4,320 contiguous completed BTC-USD hourly candles from `2026-02-03T18:00:00.000Z` through `2026-08-02T17:00:00.000Z`, with zero remaining bootstrap work, zero synthetic candles, and no overwrite of existing provider rows.
 - Exact SHA `f43760f0c4dd1c0278ca71ce80bd76c94e976ee3` passed Worker tests, quant-core tests, and Wrangler validation and deployed successfully before final production bootstrap completion.
 - Stage 13 institutional research core now exists in `src/directionalResearch.js`: deterministic five-window construction over 4,320 contiguous candles; hard rejection for gapped history; historical, activity, cost-stress, drawdown, parameter-fragility, regime, evidence-integrity, and shadow-forward gates; qualified-only portfolio selection; and an explicit all-cash outcome. Six adversarial tests passed in GitHub Actions run `31006132772` on exact SHA `d17727cdeaa308d32b094c153014b410af0bb9ea`.
+- Stage 13 now includes `src/directionalBacktest.js`, a deterministic next-completed-candle long/short walk-forward runner that replays every candidate across each immutable test window at base, doubled, and tripled fees/slippage/carry; liquidates remaining exposure for sealed evidence; records fills, closed trades, fees, carry, return, and drawdown; and caps marked exposure drift before signal evaluation. GitHub Actions run `31011261662` passed Worker tests, quant-core tests, and Wrangler validation on exact SHA `2a730720605d0b5270423cd09d2a00272bc6922a`.
 
 ## Current Action
 
 Complete the institutional Stage 13 bridge over the full directional research system:
 
-1. integrate the validated `src/directionalResearch.js` walk-forward manifest, judge, and qualified-only portfolio selection into D1-backed production orchestration with immutable policy and batch receipts;
-2. implement the cost-stressed long/short backtest runner for all twelve directional candidates with fees, spread/slippage, carry, next-candle execution, and no look-ahead;
-3. integrate an independent hostile judge with activity, robustness, regime, cost, fragility, and evidence-integrity gates;
+1. integrate the validated `src/directionalResearch.js` manifest, `src/directionalBacktest.js` runner, hostile judge, and qualified-only portfolio selection into D1-backed production orchestration with immutable policy, window, run, verdict, and batch receipts;
+2. execute all twelve directional candidates over the exact 4,320-candle production history and persist base, doubled, and tripled cost evidence without disturbing active shadow accounts;
+3. connect the independent hostile judge to persisted activity, robustness, regime, cost, fragility, and evidence-integrity evidence;
 4. combine historical robustness with independent shadow-forward evidence without allowing recent paper profit to rewrite historical gates;
 5. create one canonical directional champion/challenger and paper-portfolio authority;
 6. retire the legacy eight-candidate, 720-candle selection path from canonical promotion authority after migration proof;
