@@ -143,21 +143,22 @@ Permanent boundaries:
 - Exact SHA `f43760f0c4dd1c0278ca71ce80bd76c94e976ee3` passed Worker tests, quant-core tests, and Wrangler validation and deployed successfully before final production bootstrap completion.
 - Stage 13 institutional research core now exists in `src/directionalResearch.js`: deterministic five-window construction over 4,320 contiguous candles; hard rejection for gapped history; historical, activity, cost-stress, drawdown, parameter-fragility, regime, evidence-integrity, and shadow-forward gates; qualified-only portfolio selection; and an explicit all-cash outcome. Six adversarial tests passed in GitHub Actions run `31006132772` on exact SHA `d17727cdeaa308d32b094c153014b410af0bb9ea`.
 - Stage 13 now includes `src/directionalBacktest.js`, a deterministic next-completed-candle long/short walk-forward runner that replays every candidate across each immutable test window at base, doubled, and tripled fees/slippage/carry; liquidates remaining exposure for sealed evidence; records fills, closed trades, fees, carry, return, and drawdown; and caps marked exposure drift before signal evaluation. GitHub Actions run `31011261662` passed Worker tests, quant-core tests, and Wrangler validation on exact SHA `2a730720605d0b5270423cd09d2a00272bc6922a`.
+- Stage 13 D1 orchestration now exists in `src/directionalInstitutionalResearch.js` with migration `0015_directional_institutional_research.sql`: immutable policy, daily batch, five window, sixty candidate-window run, twelve verdict, and qualified-only portfolio-selection records; exact 4,320-candle fail-closed loading; family fragility and multi-regime activity checks; independent shadow-forward evidence; deterministic hashes; idempotent replay; and an explicit all-cash outcome when no candidate qualifies.
+- Three orchestration tests prove exact 4,320-candle/12-candidate/5-window/60-run persistence, immutable schema, replay identity, paper-only boundaries, and failure before persistence with incomplete history. GitHub Actions run `31016473056` passed Worker tests, quant-core tests, and Wrangler validation on exact SHA `1162c1b3ad7b39e4349306e971dd2c4f25e81345`.
+- D1 migration `0015_directional_institutional_research.sql` applied successfully. Exact SHA `1162c1b3ad7b39e4349306e971dd2c4f25e81345` deployed successfully in workflow run `31017075445`; production console verification passed and repository/deployment alignment was proven exact. The daily institutional research execution is now wired after hourly directional shadow evidence collection without mutating active shadow accounts.
 
 ## Current Action
 
-Complete the institutional Stage 13 bridge over the full directional research system:
+Commission and complete the institutional Stage 13 authority transition:
 
-1. integrate the validated `src/directionalResearch.js` manifest, `src/directionalBacktest.js` runner, hostile judge, and qualified-only portfolio selection into D1-backed production orchestration with immutable policy, window, run, verdict, and batch receipts;
-2. execute all twelve directional candidates over the exact 4,320-candle production history and persist base, doubled, and tripled cost evidence without disturbing active shadow accounts;
-3. connect the independent hostile judge to persisted activity, robustness, regime, cost, fragility, and evidence-integrity evidence;
-4. combine historical robustness with independent shadow-forward evidence without allowing recent paper profit to rewrite historical gates;
-5. create one canonical directional champion/challenger and paper-portfolio authority;
-6. retire the legacy eight-candidate, 720-candle selection path from canonical promotion authority after migration proof;
-7. expose hypotheses, windows, verdicts, rejection reasons, forward evidence, portfolio eligibility, and blockers through the operating console;
-8. validate, migrate, deploy, commission production, prove repository/deployment alignment, and update this ledger with exact evidence.
+1. observe or invoke the first production directional institutional research batch after deployment and verify exactly 4,320 candles, 12 candidates, 5 windows, 60 persisted runs, 12 persisted verdicts, deterministic replay, and no mutation of active shadow accounts;
+2. expose batch, window, verdict, rejection-reason, shadow-forward, and qualified-only portfolio evidence in the professional console rather than only the public status payload;
+3. make the new directional institutional portfolio selection the sole canonical promotion authority for `paper-main` while preserving explicit all-cash behavior when no candidate qualifies;
+4. retire the legacy eight-candidate, 720-candle rolling selection path from canonical promotion authority only after side-by-side migration proof and regression coverage;
+5. reconnect live-capital qualification and forward paper operation to the new qualified directional authority without changing any evidence gate or creating fallback activity;
+6. run adversarial validation, deploy the exact completion SHA, commission production, prove repository/deployment alignment, and close Stage 13 with exact verdict counts and unresolved risks.
 
-Preserve active hourly shadow portfolios during the transition. Do not promote a strategy merely to create activity. Do not stop after design or partial implementation while executable work remains.
+Preserve active hourly shadow portfolios throughout. Do not promote a strategy merely to create activity. Do not weaken historical or forward gates after seeing the production results.
 
 ## Steady-State Operating Gate
 
