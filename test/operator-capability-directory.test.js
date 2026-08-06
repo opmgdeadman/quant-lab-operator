@@ -10,7 +10,7 @@ import {
   validateCapabilityLifecycle,
 } from "../src/operator/capabilityDirectory.js";
 import { findDispatchedRun, handlers, validateHardeningTransition } from "../src/operator/handlers/controlPlane.js";
-import { buildActionClosure, parseContinuationMetadata } from "../src/operator/executionKernel.js";
+import { buildActionClosure, classifyStructuredFailure, parseContinuationMetadata } from "../src/operator/executionKernel.js";
 import { operationLeaseMs } from "../src/operator/receipts.js";
 
 test("every supported intent exists in capability directory with lifecycle declaration and handler", () => {
@@ -109,6 +109,26 @@ test("action closure is bound to the sole canonical Git ledger", () => {
   assert.equal(closure.active_job_id, "stage-13-directional-shadow-paper-research");
   assert.equal(closure.owner_action_required, false);
   assert.equal(closure.next_action, "reload_canonical_continuation_and_continue_current_action");
+});
+
+test("structured failures open incidents only when unexplained", () => {
+  assert.deepEqual(classifyStructuredFailure({ ok: true }), { incident_required: false, code: null });
+  assert.deepEqual(classifyStructuredFailure({ ok: false }), {
+    incident_required: false,
+    code: "expected_empty_or_blocked_state",
+  });
+  assert.deepEqual(classifyStructuredFailure({ ok: false, status: "invalid_exact_sha" }), {
+    incident_required: false,
+    code: "invalid_exact_sha",
+  });
+  assert.deepEqual(classifyStructuredFailure({ ok: false, status: "github_deploy_dispatch_failed" }), {
+    incident_required: true,
+    code: "github_deploy_dispatch_failed",
+  });
+  assert.deepEqual(classifyStructuredFailure({ ok: false, error: "directional_institutional_research_failed" }), {
+    incident_required: true,
+    code: "directional_institutional_research_failed",
+  });
 });
 
 test("kernel source acquires a started receipt before handler execution", () => {

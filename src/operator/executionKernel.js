@@ -71,6 +71,15 @@ export async function executeQuantLabIntent(args, context) {
       throw new ExecutionKernelError("handler_not_found");
     }
     const rawResult = await handler(capabilityInputs, context);
+    const structuredFailure = classifyStructuredFailure(rawResult);
+    if (structuredFailure.incident_required) {
+      incident = await safeRecordIncident(context.env, {
+        operation_id: envelope.operation_id,
+        intent: envelope.intent,
+        error: structuredFailure.code,
+        created_at: now,
+      });
+    }
     const boundedResult = boundResultBytes(rawResult, capability.max_response_bytes);
     response = buildResponse({
       ok: rawResult.ok !== false,
@@ -82,13 +91,14 @@ export async function executeQuantLabIntent(args, context) {
       result: boundedResult,
       status: rawResult.ok === false ? "blocked" : "completed",
       startupContext: context.startupContext,
+      incident,
     });
     status = rawResult.ok === false ? "failed" : "completed";
   } catch (error) {
     status = "failed";
     const controlledFailure = error instanceof ClientSafetyError || error instanceof ExecutionKernelError;
     if (!controlledFailure) {
-      incident = await recordIncident(context.env, {
+      incident = await safeRecordIncident(context.env, {
         operation_id: envelope.operation_id,
         intent: envelope.intent,
         error: error instanceof Error ? error.message : String(error),
@@ -176,6 +186,40 @@ function buildResponse({ ok, error, intent, operationId, requestFingerprint, cre
     }),
     result,
   };
+}
+
+const EXPECTED_CONTROL_CODES = new Set([
+  "forbidden_path",
+  "invalid_exact_sha",
+  "unsupported_workflow_id",
+  "exact_match_count_not_one",
+  "head_sha_mismatch",
+  "not_available_in_worker_runtime",
+  "github_token_not_configured",
+  "operation_already_in_progress",
+]);
+
+export function classifyStructuredFailure(result) {
+  if (result?.ok !== false) return { incident_required: false, code: null };
+  const code = String(result.error || result.status || result.error_code || "").trim();
+  if (!code) return { incident_required: false, code: "expected_empty_or_blocked_state" };
+  if (EXPECTED_CONTROL_CODES.has(code) || code.startsWith("hardening_")) {
+    return { incident_required: false, code };
+  }
+  return { incident_required: true, code };
+}
+
+async function safeRecordIncident(env, input) {
+  try {
+    return await recordIncident(env, input);
+  } catch (error) {
+    return {
+      id: null,
+      state: "recording_failed",
+      error: error instanceof Error ? error.message : String(error),
+      original_failure: input.error,
+    };
+  }
 }
 
 export function parseContinuationMetadata(content) {
