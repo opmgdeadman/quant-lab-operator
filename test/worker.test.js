@@ -4,7 +4,7 @@ import test from "node:test";
 import { handleRequest } from "../src/index.js";
 import { renderProfessionalConsole } from "../src/professionalConsole.js";
 import { runValidation } from "../src/operator/handlers/controlPlane.js";
-import { supportedIntents } from "../src/operator/capabilityDirectory.js";
+import { capabilityDirectory, supportedIntents } from "../src/operator/capabilityDirectory.js";
 
 function createEnv() {
   return {
@@ -143,9 +143,11 @@ test("operator mcp initialize requires auth and returns a session id", async () 
 
   assert.equal(initialize.status, 200);
   assert.equal(initializeBody.result.serverInfo.name, "quant-lab");
-  assert.equal(initializeBody.result.serverInfo.version, "0.3.0");
+  assert.equal(initializeBody.result.serverInfo.version, "0.4.0");
   assert.equal(initializeBody.result.serverInfo.executionKernelVersion, "quant-lab-execution-kernel-v1");
   assert.match(initializeBody.result.instructions, /deployment-scoped/);
+  assert.match(initializeBody.result.instructions, /direct typed capability/);
+  assert.match(initializeBody.result.instructions, /generic intent envelope is retired/);
   assert.match(initializeBody.result.instructions, /get_quant_lab_startup_context/);
   assert.match(initializeBody.result.instructions, /canonical Git ECL/);
   assert.match(initialize.headers.get("mcp-session-id"), /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/);
@@ -167,11 +169,11 @@ test("operator mcp session invalidates across deployments and requires reinitial
   assert.deepEqual(toolsBody.result.tools.map((tool) => tool.name), [
     "get_quant_lab_startup_context",
     "get_quant_lab_status",
-    "execute_quant_lab_intent",
+    ...supportedIntents,
   ]);
 });
 
-test("operator mcp tools require valid session and expose status plus execute intent", async () => {
+test("operator mcp tools require valid session and expose every capability directly", async () => {
   const env = createEnv();
   const initialize = await initializeMcpSession(env);
   const sessionId = initialize.headers.get("mcp-session-id");
@@ -185,28 +187,26 @@ test("operator mcp tools require valid session and expose status plus execute in
     env,
   );
   const noSessionBody = await noSession.json();
-
   assert.equal(noSessionBody.error.message, "valid_mcp_session_required");
 
   const toolsBody = await mcp(env, sessionId, { jsonrpc: "2.0", id: 3, method: "tools/list" });
-  assert.deepEqual(
-    toolsBody.result.tools.map((tool) => tool.name),
-    ["get_quant_lab_startup_context", "get_quant_lab_status", "execute_quant_lab_intent"],
-  );
+  const names = toolsBody.result.tools.map((tool) => tool.name);
+  assert.deepEqual(names, ["get_quant_lab_startup_context", "get_quant_lab_status", ...supportedIntents]);
+  assert.equal(names.includes("execute_quant_lab_intent"), false);
   for (const tool of toolsBody.result.tools) {
     assert.equal(tool.inputSchema.additionalProperties, false);
     assert.ok(tool.outputSchema);
   }
-  const startupTool = toolsBody.result.tools.find((tool) => tool.name === "get_quant_lab_startup_context");
-  const statusTool = toolsBody.result.tools.find((tool) => tool.name === "get_quant_lab_status");
-  const executeTool = toolsBody.result.tools.find((tool) => tool.name === "execute_quant_lab_intent");
-  assert.equal(startupTool.annotations.readOnlyHint, true);
-  assert.equal(statusTool.annotations.readOnlyHint, true);
-  assert.equal(executeTool.annotations.readOnlyHint, false);
-  assert.equal(executeTool.annotations.destructiveHint, false);
-  assert.equal(executeTool.annotations.idempotentHint, true);
-  assert.ok(executeTool.inputSchema.properties.intent.enum.includes("get_directional_institutional_research"));
-  assert.ok(executeTool.inputSchema.properties.intent.enum.includes("run_directional_institutional_research"));
+  for (const capability of capabilityDirectory) {
+    const tool = toolsBody.result.tools.find((candidate) => candidate.name === capability.intent);
+    assert.ok(tool, capability.intent);
+    assert.equal(tool.annotations.readOnlyHint, capability.operation_class === "read");
+    assert.equal(tool.annotations.destructiveHint, false);
+    assert.equal(tool.annotations.idempotentHint, true);
+    assert.equal(tool.inputSchema.properties.governing_authority_ack.const.includes("Startup Authority acknowledged"), true);
+    assert.ok(tool.inputSchema.required.includes("operation_id"));
+    assert.ok(tool.inputSchema.required.includes("canonical_continuation_sha"));
+  }
 });
 
 test("operator mcp startup context loads authority and sole canonical Git ECL", async () => {
@@ -240,8 +240,8 @@ test("operator intents fail closed when startup authority is skipped or ECL SHA 
     id: 21,
     method: "tools/call",
     params: {
-      name: "execute_quant_lab_intent",
-      arguments: { operation_id: "op-skipped-startup", intent: "operator_status", inputs: {} },
+      name: "operator_status",
+      arguments: { operation_id: "op-skipped-startup" },
     },
   });
   assert.equal(skipped.error.message, "governing_authority_ack_required");
@@ -258,14 +258,11 @@ test("operator intents fail closed when startup authority is skipped or ECL SHA 
     id: 23,
     method: "tools/call",
     params: {
-      name: "execute_quant_lab_intent",
+      name: "operator_status",
       arguments: {
         operation_id: "op-stale-ecl",
-        intent: "operator_status",
-        inputs: {
-          governing_authority_ack: context.required_governing_authority_ack,
-          canonical_continuation_sha: "stale-sha",
-        },
+        governing_authority_ack: context.required_governing_authority_ack,
+        canonical_continuation_sha: "stale-sha",
       },
     },
   });
@@ -278,20 +275,17 @@ test("operator mcp rejects unadvertised tools", async () => {
   assert.equal(body.error.message, "public_direct_tool_required");
 });
 
-test("execute_quant_lab_intent rejects missing or unknown intent", async () => {
+test("generic intent envelope is retired from the public MCP surface", async () => {
   const env = createEnv();
-  const missing = await callTool(env, "execute_quant_lab_intent", { operation_id: "op-missing", inputs: {} });
-  const unknown = await callTool(env, "execute_quant_lab_intent", {
-    operation_id: "op-unknown",
-    intent: "unknown_intent",
+  const generic = await callTool(env, "execute_quant_lab_intent", {
+    operation_id: "op-retired-generic",
+    intent: "operator_status",
     inputs: {},
   });
-
-  assert.equal(missing.error.message, "unknown_intent");
-  assert.equal(unknown.error.message, "unknown_intent");
+  assert.equal(generic.error.message, "public_direct_tool_required");
 });
 
-test("execute_quant_lab_intent operator_status succeeds with durable receipt", async () => {
+test("direct operator_status succeeds with durable receipt", async () => {
   const env = createEnv();
   const body = await executeIntent(env, "op-status", "operator_status", {});
   const content = body.result.structuredContent;
@@ -747,7 +741,7 @@ async function callTool(env, name, args) {
   const initialize = await initializeMcpSession(env);
   const sessionId = initialize.headers.get("mcp-session-id");
   let preparedArgs = args;
-  if (name === "execute_quant_lab_intent") {
+  if (supportedIntents.includes(name)) {
     const startup = await mcp(env, sessionId, {
       jsonrpc: "2.0",
       id: 19,
@@ -757,11 +751,8 @@ async function callTool(env, name, args) {
     const context = startup.result.structuredContent;
     preparedArgs = {
       ...args,
-      inputs: {
-        ...(args.inputs || {}),
-        governing_authority_ack: context.required_governing_authority_ack,
-        canonical_continuation_sha: context.canonical_continuation.sha,
-      },
+      governing_authority_ack: context.required_governing_authority_ack,
+      canonical_continuation_sha: context.canonical_continuation.sha,
     };
   }
   return mcp(env, sessionId, {
@@ -773,10 +764,9 @@ async function callTool(env, name, args) {
 }
 
 async function executeIntent(env, operationId, intent, inputs) {
-  return callTool(env, "execute_quant_lab_intent", {
+  return callTool(env, intent, {
     operation_id: operationId,
-    intent,
-    inputs,
+    ...inputs,
   });
 }
 

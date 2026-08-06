@@ -13,6 +13,7 @@ import { getDirectionalInstitutionalResearchSummary, runProductionDirectionalIns
 import { renderProfessionalConsole } from "./professionalConsole.js";
 import { BRAND_ASSETS as CANONICAL_BRAND_ASSETS, BRAND_MANIFEST } from "./brandAssetsCanonical.js";
 import { executeQuantLabIntent, executionKernelInfo } from "./operator/executionKernel.js";
+import { capabilityDirectory, resolveCapability } from "./operator/capabilityDirectory.js";
 import { loadQuantStartupContext } from "./operator/startupAuthority.js";
 import { publicTools as operatorPublicTools } from "./operator/toolRegistry.js";
 
@@ -24,7 +25,7 @@ const OAUTH_TOKEN_PATH = "/api/operator/oauth/token";
 const OPERATOR_ACCESS_TOKEN_TTL_SECONDS = 24 * 60 * 60;
 const OPERATOR_REFRESH_TOKEN_TTL_SECONDS = 365 * 24 * 60 * 60;
 const MCP_SESSION_TTL_SECONDS = 30 * 24 * 60 * 60;
-const MCP_SERVER_VERSION = "0.3.0";
+const MCP_SERVER_VERSION = "0.4.0";
 const BRAND_ASSETS = Object.freeze({
   ...CANONICAL_BRAND_ASSETS,
   "/og-image.png": CANONICAL_BRAND_ASSETS["/android-chrome-512x512.png"],
@@ -214,7 +215,7 @@ async function mcpResponseFor(message, request, env) {
             deploymentSha: env.DEPLOYMENT_SHA || "unknown",
             executionKernelVersion: executionKernelInfo.version,
           },
-          instructions: "Authenticated Quant Operator MCP. Sessions are deployment-scoped and must reinitialize after a Worker or Execution Kernel change. Before any operator intent, call get_quant_lab_startup_context, read the full Startup Authority and sole canonical Git ECL, then send the exact required acknowledgment and current ECL SHA with every intent.",
+          instructions: "Authenticated Quant Operator MCP. Sessions are deployment-scoped and must reinitialize after a Worker, Execution Kernel, or public schema change. Call the advertised direct typed capability; the generic intent envelope is retired. Before any operator capability, call get_quant_lab_startup_context, read the full Startup Authority and sole canonical Git ECL, then send the exact required acknowledgment and current ECL SHA.",
         },
       },
     };
@@ -333,16 +334,31 @@ async function callPublicTool(name, args, env) {
   if (name === "get_quant_lab_status") {
     return publicStatusPayload(env);
   }
-  if (name === "execute_quant_lab_intent") {
-    const startupContext = await loadQuantStartupContext(env);
-    return executeQuantLabIntent(args, {
-      env,
-      databaseProbe,
-      startupContext,
-      marketDataIngestion: runHourlyCandleIngestion,
-    });
+  const capability = resolveCapability(name);
+  if (!capability) {
+    throw new ToolInputError("public_direct_tool_required");
   }
-  throw new ToolInputError("public_direct_tool_required");
+  const {
+    operation_id,
+    governing_authority_ack,
+    canonical_continuation_sha,
+    ...capabilityInputs
+  } = args;
+  const startupContext = await loadQuantStartupContext(env);
+  return executeQuantLabIntent({
+    operation_id,
+    intent: capability.intent,
+    inputs: {
+      ...capabilityInputs,
+      governing_authority_ack,
+      canonical_continuation_sha,
+    },
+  }, {
+    env,
+    databaseProbe,
+    startupContext,
+    marketDataIngestion: runHourlyCandleIngestion,
+  });
 }
 
 async function findCandleByClosedAt(env, closedAt) {
