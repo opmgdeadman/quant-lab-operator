@@ -9,6 +9,7 @@ import { getStrategyFactorySummary, runProductionStrategyFactory } from "../../s
 import { getChampionSelectionSummary, runProductionChampionSelection } from "../../championSelection.js";
 import { commissionForwardPaperOperation, getForwardOperationSummary, runProductionForwardPaperCycle } from "../../forwardPaper.js";
 import { getDirectionalShadowSummary, runProductionDirectionalShadowCycle } from "../../directionalShadow.js";
+import { getDirectionalInstitutionalResearchSummary, runProductionDirectionalInstitutionalResearch } from "../../directionalInstitutionalResearch.js";
 import { getLiveQualificationSummary, runProductionLiveQualification } from "../../liveQualification.js";
 import { getRollingResearchSummary, runProductionRollingResearch } from "../../rollingResearch.js";
 import { getHistoricalBootstrapSummary, runProductionHistoricalBootstrap } from "../../historicalBootstrap.js";
@@ -31,6 +32,8 @@ export const handlers = {
   run_forward_operation,
   get_directional_shadow,
   run_directional_shadow,
+  get_directional_institutional_research,
+  run_directional_institutional_research,
   get_live_qualification,
   run_live_qualification,
   get_rolling_research,
@@ -282,6 +285,30 @@ async function run_directional_shadow(inputs, context) {
       max_entry_gross_exposure_multiple: 1,
       status: "directional_shadow_failed",
       error: error instanceof Error ? error.message : "directional_shadow_failed",
+    };
+  }
+}
+
+async function get_directional_institutional_research(inputs, context) {
+  const research = await getDirectionalInstitutionalResearchSummary(context.env);
+  return {
+    ok: Boolean(research),
+    paper_only: true,
+    live_capital_enabled: false,
+    research,
+  };
+}
+
+async function run_directional_institutional_research(inputs, context) {
+  try {
+    return await runProductionDirectionalInstitutionalResearch(context.env);
+  } catch (error) {
+    return {
+      ok: false,
+      paper_only: true,
+      live_capital_enabled: false,
+      status: "directional_institutional_research_failed",
+      error: error instanceof Error ? error.message : "directional_institutional_research_failed",
     };
   }
 }
@@ -666,6 +693,24 @@ export async function runValidation(inputs, context) {
         validation: inputs.validation,
         status: "production_professional_console_contract_failed",
         error: error instanceof Error ? error.message : "professional_console_contract_failed",
+      };
+    }
+  }
+  if (inputs.validation === "production directional institutional research commission") {
+    try {
+      const research = await runProductionDirectionalInstitutionalResearch(context.env);
+      return {
+        ok: research.ok,
+        validation: inputs.validation,
+        status: research.ok ? "passed" : "failed",
+        directional_institutional_research_commission: research,
+      };
+    } catch (error) {
+      return {
+        ok: false,
+        validation: inputs.validation,
+        status: "production_directional_institutional_research_commission_failed",
+        error: error instanceof Error ? error.message : "directional_institutional_research_commission_failed",
       };
     }
   }

@@ -47,6 +47,13 @@ test("mutations list idempotency tests and path capabilities have allowlists", (
   }
 });
 
+test("directional institutional research intents are discoverable and handler-backed", () => {
+  assert.ok(supportedIntents.includes("get_directional_institutional_research"));
+  assert.ok(supportedIntents.includes("run_directional_institutional_research"));
+  assert.equal(typeof handlers.get_directional_institutional_research, "function");
+  assert.equal(typeof handlers.run_directional_institutional_research, "function");
+});
+
 test("capability lifecycle contains mandatory sequence", () => {
   assert.deepEqual(lifecycleMandatorySequence, [
     "declaration",

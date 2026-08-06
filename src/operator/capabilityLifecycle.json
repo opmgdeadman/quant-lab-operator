@@ -27,6 +27,8 @@
     { "id": "forward_operation.cycle_run.lifecycle", "intent": "run_forward_operation" },
     { "id": "directional_shadow.summary_read.lifecycle", "intent": "get_directional_shadow" },
     { "id": "directional_shadow.cycle_run.lifecycle", "intent": "run_directional_shadow" },
+    { "id": "directional_research.summary_read.lifecycle", "intent": "get_directional_institutional_research" },
+    { "id": "directional_research.batch_run.lifecycle", "intent": "run_directional_institutional_research" },
     { "id": "live_qualification.summary_read.lifecycle", "intent": "get_live_qualification" },
     { "id": "live_qualification.assessment_run.lifecycle", "intent": "run_live_qualification" },
     { "id": "rolling_research.summary_read.lifecycle", "intent": "get_rolling_research" },

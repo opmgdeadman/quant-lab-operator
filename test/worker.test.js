@@ -197,6 +197,8 @@ test("operator mcp tools require valid session and expose status plus execute in
   assert.equal(executeTool.annotations.readOnlyHint, false);
   assert.equal(executeTool.annotations.destructiveHint, false);
   assert.equal(executeTool.annotations.idempotentHint, true);
+  assert.ok(executeTool.inputSchema.properties.intent.enum.includes("get_directional_institutional_research"));
+  assert.ok(executeTool.inputSchema.properties.intent.enum.includes("run_directional_institutional_research"));
 });
 
 test("operator mcp startup context loads authority and sole canonical Git ECL", async () => {
