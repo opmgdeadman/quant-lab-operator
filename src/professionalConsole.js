@@ -7,6 +7,7 @@ export function renderProfessionalConsole(model = {}) {
     baselineBench = null, hostileJudge = null, strategyFactory = null,
     championSelection = null, forwardOperation = null, liveQualification = null,
     rollingResearch = null, historicalBootstrap = null, directionalShadow = null,
+    directionalResearch = null,
   } = model;
 
   const forward = forwardOperation?.latest_cycle || null;
@@ -15,12 +16,15 @@ export function renderProfessionalConsole(model = {}) {
   const bootstrap = historicalBootstrap?.progress || null;
   const shadowCycle = directionalShadow?.latest_cycle || null;
   const shadowAccounts = directionalShadow?.accounts || [];
+  const mainAccount = forwardOperation?.paper_main || paperAccount;
+  const authority = forwardOperation?.authority || {};
+  const institutionalSelection = directionalResearch?.selection || null;
   const price = num(latest?.close);
   const open = num(latest?.open);
   const candleMove = price !== null && open ? ((price / open) - 1) * 100 : null;
-  const equity = num(paperAccount?.equity);
-  const realized = num(paperAccount?.realized_pnl);
-  const champion = championSelection?.champion_candidate_id || null;
+  const equity = num(mainAccount?.equity);
+  const realized = num(mainAccount?.realized_pnl);
+  const champion = authority.champion_candidate_id || institutionalSelection?.champion_candidate_ids?.[0] || null;
   const qState = liveQualification?.state || "not_assessed";
   const qPassed = num(liveQualification?.passed_gate_count) || 0;
   const qFailed = num(liveQualification?.failed_gate_count) || 0;
@@ -58,6 +62,18 @@ export function renderProfessionalConsole(model = {}) {
     <td class="numeric">${pct(entry.max_drawdown_percent)}</td>
     <td class="numeric">${integer(entry.cycle_count)}</td>
   </tr>`).join("");
+
+  const institutionalRows = (directionalResearch?.verdicts || []).map((entry) => `<tr>
+    <td><div class="strategy-name">${esc(strategyName(entry.candidate_id))}</div><div class="strategy-id">${esc(entry.candidate_id)}</div></td>
+    <td>${badge(entry.verdict)}</td>
+    <td class="numeric ${tone(entry.metrics?.median_test_return_percent)}">${pct(entry.metrics?.median_test_return_percent)}</td>
+    <td class="numeric ${tone(entry.metrics?.shadow_return_percent)}">${pct(entry.metrics?.shadow_return_percent)}</td>
+    <td class="numeric">${integer(entry.metrics?.shadow_cycle_count)}</td>
+    <td><details><summary>View rejection evidence</summary><div class="reasons">${(entry.reason_codes || []).length ? entry.reason_codes.map(reason).join("") : '<span class="reason pass">All institutional gates passed</span>'}</div></details></td>
+  </tr>`).join("");
+  const institutionalWindows = (directionalResearch?.windows || []).map((entry) =>
+    listRow("clock", `Window ${entry.ordinal}`, `Train ${date(entry.train_start_closed_at)} to ${date(entry.train_end_closed_at)} · Validate ${date(entry.validation_start_closed_at)} to ${date(entry.validation_end_closed_at)} · Test ${date(entry.test_start_closed_at)} to ${date(entry.test_end_closed_at)}`)
+  ).join("");
 
   return `<!doctype html>
 <html lang="en">
@@ -115,7 +131,7 @@ export function renderProfessionalConsole(model = {}) {
       <section class="hero">
         <div><h1>Directional strategies compete every hour.</h1><p>Quant Lab now runs isolated long, flat, and short paper accounts at a strict 1× entry-exposure ceiling. Shadow candidates gather forward evidence immediately while the qualification-gated paper-main account remains protected.</p><div class="hero-actions"><a class="btn primary" href="#market">Open market terminal</a><a class="btn" href="#research">Review active competition</a></div></div>
         <div class="posture"><div class="label">Current operating posture</div><strong>${esc(human(shadowCycle?.state || forward?.state || "initializing"))}</strong><div class="posture-grid">
-          ${posture("Environment", environment)}${posture("Phase", human(currentPhase))}${posture("Data", human(health?.status || "unknown"))}${posture("Accounting", paperAccount?.accounting_reconciled ? "Reconciled" : "Unverified")}
+          ${posture("Environment", environment)}${posture("Phase", human(currentPhase))}${posture("Data", human(health?.status || "unknown"))}${posture("Accounting", mainAccount?.accounting_reconciled ? "Reconciled" : "Unverified")}
         </div></div>
       </section>
 
@@ -135,8 +151,8 @@ export function renderProfessionalConsole(model = {}) {
             </div>
           </article>
           <aside class="panel"><div class="panel-head"><div class="panel-title"><b>Paper account</b><span>Reconciled simulation ledger</span></div>${badge(paperAccount?.accounting_reconciled ? "reconciled" : "unverified")}</div><div class="account">
-            <div class="account-hero"><span>Total paper equity</span><strong data-live="equity">${money(equity)}</strong><small>Initial cash ${money(paperAccount?.initial_cash)} · Live capital disabled</small></div>
-            <div class="stats">${stat("Cash", money(paperAccount?.cash_balance))}${stat("BTC position", format(paperAccount?.position_quantity, 6))}${stat("Realized P&L", money(realized), realized)}${stat("Unrealized P&L", money(paperAccount?.unrealized_pnl), paperAccount?.unrealized_pnl)}${stat("Total fees", money(paperAccount?.total_fees))}${stat("Filled orders", integer(paperAccount?.fill_count))}${stat("Paper cycles", integer(paperAccount?.cycle_count))}${stat("Ledger delta", format(paperAccount?.cash_ledger_delta, 8))}</div>
+            <div class="account-hero"><span>Canonical directional paper-main equity</span><strong data-live="equity">${money(equity)}</strong><small>Initial cash ${money(mainAccount?.initial_cash)} · Signed long/short paper only</small></div>
+            <div class="stats">${stat("Cash", money(mainAccount?.cash_balance))}${stat("BTC position", format(mainAccount?.position_quantity, 6))}${stat("Exposure", human(mainAccount?.exposure_side > 0 ? "long" : mainAccount?.exposure_side < 0 ? "short" : "flat"))}${stat("Realized P&L", money(realized), realized)}${stat("Unrealized P&L", money(mainAccount?.unrealized_pnl), mainAccount?.unrealized_pnl)}${stat("Fees + carry", money(num(mainAccount?.total_fees) + num(mainAccount?.total_carry)))}${stat("Forward cycles", integer(mainAccount?.cycle_count))}${stat("Ledger delta", format(mainAccount?.cash_ledger_delta, 8))}</div>
           </div></aside>
         </div>
       </section>
@@ -161,12 +177,14 @@ export function renderProfessionalConsole(model = {}) {
           ${research("Historical benchmark", "Frozen reference strategies on chronological partitions.", [["Candles", baselineBench?.dataset_candle_count],["Runs", baselineBench?.run_count]])}
           ${research("Hostile evidence gates", "Activity, return, drawdown, integrity, and cost-stress gates.", [["Qualified", hostileJudge?.qualified_count],["Rejected", hostileJudge?.rejected_count]])}
           ${research("Directional shadow accounts", "Twelve isolated 1× long/short paper competitors across six strategy families.", [["Candidates", directionalShadow?.candidate_count],["Latest trades", shadowCycle?.trade_count]])}
-          ${research("Champion selection", "Only qualified evidence enters deterministic ranking.", [["Eligible", championSelection?.eligible_count],["Champion", champion ? 1 : 0]])}
+          ${research("Institutional authority", "The 4,320-candle directional judge is the sole canonical promotion source.", [["Windows", directionalResearch?.window_count],["Persisted runs", directionalResearch?.run_count],["Qualified", directionalResearch?.qualified_count],["Rejected", directionalResearch?.rejected_count]])}
         </div>
+        <article class="panel table-panel"><div class="panel-head"><div class="panel-title"><b>Institutional directional verdicts</b><span>Historical robustness, cost stress, regime, fragility, evidence integrity, and independent shadow-forward gates.</span></div>${badge(institutionalSelection?.state || directionalResearch?.state || "not_run")}</div><div class="table-scroll"><table><thead><tr><th>Candidate</th><th>Verdict</th><th>Median test return</th><th>Shadow return</th><th>Shadow cycles</th><th>Rejection evidence</th></tr></thead><tbody>${institutionalRows || '<tr><td colspan="6">No institutional verdict batch is available.</td></tr>'}</tbody></table></div></article>
+        <article class="panel table-panel"><div class="panel-head"><div class="panel-title"><b>Immutable walk-forward windows</b><span>Five chronological train, validation, and untouched test windows over exactly 4,320 candles.</span></div><span class="family">${esc(directionalResearch?.batch_id || "not commissioned")}</span></div><div class="list">${institutionalWindows || listRow("alert", "Window evidence", "No window evidence available")}</div></article>
         <article class="panel table-panel"><div class="panel-head"><div class="panel-title"><b>Live shadow-paper competition</b><span>Every balance is virtual. Long and short exposure is capped at 1× entry equity.</span></div>${badge(shadowCycle?.state || "initializing")}</div><div class="table-scroll"><table><thead><tr><th>Candidate</th><th>Family</th><th>Exposure</th><th>Virtual equity</th><th>Return</th><th>Drawdown</th><th>Cycles</th></tr></thead><tbody>${shadowRows || '<tr><td colspan="7">Shadow portfolios are initializing.</td></tr>'}</tbody></table></div></article>
         <article class="panel table-panel"><div class="panel-head"><div class="panel-title"><b>Controlled historical factory</b><span>Legacy hostile-judge evidence remains visible and cannot self-promote</span></div>${badge(strategyFactory?.qualified_count ? "qualified" : "insufficient_evidence")}</div><div class="table-scroll"><table><thead><tr><th>Candidate</th><th>Family</th><th>Verdict</th><th>Blockers</th><th>Evidence</th></tr></thead><tbody>${candidateRows || '<tr><td colspan="5">No strategy-factory batch is available.</td></tr>'}</tbody></table></div></article>
         <article class="panel table-panel"><div class="panel-head"><div class="panel-title"><b>Historical baseline comparison</b><span>Paper research context only—not promotion or a live-trading claim</span></div><span class="family">${esc(baselineBench?.benchmark_id || "not commissioned")}</span></div><div class="table-scroll"><table><thead><tr><th>Baseline</th><th>Test return</th><th>Max drawdown</th><th>Trades</th><th>Fills</th></tr></thead><tbody>${baselineRows || '<tr><td colspan="5">No baseline benchmark is available.</td></tr>'}</tbody></table></div></article>
-        <article class="panel table-panel"><div class="panel-head"><div class="panel-title"><b>Selection state</b><span>Fallback selection is prohibited</span></div>${badge(championSelection?.state || "none")}</div><div class="list">${listRow("crown", "Champion", `<span data-live="champion">${esc(champion || "None — safe idle")}</span>`, true)}${listRow("check", "Qualified candidates", integer(championSelection?.eligible_count))}${listRow("alert", "Selection blockers", reasons(championSelection?.blocker_codes), true)}</div></article>
+        <article class="panel table-panel"><div class="panel-head"><div class="panel-title"><b>Canonical qualified-only portfolio</b><span>The legacy eight-candidate rolling selector has no promotion authority.</span></div>${badge(institutionalSelection?.state || "none")}</div><div class="list">${listRow("crown", "Directional champion", `<span data-live="champion">${esc(champion || "None — all cash")}</span>`, true)}${listRow("check", "Selection authority", esc(authority.source || "directional_institutional_research"), true)}${listRow("check", "All-cash allocation valid", institutionalSelection?.cash_is_valid_allocation ? "Yes" : "No")}${listRow("alert", "Qualified candidates", integer(directionalResearch?.qualified_count))}</div></article>
       </section>
 
       <section class="section" id="qualification">
@@ -181,7 +199,7 @@ export function renderProfessionalConsole(model = {}) {
         <div class="system-grid">
           ${systemCard("Market-data pipeline", [["Status", human(health?.status || "unknown")],["Provider", health?.provider || "unknown"],["Latest close", date(health?.latest_closed_at)],["Missing", health?.missing_candles ?? "—"],["Last success", date(health?.last_success_at)]])}
           ${systemCard("Rolling research", [["Epoch", epoch?.epoch_date || "none"],["State", human(epoch?.state || "unknown")],["Candidates", epoch?.candidate_count ?? 0],["Runs", epoch?.run_count ?? 0],["Same-candle activation", epoch?.same_candle_activation_allowed ? "Allowed" : "Blocked"]])}
-          ${systemCard("Production runtime", [["Environment", environment],["Phase", human(currentPhase)],["Deployment", shortSha(deploymentSha)],["Accounting", paperAccount?.accounting_reconciled ? "Reconciled" : "Unverified"],["Capital mode", "Paper only"]])}
+          ${systemCard("Production runtime", [["Environment", environment],["Phase", human(currentPhase)],["Deployment", shortSha(deploymentSha)],["Accounting", mainAccount?.accounting_reconciled ? "Reconciled" : "Unverified"],["Authority", authority.source || "directional_institutional_research"],["Capital mode", "Paper only"]])}
         </div>
       </section>
       <footer class="footer"><span>Quant Lab · Autonomous paper-trading research system</span><span>Truthful evidence · Fixed gates · No live capital</span></footer>
@@ -189,7 +207,7 @@ export function renderProfessionalConsole(model = {}) {
   </div>
 </div>
 <script>
-(()=>{const menu=document.getElementById('menu'),links=[...document.querySelectorAll('.nav a')];menu?.addEventListener('click',()=>document.body.classList.toggle('nav-open'));links.forEach(a=>a.addEventListener('click',()=>document.body.classList.remove('nav-open')));const sections=links.map(a=>document.querySelector(a.getAttribute('href'))).filter(Boolean);const io=new IntersectionObserver(es=>{const v=es.filter(e=>e.isIntersecting).sort((a,b)=>b.intersectionRatio-a.intersectionRatio)[0];if(v)links.forEach(a=>a.classList.toggle('active',a.getAttribute('href')==='#'+v.target.id))},{rootMargin:'-25% 0px -65% 0px',threshold:[0,.2,.6]});sections.forEach(s=>io.observe(s));const set=(k,v)=>document.querySelectorAll('[data-live="'+k+'"]').forEach(n=>n.textContent=v);const money=v=>Number.isFinite(Number(v))?new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:2}).format(Number(v)):'—';const human=v=>String(v||'unknown').replaceAll('_',' ').replace(/\b\w/g,c=>c.toUpperCase());async function refresh(){try{const r=await fetch('/api/public/status',{headers:{accept:'application/json'},cache:'no-store'});if(!r.ok)throw new Error();const s=await r.json();set('system',s.workerStatus==='online'&&s.databaseConnected?'System online':'System degraded');set('equity',money(s.paperAccount?.equity));set('champion',s.championSelection?.champion_candidate_id||'None — safe idle');set('qualification',human(s.liveQualification?.state));set('refresh','Live refresh '+new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}))}catch{set('system','Live refresh unavailable')}}setInterval(refresh,30000)})();
+(()=>{const menu=document.getElementById('menu'),links=[...document.querySelectorAll('.nav a')];menu?.addEventListener('click',()=>document.body.classList.toggle('nav-open'));links.forEach(a=>a.addEventListener('click',()=>document.body.classList.remove('nav-open')));const sections=links.map(a=>document.querySelector(a.getAttribute('href'))).filter(Boolean);const io=new IntersectionObserver(es=>{const v=es.filter(e=>e.isIntersecting).sort((a,b)=>b.intersectionRatio-a.intersectionRatio)[0];if(v)links.forEach(a=>a.classList.toggle('active',a.getAttribute('href')==='#'+v.target.id))},{rootMargin:'-25% 0px -65% 0px',threshold:[0,.2,.6]});sections.forEach(s=>io.observe(s));const set=(k,v)=>document.querySelectorAll('[data-live="'+k+'"]').forEach(n=>n.textContent=v);const money=v=>Number.isFinite(Number(v))?new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:2}).format(Number(v)):'—';const human=v=>String(v||'unknown').replaceAll('_',' ').replace(/\b\w/g,c=>c.toUpperCase());async function refresh(){try{const r=await fetch('/api/public/status',{headers:{accept:'application/json'},cache:'no-store'});if(!r.ok)throw new Error();const s=await r.json();set('system',s.workerStatus==='online'&&s.databaseConnected?'System online':'System degraded');set('equity',money(s.forwardOperation?.paper_main?.equity));set('champion',s.forwardOperation?.authority?.champion_candidate_id||'None — all cash');set('qualification',human(s.liveQualification?.state));set('refresh','Live refresh '+new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}))}catch{set('system','Live refresh unavailable')}}setInterval(refresh,30000)})();
 </script>
 </body></html>`;
 }
