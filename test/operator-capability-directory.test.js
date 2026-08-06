@@ -52,6 +52,8 @@ test("directional institutional research intents are discoverable and handler-ba
   assert.ok(supportedIntents.includes("run_directional_institutional_research"));
   assert.equal(typeof handlers.get_directional_institutional_research, "function");
   assert.equal(typeof handlers.run_directional_institutional_research, "function");
+  const validation = capabilityDirectory.find((entry) => entry.intent === "run_validation");
+  assert.ok(validation.input_schema.properties.validation.enum.includes("production directional institutional research commission"));
 });
 
 test("capability lifecycle contains mandatory sequence", () => {
