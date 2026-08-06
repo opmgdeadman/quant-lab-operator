@@ -48,6 +48,8 @@ jobs:
       - name: Verify exact release identity
         shell: bash
         run: test "$(git rev-parse HEAD)" = "${{ inputs.deploy_sha }}"
+      - name: Audit public repository history
+        run: node test/public-repository-audit.mjs
       - name: Reuse successful exact-SHA CI evidence
         id: validation_evidence
         shell: bash

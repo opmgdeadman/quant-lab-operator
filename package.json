@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "test": "node --test",
+    "audit:public": "node test/public-repository-audit.mjs",
     "check": "npm run check:main && npm run check:recovery",
     "check:main": "node scripts/deploy-worker.mjs --dry-run",
     "check:recovery": "wrangler deploy --dry-run --config src/recovery/wrangler.jsonc",

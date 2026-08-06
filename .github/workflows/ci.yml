@@ -23,6 +23,8 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - name: Audit public repository history
+        run: node test/public-repository-audit.mjs
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
