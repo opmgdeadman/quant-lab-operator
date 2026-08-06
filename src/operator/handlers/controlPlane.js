@@ -97,11 +97,14 @@ async function operator_status(inputs, context) {
 }
 
 async function get_paper_account(inputs, context) {
-  const account = await getPaperAccountSummary(context.env);
+  const forward = await getForwardOperationSummary(context.env);
+  const account = forward?.paper_main || null;
   return {
     ok: Boolean(account),
     paper_only: true,
     live_capital_enabled: false,
+    authority_source: forward?.authority?.source || "directional_institutional_research",
+    legacy_selection_authority: false,
     account,
   };
 }
