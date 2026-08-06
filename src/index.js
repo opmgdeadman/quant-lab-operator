@@ -709,7 +709,7 @@ function constantTimeBytesEqual(left, right) {
 }
 
 async function renderHome(env, siteOrigin) {
-  const [latest, candles, health, paperAccount, baselineBench, hostileJudge, strategyFactory, championSelection, forwardOperation, liveQualification, rollingResearch, historicalBootstrap, directionalShadow] = await Promise.all([
+  const [latest, candles, health, paperAccount, baselineBench, hostileJudge, strategyFactory, championSelection, forwardOperation, liveQualification, rollingResearch, historicalBootstrap, directionalShadow, directionalResearch] = await Promise.all([
     latestCandleForHome(env),
     recentCandlesForHome(env),
     marketDataHealthForHome(env),
@@ -723,6 +723,7 @@ async function renderHome(env, siteOrigin) {
     rollingResearchForHome(env),
     historicalBootstrapForHome(env),
     directionalShadowForHome(env),
+    directionalResearchForHome(env),
   ]);
   return renderProfessionalConsole({
     siteOrigin,
@@ -742,6 +743,7 @@ async function renderHome(env, siteOrigin) {
     rollingResearch,
     historicalBootstrap,
     directionalShadow,
+    directionalResearch,
   });
 }
 
