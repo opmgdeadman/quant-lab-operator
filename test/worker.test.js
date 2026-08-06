@@ -839,6 +839,38 @@ class MemoryStatement {
   }
 
   async run() {
+    if (this.sql.includes("INSERT OR IGNORE INTO operator_operation_receipts")) {
+      const [operation_id, tool_name, intent, request_fingerprint, created_at, updated_at] = this.values;
+      if (this.db.receipts.has(operation_id)) {
+        return { success: true, meta: { changes: 0 } };
+      }
+      this.db.receipts.set(operation_id, {
+        operation_id,
+        tool_name,
+        intent,
+        request_fingerprint,
+        status: "started",
+        result_json: "{}",
+        created_at,
+        updated_at,
+      });
+      return { success: true, meta: { changes: 1 } };
+    }
+    if (this.sql.includes("UPDATE operator_operation_receipts")) {
+      const [created_at, updated_at, operation_id, expected_updated_at] = this.values;
+      const existing = this.db.receipts.get(operation_id);
+      if (!existing || existing.status !== "started" || existing.updated_at !== expected_updated_at) {
+        return { success: true, meta: { changes: 0 } };
+      }
+      this.db.receipts.set(operation_id, {
+        ...existing,
+        status: "started",
+        result_json: "{}",
+        created_at,
+        updated_at,
+      });
+      return { success: true, meta: { changes: 1 } };
+    }
     if (this.sql.includes("INSERT INTO operator_operation_receipts")) {
       const [operation_id, tool_name, intent, request_fingerprint, status, result_json, created_at, updated_at] = this.values;
       this.db.receipts.set(operation_id, {
@@ -851,7 +883,7 @@ class MemoryStatement {
         created_at,
         updated_at,
       });
-      return { success: true };
+      return { success: true, meta: { changes: 1 } };
     }
     if (this.sql.includes("INSERT INTO operator_audit_log")) {
       const [id, operation_id, intent, status, summary, created_at] = this.values;
