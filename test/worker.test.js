@@ -732,9 +732,19 @@ test("actions diagnostic list result", async () => {
   assert.equal(runs.result.structuredContent.result.runs.length, 1);
 });
 
-test("actions diagnostic dispatch result", async () => {
+test("actions diagnostic dispatch execution succeeds", async () => {
+  const { dispatch } = await githubActionsDiagnosticResult();
+  assert.equal(dispatch.result.structuredContent.ok, true);
+});
+
+test("actions diagnostic dispatch status", async () => {
   const { dispatch } = await githubActionsDiagnosticResult();
   assert.equal(dispatch.result.structuredContent.result.status, "dispatched");
+});
+
+test("actions diagnostic dispatch run identity", async () => {
+  const { dispatch } = await githubActionsDiagnosticResult();
+  assert.equal(dispatch.result.structuredContent.result.run_id, 101);
 });
 
 test("actions diagnostic monitor result", async () => {

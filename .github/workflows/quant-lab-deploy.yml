@@ -235,9 +235,15 @@ jobs:
       - name: Test Actions list result
         if: steps.validation_evidence.outputs.reuse != 'true'
         run: node --test --test-name-pattern="actions diagnostic list result" test/worker.test.js
-      - name: Test Actions dispatch result
+      - name: Test Actions dispatch execution
         if: steps.validation_evidence.outputs.reuse != 'true'
-        run: node --test --test-name-pattern="actions diagnostic dispatch result" test/worker.test.js
+        run: node --test --test-name-pattern="actions diagnostic dispatch execution succeeds" test/worker.test.js
+      - name: Test Actions dispatch status
+        if: steps.validation_evidence.outputs.reuse != 'true'
+        run: node --test --test-name-pattern="actions diagnostic dispatch status" test/worker.test.js
+      - name: Test Actions dispatch run identity
+        if: steps.validation_evidence.outputs.reuse != 'true'
+        run: node --test --test-name-pattern="actions diagnostic dispatch run identity" test/worker.test.js
       - name: Test Actions monitor result
         if: steps.validation_evidence.outputs.reuse != 'true'
         run: node --test --test-name-pattern="actions diagnostic monitor result" test/worker.test.js
