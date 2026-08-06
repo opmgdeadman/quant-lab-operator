@@ -632,7 +632,7 @@ async function statusPayload(env) {
     databaseConnected: dbProbe.connected,
     databaseProbe: dbProbe,
     dataHealth,
-    paperAccount,
+    paperAccount: forwardOperation?.paper_main || paperAccount,
     baselineBench,
     hostileJudge,
     strategyFactory,
