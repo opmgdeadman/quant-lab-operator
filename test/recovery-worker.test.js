@@ -151,6 +151,10 @@ test("workflow dispatch reconciliation selects the newest exact-SHA run", () => 
 
 test("recovery source contains no D1 or trading-domain binding", () => {
   const source = readFileSync(new URL("../src/recovery/index.js", import.meta.url), "utf8");
+  const packageJson = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
+  assert.match(packageJson.scripts.check, /check:main/);
+  assert.match(packageJson.scripts.check, /check:recovery/);
+  assert.match(packageJson.scripts["check:recovery"], /src\/recovery\/wrangler\.jsonc/);
   assert.doesNotMatch(source, /env\.DB|D1Database|paper_accounts|paper_positions|strategy_candidates|market_candles/);
   assert.match(source, /independent_break_glass_only/);
   assert.match(source, /force: false/);

@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "test": "node --test",
-    "check": "node scripts/deploy-worker.mjs --dry-run",
+    "check": "npm run check:main && npm run check:recovery",
+    "check:main": "node scripts/deploy-worker.mjs --dry-run",
+    "check:recovery": "wrangler deploy --dry-run --config src/recovery/wrangler.jsonc",
     "deploy": "node scripts/deploy-worker.mjs"
   },
   "devDependencies": {
