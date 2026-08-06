@@ -184,9 +184,24 @@ jobs:
       - name: Test direct operator status
         if: steps.validation_evidence.outputs.reuse != 'true'
         run: node --test --test-name-pattern="direct operator_status" test/worker.test.js
-      - name: Test canonical continuation read
+      - name: Test continuation diagnostic state
         if: steps.validation_evidence.outputs.reuse != 'true'
-        run: node --test --test-name-pattern="read_continuation" test/worker.test.js
+        run: node --test --test-name-pattern="continuation diagnostic state" test/worker.test.js
+      - name: Test continuation diagnostic authority
+        if: steps.validation_evidence.outputs.reuse != 'true'
+        run: node --test --test-name-pattern="continuation diagnostic authority" test/worker.test.js
+      - name: Test continuation diagnostic identity
+        if: steps.validation_evidence.outputs.reuse != 'true'
+        run: node --test --test-name-pattern="continuation diagnostic identity" test/worker.test.js
+      - name: Test continuation diagnostic active job
+        if: steps.validation_evidence.outputs.reuse != 'true'
+        run: node --test --test-name-pattern="continuation diagnostic active job" test/worker.test.js
+      - name: Test continuation diagnostic current action
+        if: steps.validation_evidence.outputs.reuse != 'true'
+        run: node --test --test-name-pattern="continuation diagnostic current action" test/worker.test.js
+      - name: Test continuation diagnostic mutation boundary
+        if: steps.validation_evidence.outputs.reuse != 'true'
+        run: node --test --test-name-pattern="continuation diagnostic mutation boundary" test/worker.test.js
       - name: Test direct intent replay
         if: steps.validation_evidence.outputs.reuse != 'true'
         run: node --test --test-name-pattern="execute_quant_lab_intent replays" test/worker.test.js

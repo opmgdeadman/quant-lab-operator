@@ -313,6 +313,45 @@ test("read_continuation returns the sole canonical Git ledger and D1 writes are 
   assert.equal(supportedIntents.includes("write_continuation"), false);
 });
 
+async function continuationDiagnosticResult(operationId) {
+  const env = createEnv();
+  const read = await executeIntent(env, operationId, "read_continuation", {});
+  return read.result.structuredContent.result;
+}
+
+test("continuation diagnostic state", async () => {
+  const result = await continuationDiagnosticResult("op-continuation-diagnostic-state");
+  assert.equal(result.state, "active");
+});
+
+test("continuation diagnostic authority", async () => {
+  const result = await continuationDiagnosticResult("op-continuation-diagnostic-authority");
+  assert.equal(result.authority, "source_controlled_git_engineering_continuation_ledger");
+});
+
+test("continuation diagnostic identity", async () => {
+  const result = await continuationDiagnosticResult("op-continuation-diagnostic-identity");
+  assert.equal(result.path, "docs/ENGINEERING_CONTINUATION_LEDGER.md");
+  assert.ok(result.sha);
+});
+
+test("continuation diagnostic active job", async () => {
+  const result = await continuationDiagnosticResult("op-continuation-diagnostic-job");
+  assert.equal(result.active_job_id, "stage-13-directional-shadow-paper-research");
+});
+
+test("continuation diagnostic current action", async () => {
+  const result = await continuationDiagnosticResult("op-continuation-diagnostic-action");
+  assert.ok(result.current_action);
+});
+
+test("continuation diagnostic mutation boundary", async () => {
+  const result = await continuationDiagnosticResult("op-continuation-diagnostic-boundary");
+  assert.equal(result.d1_continuation_authoritative, false);
+  assert.equal(result.mutation_intent, "apply_repo_patch_set");
+  assert.equal(supportedIntents.includes("write_continuation"), false);
+});
+
 test("execute_quant_lab_intent replays same operation id and rejects changed payload", async () => {
   const env = createEnv();
   const first = await executeIntent(env, "op-replay", "operator_status", {});
