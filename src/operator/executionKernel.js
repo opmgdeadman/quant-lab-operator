@@ -1,7 +1,15 @@
 import { resolveCapability, supportedIntents } from "./capabilityDirectory.js";
 import { assertClientSafeInputs, boundResultBytes, ClientSafetyError } from "./clientSafeRequests.js";
 import { handlers } from "./handlers/controlPlane.js";
-import { fingerprintIntent, readReceipt, receiptSummary, writeAuditLog, writeReceipt } from "./receipts.js";
+import {
+  beginOperationReceipt,
+  fingerprintIntent,
+  operationLeaseMs,
+  recordIncident,
+  receiptSummary,
+  writeAuditLog,
+  writeReceipt,
+} from "./receipts.js";
 import { REQUIRED_GOVERNING_AUTHORITY_ACK } from "./startupAuthority.js";
 
 export const executionKernelInfo = {
@@ -18,21 +26,43 @@ export async function executeQuantLabIntent(args, context) {
 
   const capabilityInputs = validateStartupAuthority(envelope.inputs, context.startupContext);
   const requestFingerprint = await fingerprintIntent(envelope.intent, envelope.inputs);
-  const existing = await readReceipt(context.env, envelope.operation_id);
-  if (existing) {
-    if (existing.request_fingerprint !== requestFingerprint || existing.intent !== envelope.intent) {
-      throw new ExecutionKernelError("idempotency_key_payload_mismatch");
-    }
-    const replayed = JSON.parse(existing.result_json);
+  const now = new Date().toISOString();
+  const receiptState = await beginOperationReceipt(context.env, {
+    operation_id: envelope.operation_id,
+    intent: envelope.intent,
+    request_fingerprint: requestFingerprint,
+    created_at: now,
+    lease_ms: operationLeaseMs(envelope.intent),
+  });
+
+  if (receiptState.state === "mismatch") {
+    throw new ExecutionKernelError("idempotency_key_payload_mismatch");
+  }
+  if (receiptState.state === "replay") {
+    const replayed = JSON.parse(receiptState.receipt.result_json);
     return {
       ...replayed,
-      receipt: receiptSummary(existing, true),
+      receipt: receiptSummary(receiptState.receipt, true),
     };
   }
+  if (receiptState.state === "in_progress") {
+    return buildResponse({
+      ok: false,
+      error: "operation_already_in_progress",
+      intent: envelope.intent,
+      operationId: envelope.operation_id,
+      requestFingerprint,
+      createdAt: receiptState.receipt.created_at,
+      capability,
+      result: { retryable_after_seconds: receiptState.retryable_after_seconds },
+      status: "blocked",
+      startupContext: context.startupContext,
+    });
+  }
 
-  const now = new Date().toISOString();
   let response;
   let status = "completed";
+  let incident = null;
   try {
     assertClientSafeInputs(capabilityInputs);
     validateAgainstSchema(capabilityInputs, capability.input_schema);
@@ -51,13 +81,23 @@ export async function executeQuantLabIntent(args, context) {
       capability,
       result: boundedResult,
       status: rawResult.ok === false ? "blocked" : "completed",
+      startupContext: context.startupContext,
     });
     status = rawResult.ok === false ? "failed" : "completed";
   } catch (error) {
     status = "failed";
+    const controlledFailure = error instanceof ClientSafetyError || error instanceof ExecutionKernelError;
+    if (!controlledFailure) {
+      incident = await recordIncident(context.env, {
+        operation_id: envelope.operation_id,
+        intent: envelope.intent,
+        error: error instanceof Error ? error.message : String(error),
+        created_at: now,
+      });
+    }
     response = buildResponse({
       ok: false,
-      error: error instanceof ClientSafetyError || error instanceof ExecutionKernelError ? error.message : "execution_failed",
+      error: controlledFailure ? error.message : "execution_failed",
       intent: envelope.intent,
       operationId: envelope.operation_id,
       requestFingerprint,
@@ -65,6 +105,8 @@ export async function executeQuantLabIntent(args, context) {
       capability,
       result: {},
       status: "blocked",
+      startupContext: context.startupContext,
+      incident,
     });
   }
 
@@ -105,7 +147,7 @@ function validateStartupAuthority(inputs, startupContext) {
   return capabilityInputs;
 }
 
-function buildResponse({ ok, error, intent, operationId, requestFingerprint, createdAt, capability, result, status }) {
+function buildResponse({ ok, error, intent, operationId, requestFingerprint, createdAt, capability, result, status, startupContext, incident = null }) {
   return {
     ok,
     ...(error ? { error } : {}),
@@ -125,12 +167,41 @@ function buildResponse({ ok, error, intent, operationId, requestFingerprint, cre
       arbitrary_shell_allowed: false,
       arbitrary_sql_allowed: false,
     },
-    operator_action_closure: {
+    operator_action_closure: buildActionClosure({
       status,
-      evidence: [`capability:${capability.id}`, `handler:${capability.handler_id}`, `receipt:operator_receipt_${operationId}`],
-      next_action: status === "completed" ? "continue_with_next_bounded_intent" : "repair_or_adjust_inputs",
-    },
+      capability,
+      operationId,
+      startupContext,
+      incident,
+    }),
     result,
+  };
+}
+
+export function parseContinuationMetadata(content) {
+  const text = typeof content === "string" ? content : "";
+  return {
+    active_job_id: text.match(/Job ID:\s*`([^`]+)`/)?.[1] || null,
+    current_action: text.match(/## Current Action\s+([^\n]+)/)?.[1]?.trim() || null,
+  };
+}
+
+export function buildActionClosure({ status, capability, operationId, startupContext, incident = null }) {
+  const continuation = startupContext?.canonical_continuation || {};
+  const metadata = parseContinuationMetadata(continuation.content);
+  return {
+    status,
+    authority: "sole_canonical_git_engineering_continuation_ledger",
+    canonical_continuation_path: continuation.path || "docs/ENGINEERING_CONTINUATION_LEDGER.md",
+    canonical_continuation_sha: continuation.sha || null,
+    active_job_id: metadata.active_job_id,
+    current_action: metadata.current_action,
+    evidence: [`capability:${capability.id}`, `handler:${capability.handler_id}`, `receipt:operator_receipt_${operationId}`],
+    hardening_incident_id: incident?.id || null,
+    next_action: status === "completed"
+      ? "reload_canonical_continuation_and_continue_current_action"
+      : "repair_root_cause_add_regression_validate_exact_sha_deploy_then_resume",
+    owner_action_required: false,
   };
 }
 

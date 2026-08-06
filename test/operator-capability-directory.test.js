@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import {
@@ -8,6 +9,8 @@ import {
   supportedIntents,
 } from "../src/operator/capabilityDirectory.js";
 import { handlers } from "../src/operator/handlers/controlPlane.js";
+import { buildActionClosure, parseContinuationMetadata } from "../src/operator/executionKernel.js";
+import { operationLeaseMs } from "../src/operator/receipts.js";
 
 test("every supported intent exists in capability directory with lifecycle declaration and handler", () => {
   const declarationIds = new Set(lifecycleDeclarations.map((item) => item.id));
@@ -67,5 +70,37 @@ test("capability lifecycle contains mandatory sequence", () => {
     "validation_command",
     "deploy_live_verification_contract",
   ]);
+});
+
+test("execution leases are bounded by operation class", () => {
+  assert.equal(operationLeaseMs("operator_status"), 15 * 60 * 1000);
+  assert.equal(operationLeaseMs("monitor_github_workflow"), 5 * 60 * 1000);
+  assert.equal(operationLeaseMs("run_directional_institutional_research"), 30 * 60 * 1000);
+  assert.equal(operationLeaseMs("deploy_cloudflare_worker"), 30 * 60 * 1000);
+});
+
+test("action closure is bound to the sole canonical Git ledger", () => {
+  const content = "## Active Job\n\nJob ID: `stage-13-directional-shadow-paper-research`\n\n## Current Action\n\nComplete the authority transition.";
+  assert.deepEqual(parseContinuationMetadata(content), {
+    active_job_id: "stage-13-directional-shadow-paper-research",
+    current_action: "Complete the authority transition.",
+  });
+  const closure = buildActionClosure({
+    status: "completed",
+    capability: { id: "operating.operator_status", handler_id: "operator_status" },
+    operationId: "closure-test",
+    startupContext: { canonical_continuation: { path: "docs/ENGINEERING_CONTINUATION_LEDGER.md", sha: "abc123", content } },
+  });
+  assert.equal(closure.canonical_continuation_sha, "abc123");
+  assert.equal(closure.active_job_id, "stage-13-directional-shadow-paper-research");
+  assert.equal(closure.owner_action_required, false);
+  assert.equal(closure.next_action, "reload_canonical_continuation_and_continue_current_action");
+});
+
+test("kernel source acquires a started receipt before handler execution", () => {
+  const source = readFileSync(new URL("../src/operator/executionKernel.js", import.meta.url), "utf8");
+  assert.ok(source.indexOf("beginOperationReceipt") < source.indexOf("await handler(capabilityInputs, context)"));
+  assert.match(source, /operation_already_in_progress/);
+  assert.match(source, /recordIncident/);
 });
 
