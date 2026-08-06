@@ -48,6 +48,26 @@ jobs:
       - name: Verify exact release identity
         shell: bash
         run: test "$(git rev-parse HEAD)" = "${{ inputs.deploy_sha }}"
+      - name: Audit category group - provider secrets
+        continue-on-error: true
+        env:
+          AUDIT_CATEGORIES: github_legacy_token,github_fine_grained_token,openai_secret_key,stripe_live_secret,aws_access_key,slack_token,private_key,credentialed_url
+        run: node test/public-repository-audit.mjs
+      - name: Audit category group - sensitive files
+        continue-on-error: true
+        env:
+          AUDIT_CATEGORIES: dotenv_file,cloudflare_local_secrets,private_key_file,ssh_private_key,credential_bundle
+        run: node test/public-repository-audit.mjs
+      - name: Audit category group - generic assignments
+        continue-on-error: true
+        env:
+          AUDIT_CATEGORIES: literal_secret_assignment
+        run: node test/public-repository-audit.mjs
+      - name: Audit category group - current privacy metadata
+        continue-on-error: true
+        env:
+          AUDIT_CATEGORIES: personal_windows_home_path,private_chatgpt_connector_id,local_codex_project_id,local_codex_profile_path
+        run: node test/public-repository-audit.mjs
       - name: Audit public repository history
         run: node test/public-repository-audit.mjs
       - name: Reuse successful exact-SHA CI evidence

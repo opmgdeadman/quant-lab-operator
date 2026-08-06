@@ -175,8 +175,18 @@ const uniqueFindings = Array.from(
   new Map(findings.map((finding) => [`${finding.category}:${finding.location}:${finding.objectId}`, finding])).values(),
 );
 
-const blockingFindings = uniqueFindings.filter((finding) => finding.blocking !== false);
-const warningFindings = uniqueFindings.filter((finding) => finding.blocking === false);
+const selectedCategories = new Set(
+  String(process.env.AUDIT_CATEGORIES || "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean),
+);
+const scopedFindings = selectedCategories.size > 0
+  ? uniqueFindings.filter((finding) => selectedCategories.has(finding.category))
+  : uniqueFindings;
+
+const blockingFindings = scopedFindings.filter((finding) => finding.blocking !== false);
+const warningFindings = scopedFindings.filter((finding) => finding.blocking === false);
 
 if (warningFindings.length > 0) {
   console.warn(`Public repository audit recorded ${warningFindings.length} historical privacy warning(s).`);
