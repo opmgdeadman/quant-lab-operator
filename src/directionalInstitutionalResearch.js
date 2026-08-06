@@ -129,7 +129,7 @@ export async function runProductionDirectionalInstitutionalResearch(env, options
 
 export async function getDirectionalInstitutionalResearchSummary(env) {
   const row = await env.DB.prepare(
-    `SELECT result_json FROM directional_research_batches ORDER BY as_of_closed_at DESC LIMIT 1`,
+    `SELECT id, result_json FROM directional_research_batches ORDER BY as_of_closed_at DESC LIMIT 1`,
   ).first();
   if (!row) return {
     ok: true,
@@ -137,8 +137,53 @@ export async function getDirectionalInstitutionalResearchSummary(env) {
     live_capital_enabled: false,
     state: "not_run",
     blocker: "no_directional_research_batch",
+    windows: [],
+    verdicts: [],
+    selection: null,
   };
-  return JSON.parse(row.result_json);
+  const [windows, verdicts, selection, runCounts] = await Promise.all([
+    env.DB.prepare(
+      `SELECT ordinal, train_start_closed_at, train_end_closed_at,
+              validation_start_closed_at, validation_end_closed_at,
+              test_start_closed_at, test_end_closed_at, window_hash
+       FROM directional_research_windows WHERE batch_id = ? ORDER BY ordinal ASC`,
+    ).bind(row.id).all(),
+    env.DB.prepare(
+      `SELECT candidate_id, verdict, reason_codes_json, metrics_json, verdict_hash
+       FROM directional_research_verdicts WHERE batch_id = ? ORDER BY candidate_id ASC`,
+    ).bind(row.id).all(),
+    env.DB.prepare(
+      `SELECT id, state, champion_candidate_ids_json, challenger_candidate_ids_json,
+              ranking_json, cash_is_valid_allocation, selection_hash
+       FROM directional_research_portfolio_selections WHERE batch_id = ?`,
+    ).bind(row.id).first(),
+    env.DB.prepare(
+      `SELECT candidate_id, COUNT(*) AS run_count
+       FROM directional_research_runs WHERE batch_id = ? GROUP BY candidate_id ORDER BY candidate_id ASC`,
+    ).bind(row.id).all(),
+  ]);
+  const summary = JSON.parse(row.result_json);
+  return {
+    ...summary,
+    windows: windows.results || [],
+    verdicts: (verdicts.results || []).map((entry) => ({
+      candidate_id: entry.candidate_id,
+      verdict: entry.verdict,
+      reason_codes: JSON.parse(entry.reason_codes_json),
+      metrics: JSON.parse(entry.metrics_json),
+      verdict_hash: entry.verdict_hash,
+    })),
+    selection: selection ? {
+      id: selection.id,
+      state: selection.state,
+      champion_candidate_ids: JSON.parse(selection.champion_candidate_ids_json),
+      challenger_candidate_ids: JSON.parse(selection.challenger_candidate_ids_json),
+      ranking: JSON.parse(selection.ranking_json),
+      cash_is_valid_allocation: Number(selection.cash_is_valid_allocation) === 1,
+      selection_hash: selection.selection_hash,
+    } : null,
+    candidate_run_counts: runCounts.results || [],
+  };
 }
 
 async function persistResearch(env, data) {
