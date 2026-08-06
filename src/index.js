@@ -12,7 +12,7 @@ import { getDirectionalShadowSummary, runScheduledDirectionalShadow } from "./di
 import { getDirectionalInstitutionalResearchSummary, runProductionDirectionalInstitutionalResearch } from "./directionalInstitutionalResearch.js";
 import { renderProfessionalConsole } from "./professionalConsole.js";
 import { BRAND_ASSETS as CANONICAL_BRAND_ASSETS, BRAND_MANIFEST } from "./brandAssetsCanonical.js";
-import { executeQuantLabIntent } from "./operator/executionKernel.js";
+import { executeQuantLabIntent, executionKernelInfo } from "./operator/executionKernel.js";
 import { loadQuantStartupContext } from "./operator/startupAuthority.js";
 import { publicTools as operatorPublicTools } from "./operator/toolRegistry.js";
 
@@ -24,6 +24,7 @@ const OAUTH_TOKEN_PATH = "/api/operator/oauth/token";
 const OPERATOR_ACCESS_TOKEN_TTL_SECONDS = 24 * 60 * 60;
 const OPERATOR_REFRESH_TOKEN_TTL_SECONDS = 365 * 24 * 60 * 60;
 const MCP_SESSION_TTL_SECONDS = 30 * 24 * 60 * 60;
+const MCP_SERVER_VERSION = "0.3.0";
 const BRAND_ASSETS = Object.freeze({
   ...CANONICAL_BRAND_ASSETS,
   "/og-image.png": CANONICAL_BRAND_ASSETS["/android-chrome-512x512.png"],
@@ -209,10 +210,11 @@ async function mcpResponseFor(message, request, env) {
           capabilities: { tools: {} },
           serverInfo: {
             name: "quant-lab",
-            version: "0.2.0",
+            version: MCP_SERVER_VERSION,
             deploymentSha: env.DEPLOYMENT_SHA || "unknown",
+            executionKernelVersion: executionKernelInfo.version,
           },
-          instructions: "Authenticated Quant Operator MCP. Before any operator intent, call get_quant_lab_startup_context, read the full Startup Authority and sole canonical Git ECL, then send the exact required acknowledgment and current ECL SHA with every intent.",
+          instructions: "Authenticated Quant Operator MCP. Sessions are deployment-scoped and must reinitialize after a Worker or Execution Kernel change. Before any operator intent, call get_quant_lab_startup_context, read the full Startup Authority and sole canonical Git ECL, then send the exact required acknowledgment and current ECL SHA with every intent.",
         },
       },
     };
@@ -226,8 +228,15 @@ async function mcpResponseFor(message, request, env) {
     if (isNotification) {
       return null;
     }
-    if (!(await hasValidMcpSession(request, env))) {
-      return { body: mcpErrorObject(id, -32001, "valid_mcp_session_required") };
+    const sessionValidation = await validateMcpSession(request, env);
+    if (!sessionValidation.ok) {
+      const replacementSessionId = sessionValidation.stale ? await createMcpSessionId(env) : null;
+      return {
+        ...(replacementSessionId ? { headers: { "mcp-session-id": replacementSessionId } } : {}),
+        body: mcpErrorObject(id, -32001, sessionValidation.stale
+          ? "mcp_deployment_changed_reinitialize"
+          : "valid_mcp_session_required"),
+      };
     }
     return {
       body: {
@@ -244,8 +253,15 @@ async function mcpResponseFor(message, request, env) {
     if (isNotification) {
       return null;
     }
-    if (!(await hasValidMcpSession(request, env))) {
-      return { body: mcpErrorObject(id, -32001, "valid_mcp_session_required") };
+    const sessionValidation = await validateMcpSession(request, env);
+    if (!sessionValidation.ok) {
+      const replacementSessionId = sessionValidation.stale ? await createMcpSessionId(env) : null;
+      return {
+        ...(replacementSessionId ? { headers: { "mcp-session-id": replacementSessionId } } : {}),
+        body: mcpErrorObject(id, -32001, sessionValidation.stale
+          ? "mcp_deployment_changed_reinitialize"
+          : "valid_mcp_session_required"),
+      };
     }
     const name = message.params?.name;
     const args = message.params?.arguments || {};
@@ -285,8 +301,15 @@ async function mcpResponseFor(message, request, env) {
     if (isNotification) {
       return null;
     }
-    if (!(await hasValidMcpSession(request, env))) {
-      return { body: mcpErrorObject(id, -32001, "valid_mcp_session_required") };
+    const sessionValidation = await validateMcpSession(request, env);
+    if (!sessionValidation.ok) {
+      const replacementSessionId = sessionValidation.stale ? await createMcpSessionId(env) : null;
+      return {
+        ...(replacementSessionId ? { headers: { "mcp-session-id": replacementSessionId } } : {}),
+        body: mcpErrorObject(id, -32001, sessionValidation.stale
+          ? "mcp_deployment_changed_reinitialize"
+          : "valid_mcp_session_required"),
+      };
     }
     return {
       body: {
@@ -526,13 +549,29 @@ async function createMcpSessionId(env) {
     type: "mcp_session",
     exp: Math.floor(Date.now() / 1000) + MCP_SESSION_TTL_SECONDS,
     deploymentSha: env.DEPLOYMENT_SHA || "unknown",
+    executionKernelVersion: executionKernelInfo.version,
   }, env);
 }
 
-async function hasValidMcpSession(request, env) {
+async function validateMcpSession(request, env) {
   const sessionId = request.headers.get("mcp-session-id") || "";
   const payload = await verifySignedPayload(sessionId, env);
-  return payload?.type === "mcp_session";
+  if (payload?.type !== "mcp_session") {
+    return { ok: false, stale: false, reason: "valid_mcp_session_required" };
+  }
+  const deploymentSha = env.DEPLOYMENT_SHA || "unknown";
+  if (payload.deploymentSha !== deploymentSha || payload.executionKernelVersion !== executionKernelInfo.version) {
+    return {
+      ok: false,
+      stale: true,
+      reason: "mcp_deployment_changed_reinitialize",
+      sessionDeploymentSha: payload.deploymentSha || null,
+      currentDeploymentSha: deploymentSha,
+      sessionExecutionKernelVersion: payload.executionKernelVersion || null,
+      currentExecutionKernelVersion: executionKernelInfo.version,
+    };
+  }
+  return { ok: true, stale: false, reason: null };
 }
 
 async function signPayload(payload, env) {

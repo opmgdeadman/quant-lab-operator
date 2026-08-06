@@ -142,19 +142,26 @@ test("operator mcp initialize requires auth and returns a session id", async () 
 
   assert.equal(initialize.status, 200);
   assert.equal(initializeBody.result.serverInfo.name, "quant-lab");
+  assert.equal(initializeBody.result.serverInfo.version, "0.3.0");
+  assert.equal(initializeBody.result.serverInfo.executionKernelVersion, "quant-lab-execution-kernel-v1");
+  assert.match(initializeBody.result.instructions, /deployment-scoped/);
   assert.match(initializeBody.result.instructions, /get_quant_lab_startup_context/);
   assert.match(initializeBody.result.instructions, /canonical Git ECL/);
   assert.match(initialize.headers.get("mcp-session-id"), /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/);
 });
 
-test("operator mcp session remains valid across deployments", async () => {
+test("operator mcp session invalidates across deployments and requires reinitialization", async () => {
   const env = createEnv();
   const initialize = await initializeMcpSession(env);
   const sessionId = initialize.headers.get("mcp-session-id");
 
   env.DEPLOYMENT_SHA = "next-test-sha";
-  const toolsBody = await mcp(env, sessionId, { jsonrpc: "2.0", id: 2, method: "tools/list" });
+  const staleBody = await mcp(env, sessionId, { jsonrpc: "2.0", id: 2, method: "tools/list" });
+  assert.equal(staleBody.error.message, "mcp_deployment_changed_reinitialize");
 
+  const replacement = await initializeMcpSession(env);
+  const replacementSessionId = replacement.headers.get("mcp-session-id");
+  const toolsBody = await mcp(env, replacementSessionId, { jsonrpc: "2.0", id: 3, method: "tools/list" });
   assert.equal(toolsBody.error, undefined);
   assert.deepEqual(toolsBody.result.tools.map((tool) => tool.name), [
     "get_quant_lab_startup_context",
