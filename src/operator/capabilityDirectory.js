@@ -591,11 +591,58 @@ export const capabilityDirectory = [
 ];
 
 export const lifecycleDeclarations = lifecycle.declarations;
-export const lifecycleMandatorySequence = lifecycle.mandatory_sequence;
+export const lifecycleMandatorySequence = lifecycle.required_sequence;
 
 export function resolveCapability(intent) {
   return capabilityDirectory.find((entry) => entry.intent === intent) || null;
 }
+
+export function validateCapabilityLifecycle(directory = capabilityDirectory, declarations = lifecycleDeclarations) {
+  const errors = [];
+  if (lifecycle.version !== "quant-lab-capability-lifecycle-v2" || lifecycle.mandatory !== true) {
+    errors.push("capability_lifecycle_version_or_mandatory_invalid");
+  }
+  const requiredFields = new Set(lifecycle.required_declaration_fields || []);
+  const releaseScopes = new Set(lifecycle.allowed_release_scopes || []);
+  const declarationByIntent = new Map();
+  for (const declaration of declarations) {
+    if (declarationByIntent.has(declaration.intent)) errors.push(`duplicate_lifecycle_intent:${declaration.intent}`);
+    declarationByIntent.set(declaration.intent, declaration);
+    for (const field of requiredFields) {
+      if (!(field in declaration) || declaration[field] === null || declaration[field] === "") {
+        errors.push(`missing_lifecycle_field:${declaration.intent}:${field}`);
+      }
+    }
+    if (!releaseScopes.has(declaration.release_scope)) errors.push(`invalid_release_scope:${declaration.intent}`);
+    if (declaration.compatibility_bridge !== false) errors.push(`compatibility_bridge_forbidden:${declaration.intent}`);
+    if (typeof declaration.live_verification !== "string" || declaration.live_verification.length < 20) {
+      errors.push(`live_verification_missing:${declaration.intent}`);
+    }
+  }
+  for (const entry of directory) {
+    const declaration = declarationByIntent.get(entry.intent);
+    if (!declaration) {
+      errors.push(`lifecycle_declaration_missing:${entry.intent}`);
+      continue;
+    }
+    if (declaration.id !== entry.lifecycle_declaration_id) errors.push(`lifecycle_id_mismatch:${entry.intent}`);
+    if (declaration.canonical_handler !== entry.handler_id) errors.push(`canonical_handler_mismatch:${entry.intent}`);
+    if (!Array.isArray(entry.tests) || entry.tests.length < 1) errors.push(`focused_regression_missing:${entry.intent}`);
+    if (entry.input_schema?.additionalProperties !== false) errors.push(`strict_schema_missing:${entry.intent}`);
+  }
+  for (const declaration of declarations) {
+    if (!directory.some((entry) => entry.intent === declaration.intent)) errors.push(`orphan_lifecycle_declaration:${declaration.intent}`);
+  }
+  return { ok: errors.length === 0, errors };
+}
+
+export function assertCapabilityLifecycle() {
+  const validation = validateCapabilityLifecycle();
+  if (!validation.ok) throw new Error(`capability_lifecycle_invalid:${validation.errors.join("|")}`);
+  return validation;
+}
+
+assertCapabilityLifecycle();
 
 function capability(entry) {
   return {

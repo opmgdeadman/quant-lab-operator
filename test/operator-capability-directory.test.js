@@ -7,6 +7,7 @@ import {
   lifecycleDeclarations,
   lifecycleMandatorySequence,
   supportedIntents,
+  validateCapabilityLifecycle,
 } from "../src/operator/capabilityDirectory.js";
 import { handlers } from "../src/operator/handlers/controlPlane.js";
 import { buildActionClosure, parseContinuationMetadata } from "../src/operator/executionKernel.js";
@@ -61,15 +62,28 @@ test("directional institutional research intents are discoverable and handler-ba
 
 test("capability lifecycle contains mandatory sequence", () => {
   assert.deepEqual(lifecycleMandatorySequence, [
-    "declaration",
+    "resolve_existing_capability",
+    "declare_capability_when_missing",
     "directory_entry",
     "strict_schema",
     "canonical_handler",
-    "tests",
-    "migration_when_needed",
-    "validation_command",
-    "deploy_live_verification_contract",
+    "static_route",
+    "focused_regression",
+    "minimum_validation_scope",
+    "exact_sha_release",
+    "live_verification",
   ]);
+  assert.deepEqual(validateCapabilityLifecycle(), { ok: true, errors: [] });
+});
+
+test("capability lifecycle fails closed on missing or bridged declarations", () => {
+  const missing = validateCapabilityLifecycle(capabilityDirectory, lifecycleDeclarations.slice(1));
+  assert.equal(missing.ok, false);
+  assert.ok(missing.errors.some((error) => error.startsWith("lifecycle_declaration_missing:")));
+  const bridgedDeclarations = lifecycleDeclarations.map((item, index) => index === 0 ? { ...item, compatibility_bridge: true } : item);
+  const bridged = validateCapabilityLifecycle(capabilityDirectory, bridgedDeclarations);
+  assert.equal(bridged.ok, false);
+  assert.ok(bridged.errors.includes(`compatibility_bridge_forbidden:${lifecycleDeclarations[0].intent}`));
 });
 
 test("execution leases are bounded by operation class", () => {
