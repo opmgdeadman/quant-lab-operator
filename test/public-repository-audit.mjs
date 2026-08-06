@@ -102,6 +102,10 @@ const suspiciousFileMatchers = [
   { id: "credential_bundle", test: (value) => /(^|\/)(?:credentials|secrets)\.json$/i.test(value) },
 ];
 
+const syntheticSecretFixturePaths = new Set([
+  "test/operator-client-safety.test.js",
+]);
+
 const findings = [];
 const currentBlobIds = new Set(
   git(["ls-tree", "-r", "HEAD"])
@@ -147,6 +151,9 @@ for (const line of objects) {
   }
   const text = data.toString("utf8");
   for (const pattern of secretPatterns) {
+    if (pattern.id === "github_legacy_token" && syntheticSecretFixturePaths.has(objectPath)) {
+      continue;
+    }
     pattern.expression.lastIndex = 0;
     if (pattern.expression.test(text)) {
       findings.push({
