@@ -70,6 +70,25 @@ secretPatterns.push({
   ),
 });
 
+secretPatterns.push(
+  {
+    id: "personal_windows_home_path",
+    expression: new RegExp(joined("[A-Za-z]:\\\\", "Users\\\\[^\\\\\\r\\n]+\\\\"), "g"),
+  },
+  {
+    id: "private_chatgpt_connector_id",
+    expression: new RegExp(joined("asdk_", "app(?:_v)?_[A-Za-z0-9]{16,}"), "g"),
+  },
+  {
+    id: "local_codex_project_id",
+    expression: new RegExp(joined("local-", "[a-f0-9]{16,}"), "gi"),
+  },
+  {
+    id: "local_codex_profile_path",
+    expression: new RegExp(joined("\\.co", "dex[\\\\/]profiles[\\\\/]"), "gi"),
+  },
+);
+
 const suspiciousFileMatchers = [
   { id: "dotenv_file", test: (value) => /(^|\/)\.env(?:\.|$)/i.test(value) && !/\.env\.(?:example|sample|template)$/i.test(value) },
   { id: "cloudflare_local_secrets", test: (value) => /(^|\/)\.dev\.vars(?:\.|$)/i.test(value) },
