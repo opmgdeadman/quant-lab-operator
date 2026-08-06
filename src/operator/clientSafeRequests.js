@@ -124,7 +124,8 @@ export function redactSecrets(value) {
 }
 
 export function redactValue(value) {
-  return JSON.parse(redactSecrets(value));
+  const redacted = redactSecrets(value);
+  return typeof value === "string" ? redacted : JSON.parse(redacted);
 }
 
 export function boundResultBytes(value, maxBytes) {

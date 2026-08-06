@@ -6,6 +6,7 @@ import {
   assertClientSafeInputs,
   boundResultBytes,
   redactSecrets,
+  redactValue,
 } from "../src/operator/clientSafeRequests.js";
 
 test("forbidden public input keys reject", () => {
@@ -29,6 +30,14 @@ test("secret-like outputs are redacted", () => {
   assert.doesNotMatch(redacted, /Bearer abc/);
   assert.doesNotMatch(redacted, /ghp_/);
   assert.match(redacted, /\[REDACTED\]/);
+});
+
+test("plain text and structured values redact without parse failures", () => {
+  assert.equal(redactValue("Unexpected failure with [REDACTED]"), "Unexpected failure with [REDACTED]");
+  assert.deepEqual(redactValue({ token: "[REDACTED]", status: "failed" }), {
+    token: "[REDACTED]",
+    status: "failed",
+  });
 });
 
 test("oversized results are bounded", () => {
