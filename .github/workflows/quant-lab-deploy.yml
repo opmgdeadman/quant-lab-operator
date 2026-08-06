@@ -84,9 +84,30 @@ jobs:
         env:
           AUDIT_CATEGORIES: dotenv_file,cloudflare_local_secrets,private_key_file,ssh_private_key,credential_bundle
         run: node test/public-repository-audit.mjs
-      - name: Audit category group - generic assignments
+      - name: Audit generic assignment path - tests
         env:
           AUDIT_CATEGORIES: literal_secret_assignment
+          AUDIT_PATH_PREFIXES: test/
+        run: node test/public-repository-audit.mjs
+      - name: Audit generic assignment path - source
+        env:
+          AUDIT_CATEGORIES: literal_secret_assignment
+          AUDIT_PATH_PREFIXES: src/
+        run: node test/public-repository-audit.mjs
+      - name: Audit generic assignment path - docs
+        env:
+          AUDIT_CATEGORIES: literal_secret_assignment
+          AUDIT_PATH_PREFIXES: docs/
+        run: node test/public-repository-audit.mjs
+      - name: Audit generic assignment path - workflows
+        env:
+          AUDIT_CATEGORIES: literal_secret_assignment
+          AUDIT_PATH_PREFIXES: .github/
+        run: node test/public-repository-audit.mjs
+      - name: Audit generic assignment path - root config
+        env:
+          AUDIT_CATEGORIES: literal_secret_assignment
+          AUDIT_PATH_PREFIXES: README.md,OPERATING_MEMORY.md,package.json,wrangler.jsonc
         run: node test/public-repository-audit.mjs
       - name: Audit category group - current privacy metadata
         env:

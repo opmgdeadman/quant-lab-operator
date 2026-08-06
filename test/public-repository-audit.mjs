@@ -188,9 +188,19 @@ const selectedCategories = new Set(
     .map((value) => value.trim())
     .filter(Boolean),
 );
-const scopedFindings = selectedCategories.size > 0
-  ? uniqueFindings.filter((finding) => selectedCategories.has(finding.category))
-  : uniqueFindings;
+const selectedPathPrefixes = String(process.env.AUDIT_PATH_PREFIXES || "")
+  .split(",")
+  .map((value) => value.trim())
+  .filter(Boolean);
+const scopedFindings = uniqueFindings.filter((finding) => {
+  if (selectedCategories.size > 0 && !selectedCategories.has(finding.category)) {
+    return false;
+  }
+  if (selectedPathPrefixes.length > 0 && !selectedPathPrefixes.some((prefix) => finding.location.startsWith(prefix))) {
+    return false;
+  }
+  return true;
+});
 
 const blockingFindings = scopedFindings.filter((finding) => finding.blocking !== false);
 const warningFindings = scopedFindings.filter((finding) => finding.blocking === false);
