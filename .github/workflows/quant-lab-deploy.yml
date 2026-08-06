@@ -166,6 +166,18 @@ jobs:
       - name: Install Python dependencies
         if: steps.validation_evidence.outputs.reuse != 'true'
         run: python -m pip install -r requirements.txt
+      - name: Test operator capability directory
+        if: steps.validation_evidence.outputs.reuse != 'true'
+        run: node --test test/operator-capability-directory.test.js
+      - name: Test operator client safety
+        if: steps.validation_evidence.outputs.reuse != 'true'
+        run: node --test test/operator-client-safety.test.js
+      - name: Test Recovery Worker
+        if: steps.validation_evidence.outputs.reuse != 'true'
+        run: node --test test/recovery-worker.test.js
+      - name: Test Worker HTTP and MCP surface
+        if: steps.validation_evidence.outputs.reuse != 'true'
+        run: node --test test/worker.test.js
       - name: Run Worker tests
         if: steps.validation_evidence.outputs.reuse != 'true'
         run: npm test
