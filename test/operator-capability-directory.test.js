@@ -9,7 +9,7 @@ import {
   supportedIntents,
   validateCapabilityLifecycle,
 } from "../src/operator/capabilityDirectory.js";
-import { handlers } from "../src/operator/handlers/controlPlane.js";
+import { findDispatchedRun, handlers } from "../src/operator/handlers/controlPlane.js";
 import { buildActionClosure, parseContinuationMetadata } from "../src/operator/executionKernel.js";
 import { operationLeaseMs } from "../src/operator/receipts.js";
 
@@ -128,5 +128,16 @@ test("workflows use one validation runner and reuse exact-SHA evidence", () => {
   assert.match(deploy, /Reuse successful exact-SHA CI evidence/);
   assert.match(deploy, /steps\.validation_evidence\.outputs\.reuse != 'true'/);
   assert.doesNotMatch(deploy, /Cancel older Quant Lab deploy runs/);
+});
+
+test("ambiguous workflow dispatches reconcile the created exact-SHA run", () => {
+  const createdAfter = Date.parse("2026-08-06T18:00:00.000Z");
+  const run = findDispatchedRun([
+    { id: 1, event: "workflow_dispatch", head_sha: "old", created_at: "2026-08-06T18:01:00.000Z" },
+    { id: 2, event: "push", head_sha: "target", created_at: "2026-08-06T18:02:00.000Z" },
+    { id: 3, event: "workflow_dispatch", head_sha: "target", created_at: "2026-08-06T18:03:00.000Z" },
+  ], "target", createdAfter);
+  assert.equal(run.id, 3);
+  assert.equal(findDispatchedRun([], "target", createdAfter), null);
 });
 

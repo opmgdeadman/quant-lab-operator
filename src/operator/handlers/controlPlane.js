@@ -948,21 +948,15 @@ async function trigger_github_workflow(inputs, context) {
     }
     workflowInputs.deploy_sha = inputs.deploy_sha;
   }
-  const remote = await githubRequest(
-    context.env,
-    repoApiPath(context.env, `/actions/workflows/${encodeURIComponent(inputs.workflow_id)}/dispatches`),
-    { method: "POST", body: { ref, inputs: workflowInputs } },
-  );
-  if (!remote.ok) {
-    return { ok: false, status: remote.status || "github_dispatch_failed", status_code: remote.status_code, config: remote.config };
-  }
-  return {
-    ok: true,
-    status: "dispatched",
-    workflow_id: inputs.workflow_id,
+  const expectedHeadSha = inputs.deploy_sha || await resolveGitRefSha(context.env, ref);
+  return reconcileWorkflowDispatch(context.env, {
+    workflowId: inputs.workflow_id,
     ref,
-    inputs: Object.keys(workflowInputs),
-  };
+    workflowInputs,
+    expectedHeadSha,
+    successStatus: "dispatched",
+    failureStatus: "github_dispatch_failed",
+  });
 }
 
 async function monitor_github_workflow(inputs, context) {
@@ -992,21 +986,14 @@ async function deploy_cloudflare_worker(inputs, context) {
   if (!isAllowedWorkflowId(workflowId)) {
     return { ok: false, status: "unsupported_workflow_id" };
   }
-  const remote = await githubRequest(
-    context.env,
-    repoApiPath(context.env, `/actions/workflows/${encodeURIComponent(workflowId)}/dispatches`),
-    { method: "POST", body: { ref: config.branch, inputs: { deploy_sha: inputs.deploy_sha } } },
-  );
-  if (!remote.ok) {
-    return { ok: false, status: remote.status || "github_deploy_dispatch_failed", status_code: remote.status_code, config: remote.config };
-  }
-  return {
-    ok: true,
-    status: "deployment_workflow_dispatched",
-    workflow_id: workflowId,
+  return reconcileWorkflowDispatch(context.env, {
+    workflowId,
     ref: config.branch,
-    deploy_sha: inputs.deploy_sha,
-  };
+    workflowInputs: { deploy_sha: inputs.deploy_sha },
+    expectedHeadSha: inputs.deploy_sha,
+    successStatus: "deployment_workflow_dispatched",
+    failureStatus: "github_deploy_dispatch_failed",
+  });
 }
 
 async function apply_d1_migrations(inputs, context) {
@@ -1015,21 +1002,14 @@ async function apply_d1_migrations(inputs, context) {
   }
   const config = githubConfig(context.env);
   const workflowId = config.deployWorkflowId;
-  const remote = await githubRequest(
-    context.env,
-    repoApiPath(context.env, `/actions/workflows/${encodeURIComponent(workflowId)}/dispatches`),
-    { method: "POST", body: { ref: config.branch, inputs: { deploy_sha: inputs.deploy_sha, mode: "migrations" } } },
-  );
-  if (!remote.ok) {
-    return { ok: false, status: remote.status || "github_migration_dispatch_failed", status_code: remote.status_code, config: remote.config };
-  }
-  return {
-    ok: true,
-    status: "migration_workflow_dispatched",
-    workflow_id: workflowId,
+  return reconcileWorkflowDispatch(context.env, {
+    workflowId,
     ref: config.branch,
-    deploy_sha: inputs.deploy_sha,
-  };
+    workflowInputs: { deploy_sha: inputs.deploy_sha, mode: "migrations" },
+    expectedHeadSha: inputs.deploy_sha,
+    successStatus: "migration_workflow_dispatched",
+    failureStatus: "github_migration_dispatch_failed",
+  });
 }
 
 async function validate_production_sha(inputs, context) {
@@ -1042,6 +1022,52 @@ async function validate_production_sha(inputs, context) {
     aligned: repositorySha !== "unknown" && deploymentSha !== "unknown" && repositorySha === deploymentSha,
     latest_actions_result_available: false,
     current_phase: context.env.CURRENT_PHASE || "unknown",
+  };
+}
+
+async function resolveGitRefSha(env, ref) {
+  if (isExactSha(ref)) return ref;
+  const remote = await githubRequest(env, repoApiPath(env, `/commits/${encodeURIComponent(ref)}`));
+  return remote.ok && isExactSha(remote.body?.sha) ? remote.body.sha : null;
+}
+
+export function findDispatchedRun(runs, expectedHeadSha, createdAfterMs) {
+  return (Array.isArray(runs) ? runs : [])
+    .filter((run) => run?.event === "workflow_dispatch")
+    .filter((run) => !expectedHeadSha || run?.head_sha === expectedHeadSha)
+    .filter((run) => Date.parse(run?.created_at || "") >= createdAfterMs)
+    .sort((left, right) => Number(right.id || 0) - Number(left.id || 0))[0] || null;
+}
+
+async function reconcileWorkflowDispatch(env, input) {
+  const startedAtMs = Date.now() - 5000;
+  const remote = await githubRequest(
+    env,
+    repoApiPath(env, `/actions/workflows/${encodeURIComponent(input.workflowId)}/dispatches`),
+    { method: "POST", body: { ref: input.ref, inputs: input.workflowInputs } },
+  );
+  let reconciledRun = null;
+  for (let attempt = 0; attempt < 4 && !reconciledRun; attempt += 1) {
+    const runs = await githubRequest(
+      env,
+      repoApiPath(env, `/actions/workflows/${encodeURIComponent(input.workflowId)}/runs?branch=${encodeURIComponent(input.ref)}&event=workflow_dispatch&per_page=20`),
+    );
+    if (runs.ok) reconciledRun = findDispatchedRun(runs.body?.workflow_runs, input.expectedHeadSha, startedAtMs);
+    if (!reconciledRun && attempt < 3) await new Promise((resolve) => setTimeout(resolve, 750));
+  }
+  if (!remote.ok && !reconciledRun) {
+    return { ok: false, status: remote.status || input.failureStatus, status_code: remote.status_code, config: remote.config };
+  }
+  return {
+    ok: true,
+    status: input.successStatus,
+    workflow_id: input.workflowId,
+    ref: input.ref,
+    deploy_sha: input.workflowInputs.deploy_sha || null,
+    inputs: Object.keys(input.workflowInputs),
+    run_id: reconciledRun?.id || null,
+    dispatch_reconciled: !remote.ok && Boolean(reconciledRun),
+    dispatch_status_code: remote.status_code || 204,
   };
 }
 
