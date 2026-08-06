@@ -84,7 +84,27 @@ jobs:
         env:
           AUDIT_CATEGORIES: dotenv_file,cloudflare_local_secrets,private_key_file,ssh_private_key,credential_bundle
         run: node test/public-repository-audit.mjs
-      - name: Audit generic assignment path - tests
+      - name: Audit assignment file - worker tests
+        env:
+          AUDIT_CATEGORIES: literal_secret_assignment
+          AUDIT_PATH_PREFIXES: test/worker.test.js
+        run: node test/public-repository-audit.mjs
+      - name: Audit assignment file - recovery tests
+        env:
+          AUDIT_CATEGORIES: literal_secret_assignment
+          AUDIT_PATH_PREFIXES: test/recovery-worker.test.js
+        run: node test/public-repository-audit.mjs
+      - name: Audit assignment file - client safety tests
+        env:
+          AUDIT_CATEGORIES: literal_secret_assignment
+          AUDIT_PATH_PREFIXES: test/operator-client-safety.test.js
+        run: node test/public-repository-audit.mjs
+      - name: Audit assignment file - capability tests
+        env:
+          AUDIT_CATEGORIES: literal_secret_assignment
+          AUDIT_PATH_PREFIXES: test/operator-capability-directory.test.js
+        run: node test/public-repository-audit.mjs
+      - name: Audit generic assignment path - remaining tests
         env:
           AUDIT_CATEGORIES: literal_secret_assignment
           AUDIT_PATH_PREFIXES: test/
