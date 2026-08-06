@@ -1,6 +1,6 @@
 # Quant Lab Engineering Continuation Ledger
 
-Last updated: 2026-08-02
+Last updated: 2026-08-06
 Status: ACTIVE
 Authority: Sole canonical engineering continuation ledger
 
@@ -146,19 +146,25 @@ Permanent boundaries:
 - Stage 13 D1 orchestration now exists in `src/directionalInstitutionalResearch.js` with migration `0015_directional_institutional_research.sql`: immutable policy, daily batch, five window, sixty candidate-window run, twelve verdict, and qualified-only portfolio-selection records; exact 4,320-candle fail-closed loading; family fragility and multi-regime activity checks; independent shadow-forward evidence; deterministic hashes; idempotent replay; and an explicit all-cash outcome when no candidate qualifies.
 - Three orchestration tests prove exact 4,320-candle/12-candidate/5-window/60-run persistence, immutable schema, replay identity, paper-only boundaries, and failure before persistence with incomplete history. GitHub Actions run `31016473056` passed Worker tests, quant-core tests, and Wrangler validation on exact SHA `1162c1b3ad7b39e4349306e971dd2c4f25e81345`.
 - D1 migration `0015_directional_institutional_research.sql` applied successfully. Exact SHA `1162c1b3ad7b39e4349306e971dd2c4f25e81345` deployed successfully in workflow run `31017075445`; production console verification passed and repository/deployment alignment was proven exact. The daily institutional research execution is now wired after hourly directional shadow evidence collection without mutating active shadow accounts.
+- The first production directional institutional research batch completed with exactly 4,320 contiguous candles, 12 candidates, 5 immutable windows, 60 persisted candidate-window runs, and 12 persisted verdicts. All 12 candidates were rejected and the qualified-only portfolio selected explicit cash; active shadow portfolios were not mutated.
+- The Stage 13 authority migration exists in `migrations/0016_directional_main_authority.sql`, but the operational transition remains incomplete until `paper-main`, forward paper operation, and live qualification consume the new directional institutional authority exclusively and the legacy rolling authority is retired with side-by-side proof.
+- A Lensically-derived engineering-control prerequisite was implemented before continuing the authority migration. Source now includes started-operation leases and replay, stale-operation takeover, ledger-bound action closure, deployment-scoped MCP sessions, a mandatory capability lifecycle, durable ordered hardening incidents, atomic incident transitions, ambiguous GitHub-dispatch reconciliation, one branch-wide CI validation job, exact-SHA validation reuse, Linux deployment, sole Git continuation authority, and direct typed public MCP capabilities with the generic intent envelope retired.
+- D1 migration `0017_operator_hardening_lifecycle.sql` adds the durable hardening incident and event ledgers. The source-controlled MCP contract is version `0.4.0` and requires a connector refresh after deployment because the advertised public schema changes from three wrapper tools to startup, bounded status, and one direct closed tool per capability.
 
 ## Current Action
 
-Commission and complete the institutional Stage 13 authority transition:
+Complete the engineering-control prerequisite and then resume the institutional Stage 13 authority transition:
 
-1. observe or invoke the first production directional institutional research batch after deployment and verify exactly 4,320 candles, 12 candidates, 5 windows, 60 persisted runs, 12 persisted verdicts, deterministic replay, and no mutation of active shadow accounts;
-2. expose batch, window, verdict, rejection-reason, shadow-forward, and qualified-only portfolio evidence in the professional console rather than only the public status payload;
-3. make the new directional institutional portfolio selection the sole canonical promotion authority for `paper-main` while preserving explicit all-cash behavior when no candidate qualifies;
-4. retire the legacy eight-candidate, 720-candle rolling selection path from canonical promotion authority only after side-by-side migration proof and regression coverage;
-5. reconnect live-capital qualification and forward paper operation to the new qualified directional authority without changing any evidence gate or creating fallback activity;
-6. run adversarial validation, deploy the exact completion SHA, commission production, prove repository/deployment alignment, and close Stage 13 with exact verdict counts and unresolved risks.
+1. freeze the exact ledger-update head and run Worker tests, quant-core tests, Wrangler validation, migration planning/application, and exact-SHA deployment through the consolidated workflows;
+2. verify production reports that exact SHA, MCP version `0.4.0`, deployment-scoped sessions, the direct typed capability surface, the retired generic intent envelope, capability-lifecycle enforcement, operation leases, and the durable hardening tables/capabilities;
+3. require the current ChatGPT connector to refresh after live schema verification; do not add a compatibility bridge for the stale three-tool schema;
+4. expose batch, window, verdict, rejection-reason, shadow-forward, and qualified-only portfolio evidence in the professional console rather than only the public status payload;
+5. make the new directional institutional portfolio selection the sole canonical promotion authority for `paper-main` while preserving explicit all-cash behavior when no candidate qualifies;
+6. retire the legacy eight-candidate, 720-candle rolling selection path from canonical promotion authority only after side-by-side migration proof and regression coverage;
+7. reconnect live-capital qualification and forward paper operation to the new qualified directional authority without changing any evidence gate or creating fallback activity;
+8. run adversarial validation, deploy the exact Stage 13 completion SHA, commission production, prove repository/deployment alignment, and close Stage 13 with exact verdict counts and unresolved risks.
 
-Preserve active hourly shadow portfolios throughout. Do not promote a strategy merely to create activity. Do not weaken historical or forward gates after seeing the production results.
+The engineering-control prerequisite is not complete until its exact head is validated, deployed, and live-verified. Preserve active hourly shadow portfolios throughout. Do not promote a strategy merely to create activity. Do not weaken historical or forward gates after seeing the production results.
 
 ## Steady-State Operating Gate
 
