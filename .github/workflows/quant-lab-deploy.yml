@@ -181,9 +181,27 @@ jobs:
       - name: Test Worker MCP auth and session surface
         if: steps.validation_evidence.outputs.reuse != 'true'
         run: node --test --test-name-pattern="operator mcp|operator intents|generic intent" test/worker.test.js
-      - name: Test Worker direct execution and receipts
+      - name: Test direct operator status
         if: steps.validation_evidence.outputs.reuse != 'true'
-        run: node --test --test-name-pattern="direct operator|read_continuation|execute_quant_lab_intent|forbidden public|run_validation|production market|validate_production" test/worker.test.js
+        run: node --test --test-name-pattern="direct operator_status" test/worker.test.js
+      - name: Test canonical continuation read
+        if: steps.validation_evidence.outputs.reuse != 'true'
+        run: node --test --test-name-pattern="read_continuation" test/worker.test.js
+      - name: Test direct intent replay
+        if: steps.validation_evidence.outputs.reuse != 'true'
+        run: node --test --test-name-pattern="execute_quant_lab_intent replays" test/worker.test.js
+      - name: Test forbidden public input rejection
+        if: steps.validation_evidence.outputs.reuse != 'true'
+        run: node --test --test-name-pattern="forbidden public" test/worker.test.js
+      - name: Test bounded validation response
+        if: steps.validation_evidence.outputs.reuse != 'true'
+        run: node --test --test-name-pattern="run_validation" test/worker.test.js
+      - name: Test production market commissioning adapter
+        if: steps.validation_evidence.outputs.reuse != 'true'
+        run: node --test --test-name-pattern="production market" test/worker.test.js
+      - name: Test production SHA validation
+        if: steps.validation_evidence.outputs.reuse != 'true'
+        run: node --test --test-name-pattern="validate_production" test/worker.test.js
       - name: Test Worker repository and deployment controls
         if: steps.validation_evidence.outputs.reuse != 'true'
         run: node --test --test-name-pattern="list_github|engineering access|repo file|apply_repo|create_repo|GitHub Actions|deploy_cloudflare" test/worker.test.js
