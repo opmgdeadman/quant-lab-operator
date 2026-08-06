@@ -44,6 +44,10 @@ export const allowedRepoPaths = [
   "test/operator-client-safety.test.js",
   ".github/workflows/ci.yml",
   ".github/workflows/quant-lab-deploy.yml",
+  ".github/workflows/quant-lab-recovery-deploy.yml",
+  "recovery-worker/src/index.js",
+  "recovery-worker/wrangler.jsonc",
+  "test/recovery-worker.test.js",
   "wrangler.jsonc",
   "package.json",
 ];
@@ -53,6 +57,7 @@ export const allowedRepoDirectories = [
   "docs",
   "migrations",
   "quant_core",
+  "recovery-worker",
   "src",
   "test",
   "tests",

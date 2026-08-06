@@ -2,8 +2,9 @@ const DEFAULT_OWNER = "opmgdeadman";
 const DEFAULT_REPO = "quant-lab-operator";
 const DEFAULT_BRANCH = "main";
 const DEFAULT_DEPLOY_WORKFLOW = "quant-lab-deploy.yml";
+const RECOVERY_DEPLOY_WORKFLOW = "quant-lab-recovery-deploy.yml";
 
-export const allowedWorkflowIds = ["ci.yml", DEFAULT_DEPLOY_WORKFLOW];
+export const allowedWorkflowIds = ["ci.yml", DEFAULT_DEPLOY_WORKFLOW, RECOVERY_DEPLOY_WORKFLOW];
 
 export function githubConfig(env) {
   return {
