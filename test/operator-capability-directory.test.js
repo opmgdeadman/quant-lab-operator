@@ -104,3 +104,15 @@ test("kernel source acquires a started receipt before handler execution", () => 
   assert.match(source, /recordIncident/);
 });
 
+test("workflows use one validation runner and reuse exact-SHA evidence", () => {
+  const ci = readFileSync(new URL("../.github/workflows/ci.yml", import.meta.url), "utf8");
+  const deploy = readFileSync(new URL("../.github/workflows/quant-lab-deploy.yml", import.meta.url), "utf8");
+  assert.match(ci, /concurrency:/);
+  assert.match(ci, /jobs:\n  validation:/);
+  assert.doesNotMatch(ci, /worker-tests:|quant-core-tests:|wrangler-check:/);
+  assert.match(deploy, /runs-on: ubuntu-latest/);
+  assert.match(deploy, /Reuse successful exact-SHA CI evidence/);
+  assert.match(deploy, /steps\.validation_evidence\.outputs\.reuse != 'true'/);
+  assert.doesNotMatch(deploy, /Cancel older Quant Lab deploy runs/);
+});
+
