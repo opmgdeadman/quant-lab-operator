@@ -19,6 +19,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: quant-lab-production-deploy
+  cancel-in-progress: true
+
 jobs:
   deploy:
     runs-on: macos-15-intel
