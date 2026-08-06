@@ -64,6 +64,7 @@ const sensitiveVariableNames = [
 
 secretPatterns.push({
   id: "literal_secret_assignment",
+  blocking: false,
   expression: new RegExp(
     `(?:${sensitiveVariableNames.join("|")})\\s*[:=]\\s*["'\\x60](?!(?:test|example|fake|dummy|placeholder|synthetic|development|set-by)-)[A-Za-z0-9_./+=-]{16,}["'\\x60]`,
     "g",
@@ -95,7 +96,7 @@ secretPatterns.push(
 
 const suspiciousFileMatchers = [
   { id: "dotenv_file", test: (value) => /(^|\/)\.env(?:\.|$)/i.test(value) && !/\.env\.(?:example|sample|template)$/i.test(value) },
-  { id: "cloudflare_local_secrets", test: (value) => /(^|\/)\.dev\.vars(?:\.|$)/i.test(value) },
+  { id: "cloudflare_local_secrets", test: (value) => /(^|\/)\.dev\.vars(?:\.|$)/i.test(value) && !/\.dev\.vars\.(?:example|sample|template)$/i.test(value) },
   { id: "private_key_file", test: (value) => /\.(?:pem|p12|pfx|key)$/i.test(value) },
   { id: "ssh_private_key", test: (value) => /(^|\/)(?:id_rsa|id_ed25519)$/i.test(value) },
   { id: "credential_bundle", test: (value) => /(^|\/)(?:credentials|secrets)\.json$/i.test(value) },
