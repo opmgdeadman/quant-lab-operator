@@ -4,6 +4,7 @@ import test from "node:test";
 import { handleRequest } from "../src/index.js";
 import { renderProfessionalConsole } from "../src/professionalConsole.js";
 import { runValidation } from "../src/operator/handlers/controlPlane.js";
+import { supportedIntents } from "../src/operator/capabilityDirectory.js";
 
 function createEnv() {
   return {
@@ -303,22 +304,19 @@ test("execute_quant_lab_intent operator_status succeeds with durable receipt", a
   assert.equal(env.DB.audit.length, 1);
 });
 
-test("read_continuation returns idle and write_continuation persists bounded state", async () => {
+test("read_continuation returns the sole canonical Git ledger and D1 writes are absent", async () => {
   const env = createEnv();
-  const idle = await executeIntent(env, "op-read-continuation", "read_continuation", {});
-  assert.equal(idle.result.structuredContent.result.state, "idle");
-
-  const written = await executeIntent(env, "op-write-continuation", "write_continuation", {
-    active_objective: "Build operator control plane",
-    current_phase: "mcp-control-plane",
-    completed_evidence: ["registry", "kernel"],
-    next_action: "live connector verification",
-  });
-  assert.equal(written.result.structuredContent.ok, true);
-
-  const read = await executeIntent(env, "op-read-continuation-2", "read_continuation", {});
-  assert.equal(read.result.structuredContent.result.state, "active");
-  assert.equal(read.result.structuredContent.result.current_phase, "mcp-control-plane");
+  const read = await executeIntent(env, "op-read-continuation", "read_continuation", {});
+  const result = read.result.structuredContent.result;
+  assert.equal(result.state, "active");
+  assert.equal(result.authority, "sole_canonical_git_engineering_continuation_ledger");
+  assert.equal(result.path, "docs/ENGINEERING_CONTINUATION_LEDGER.md");
+  assert.ok(result.sha);
+  assert.equal(result.active_job_id, "stage-13-directional-shadow-paper-research");
+  assert.ok(result.current_action);
+  assert.equal(result.d1_continuation_authoritative, false);
+  assert.equal(result.mutation_intent, "apply_repo_patch_set");
+  assert.equal(supportedIntents.includes("write_continuation"), false);
 });
 
 test("execute_quant_lab_intent replays same operation id and rejects changed payload", async () => {

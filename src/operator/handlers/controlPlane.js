@@ -41,7 +41,6 @@ export const handlers = {
   get_historical_bootstrap,
   run_historical_bootstrap,
   read_continuation,
-  write_continuation,
   inspect_repository,
   list_repo_files,
   read_repo_file,
@@ -396,55 +395,27 @@ async function run_historical_bootstrap(inputs, context) {
 }
 
 async function read_continuation(inputs, context) {
-  const row = await context.env.DB.prepare(
-    "SELECT active_objective, current_phase, completed_evidence_json, next_action, updated_at FROM operator_continuation_state WHERE id = ?",
-  ).bind("main").first();
-  if (!row) {
+  const continuation = context.startupContext?.canonical_continuation || null;
+  if (!continuation?.ok || !continuation.sha || !continuation.content) {
     return {
-      ok: true,
-      state: "idle",
-      active_objective: null,
-      current_phase: null,
-      completed_evidence: [],
-      next_action: null,
-      updated_at: null,
+      ok: false,
+      state: "unavailable",
+      error: "canonical_git_continuation_unavailable",
+      authority: "sole_canonical_git_engineering_continuation_ledger",
     };
   }
+  const activeJobId = continuation.content.match(/Job ID:\s*`([^`]+)`/)?.[1] || null;
+  const currentAction = continuation.content.match(/## Current Action\s+([^\n]+)/)?.[1]?.trim() || null;
   return {
     ok: true,
-    state: "active",
-    active_objective: row.active_objective,
-    current_phase: row.current_phase,
-    completed_evidence: JSON.parse(row.completed_evidence_json || "[]"),
-    next_action: row.next_action,
-    updated_at: row.updated_at,
-  };
-}
-
-async function write_continuation(inputs, context) {
-  const now = new Date().toISOString();
-  await context.env.DB.prepare(
-    `INSERT INTO operator_continuation_state (
-      id, active_objective, current_phase, completed_evidence_json, next_action, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?)
-    ON CONFLICT(id) DO UPDATE SET
-      active_objective = excluded.active_objective,
-      current_phase = excluded.current_phase,
-      completed_evidence_json = excluded.completed_evidence_json,
-      next_action = excluded.next_action,
-      updated_at = excluded.updated_at`,
-  ).bind(
-    "main",
-    inputs.active_objective,
-    inputs.current_phase,
-    JSON.stringify(inputs.completed_evidence),
-    inputs.next_action,
-    now,
-  ).run();
-  return {
-    ok: true,
-    state: "written",
-    updated_at: now,
+    state: activeJobId ? "active" : "completed",
+    authority: "sole_canonical_git_engineering_continuation_ledger",
+    path: continuation.path,
+    sha: continuation.sha,
+    active_job_id: activeJobId,
+    current_action: currentAction,
+    d1_continuation_authoritative: false,
+    mutation_intent: "apply_repo_patch_set",
   };
 }
 
