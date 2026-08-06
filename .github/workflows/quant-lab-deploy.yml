@@ -18,6 +18,7 @@ on:
 
 permissions:
   contents: read
+  actions: write
 
 concurrency:
   group: quant-lab-production-deploy
@@ -27,6 +28,19 @@ jobs:
   deploy:
     runs-on: macos-15-intel
     steps:
+      - name: Cancel older Quant Lab deploy runs
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CURRENT_RUN_ID: ${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          gh api -X GET "repos/${{ github.repository }}/actions/workflows/quant-lab-deploy.yml/runs?per_page=100" \
+            --jq '.workflow_runs[] | select(.id < ('"$CURRENT_RUN_ID"' | tonumber)) | select(.status == "queued" or .status == "in_progress") | .id' \
+            | while read -r run_id; do
+                [[ -z "$run_id" ]] && continue
+                gh api -X POST "repos/${{ github.repository }}/actions/runs/$run_id/cancel" >/dev/null || true
+              done
       - name: Validate exact SHA input
         shell: bash
         run: |
