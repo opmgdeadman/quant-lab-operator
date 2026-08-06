@@ -1,4 +1,12 @@
 import { getPaperAccountSummary } from "./paperLedger.js";
+import {
+  collectDirectionalQualificationEvidence,
+  latestDirectionalForwardClose,
+} from "./directionalQualificationEvidence.js";
+
+export async function collectProductionQualificationEvidence(env, asOfClosedAt) {
+  return collectDirectionalQualificationEvidence(env, asOfClosedAt);
+}
 
 const POLICY_ID = "live-capital-qualification-v1";
 const HOUR_MS = 60 * 60 * 1000;
@@ -634,11 +642,7 @@ async function persistAssessment(env, built, policyExists) {
 }
 
 async function latestForwardClose(env) {
-  const row = await env.DB.prepare(
-    `SELECT expected_closed_at FROM forward_operation_cycles
-     ORDER BY expected_closed_at DESC LIMIT 1`,
-  ).first();
-  return row?.expected_closed_at || null;
+  return latestDirectionalForwardClose(env);
 }
 async function readAssessment(env, assessmentId) {
   const row = await env.DB.prepare(

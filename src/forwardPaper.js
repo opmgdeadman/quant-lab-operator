@@ -6,6 +6,25 @@ import {
   executePaperDecision,
   getPaperAccountSummary,
 } from "./paperLedger.js";
+import {
+  commissionDirectionalMainForward,
+  getDirectionalMainForwardSummary,
+  runDirectionalMainForwardCycle,
+  runScheduledDirectionalMainForward,
+} from "./directionalMain.js";
+
+export async function runProductionForwardPaperCycle(env, options = {}) {
+  return runDirectionalMainForwardCycle(env, options);
+}
+export async function runScheduledForwardOperation(env, scheduledAt = new Date()) {
+  return runScheduledDirectionalMainForward(env, scheduledAt);
+}
+export async function commissionForwardPaperOperation(env) {
+  return commissionDirectionalMainForward(env);
+}
+export async function getForwardOperationSummary(env) {
+  return getDirectionalMainForwardSummary(env);
+}
 
 const POLICY_ID = "hourly-forward-paper-v1";
 const MARKET = "BTC-USD";
