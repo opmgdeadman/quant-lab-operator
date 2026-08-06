@@ -1,0 +1,76 @@
+name: Quant Lab Recovery Deploy
+run-name: Quant Lab Recovery deploy · ${{ inputs.deploy_sha }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      deploy_sha:
+        description: Exact commit SHA to validate and deploy
+        required: true
+        type: string
+
+concurrency:
+  group: quant-lab-recovery-production
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: "22"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout exact recovery head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.deploy_sha }}
+          fetch-depth: 0
+
+      - name: Verify exact release identity
+        shell: bash
+        run: test "$(git rev-parse HEAD)" = "${{ inputs.deploy_sha }}"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run complete JavaScript regression suite
+        run: npm test
+
+      - name: Validate Recovery Wrangler configuration
+        run: npx wrangler deploy --dry-run --config src/recovery/wrangler.jsonc
+
+      - name: Deploy exact validated Recovery Worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler deploy --config src/recovery/wrangler.jsonc --var "RECOVERY_DEPLOYMENT_SHA:${{ inputs.deploy_sha }}"
+
+      - name: Verify locked-or-ready independent health
+        shell: bash
+        env:
+          EXPECTED_SHA: ${{ inputs.deploy_sha }}
+        run: |
+          set -euo pipefail
+          verified=false
+          for attempt in $(seq 1 30); do
+            if curl --fail-with-body --silent --show-error "https://quant-lab-recovery.briangriffin355.workers.dev/health" > /tmp/recovery-health.json \
+              && jq -e --arg sha "${EXPECTED_SHA}" '(.status == "ready" or .status == "locked") and .deployment_sha == $sha and .service == "quant-lab-recovery" and .trading_or_account_data_bound == false' /tmp/recovery-health.json > /dev/null; then
+              verified=true
+              break
+            fi
+            sleep 2
+          done
+          if [ "${verified}" != "true" ]; then
+            cat /tmp/recovery-health.json || true
+            exit 1
+          fi
+          cat /tmp/recovery-health.json
