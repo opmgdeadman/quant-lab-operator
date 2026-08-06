@@ -662,6 +662,103 @@ test("GitHub Actions intents call bounded GitHub API routes", async () => {
   }
 });
 
+async function githubActionsDiagnosticResult() {
+  const env = { ...createEnv(), GITHUB_TOKEN: "server-side-test-token" };
+  const calls = [];
+  const restore = mockFetch(async (url, options) => {
+    calls.push({ url, options });
+    if (url.endsWith("/git/ref/heads/main")) {
+      return jsonResponse({ object: { sha: "a".repeat(40) } });
+    }
+    if (url.includes("/actions/workflows/ci.yml/runs")) {
+      return jsonResponse({
+        workflow_runs: [{
+          id: 101,
+          name: "CI",
+          workflow_id: 7,
+          status: "completed",
+          conclusion: "success",
+          event: "workflow_dispatch",
+          head_branch: "main",
+          head_sha: "a".repeat(40),
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          html_url: "https://github.com/opmgdeadman/quant-lab-operator/actions/runs/101",
+        }],
+      });
+    }
+    if (url.includes("/actions/workflows/ci.yml/dispatches")) {
+      return new Response(null, { status: 204 });
+    }
+    if (url.includes("/actions/runs/101/jobs")) {
+      return jsonResponse({ jobs: [{ id: 201, name: "validate", status: "completed", conclusion: "success" }] });
+    }
+    if (url.includes("/actions/runs/101")) {
+      return jsonResponse({
+        id: 101,
+        name: "CI",
+        workflow_id: 7,
+        status: "completed",
+        conclusion: "success",
+        event: "push",
+        head_branch: "main",
+        head_sha: "a".repeat(40),
+        created_at: "2026-07-26T00:00:00Z",
+        updated_at: "2026-07-26T00:01:00Z",
+        html_url: "https://github.com/opmgdeadman/quant-lab-operator/actions/runs/101",
+      });
+    }
+    throw new Error(`unexpected fetch URL: ${url}`);
+  });
+  try {
+    const runs = await executeIntent(env, "op-actions-diagnostic-list", "list_github_actions_runs", {
+      workflow_id: "ci.yml",
+      limit: 1,
+    });
+    const dispatch = await executeIntent(env, "op-actions-diagnostic-dispatch", "trigger_github_workflow", {
+      workflow_id: "ci.yml",
+    });
+    const monitor = await executeIntent(env, "op-actions-diagnostic-monitor", "monitor_github_workflow", {
+      run_id: "101",
+    });
+    return { runs, dispatch, monitor, calls };
+  } finally {
+    restore();
+  }
+}
+
+test("actions diagnostic list result", async () => {
+  const { runs } = await githubActionsDiagnosticResult();
+  assert.equal(runs.result.structuredContent.result.runs.length, 1);
+});
+
+test("actions diagnostic dispatch result", async () => {
+  const { dispatch } = await githubActionsDiagnosticResult();
+  assert.equal(dispatch.result.structuredContent.result.status, "dispatched");
+});
+
+test("actions diagnostic monitor result", async () => {
+  const { monitor } = await githubActionsDiagnosticResult();
+  assert.equal(monitor.result.structuredContent.result.jobs[0].name, "validate");
+});
+
+test("actions diagnostic authorization headers", async () => {
+  const { calls } = await githubActionsDiagnosticResult();
+  assert.equal(calls.every((call) => call.options.headers.Authorization === `Bearer ${"server-side-test-token"}`), true);
+});
+
+test("actions diagnostic response redaction", async () => {
+  const { runs } = await githubActionsDiagnosticResult();
+  assert.doesNotMatch(JSON.stringify(runs), /server-side-test-token/);
+});
+
+test("actions diagnostic dispatch request shape", async () => {
+  const { calls } = await githubActionsDiagnosticResult();
+  const dispatchCall = calls.find((call) => call.url.includes("/actions/workflows/ci.yml/dispatches"));
+  assert.equal(dispatchCall.options.method, "POST");
+  assert.deepEqual(JSON.parse(dispatchCall.options.body), { ref: "main", inputs: {} });
+});
+
 test("deploy_cloudflare_worker and apply_d1_migrations dispatch fixed workflow with exact SHA only", async () => {
   const env = { ...createEnv(), GITHUB_TOKEN: "server-side-test-token" };
   const exactSha = "b".repeat(40);

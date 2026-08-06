@@ -232,9 +232,24 @@ jobs:
       - name: Test bounded repository create and delete
         if: steps.validation_evidence.outputs.reuse != 'true'
         run: node --test --test-name-pattern="create_repo_file and delete_repo_file use one bounded Git data commit" test/worker.test.js
-      - name: Test bounded GitHub Actions controls
+      - name: Test Actions list result
         if: steps.validation_evidence.outputs.reuse != 'true'
-        run: node --test --test-name-pattern="GitHub Actions intents call bounded GitHub API routes" test/worker.test.js
+        run: node --test --test-name-pattern="actions diagnostic list result" test/worker.test.js
+      - name: Test Actions dispatch result
+        if: steps.validation_evidence.outputs.reuse != 'true'
+        run: node --test --test-name-pattern="actions diagnostic dispatch result" test/worker.test.js
+      - name: Test Actions monitor result
+        if: steps.validation_evidence.outputs.reuse != 'true'
+        run: node --test --test-name-pattern="actions diagnostic monitor result" test/worker.test.js
+      - name: Test Actions authorization headers
+        if: steps.validation_evidence.outputs.reuse != 'true'
+        run: node --test --test-name-pattern="actions diagnostic authorization headers" test/worker.test.js
+      - name: Test Actions response redaction
+        if: steps.validation_evidence.outputs.reuse != 'true'
+        run: node --test --test-name-pattern="actions diagnostic response redaction" test/worker.test.js
+      - name: Test Actions dispatch request shape
+        if: steps.validation_evidence.outputs.reuse != 'true'
+        run: node --test --test-name-pattern="actions diagnostic dispatch request shape" test/worker.test.js
       - name: Test exact-SHA deployment dispatch controls
         if: steps.validation_evidence.outputs.reuse != 'true'
         run: node --test --test-name-pattern="deploy_cloudflare_worker and apply_d1_migrations dispatch fixed workflow" test/worker.test.js
