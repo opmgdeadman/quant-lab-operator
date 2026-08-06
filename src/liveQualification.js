@@ -270,7 +270,7 @@ export async function buildLiveCapitalQualification(rawEvidence, options = {}) {
   };
 }
 
-export async function collectProductionQualificationEvidence(env, asOfClosedAt) {
+async function collectLegacyProductionQualificationEvidence(env, asOfClosedAt) {
   const asOf = iso(asOfClosedAt, "as_of_closed_at");
   const selection = await env.DB.prepare(
     `SELECT id, state, champion_candidate_id, selection_hash, created_at

@@ -32,7 +32,7 @@ export const FORWARD_OPERATION_POLICY = deepFreeze({
   live_capital_enabled: false,
 });
 
-export async function runProductionForwardPaperCycle(env, options = {}) {
+async function runLegacyProductionForwardPaperCycle(env, options = {}) {
   const now = iso(options.now || new Date(), "now");
   const expectedClosedAt = options.expectedClosedAt
     ? iso(options.expectedClosedAt, "expected_closed_at")
@@ -146,7 +146,7 @@ export async function runProductionForwardPaperCycle(env, options = {}) {
   return { ...result, cycle_hash: cycleHash, replayed: false };
 }
 
-export async function runScheduledForwardOperation(env, scheduledAt = new Date()) {
+async function runLegacyScheduledForwardOperation(env, scheduledAt = new Date()) {
   const scheduledIso = iso(scheduledAt, "scheduled_at");
   const receiptId = `forward-scheduler:${scheduledIso}`;
   const existing = await readSchedulerReceipt(env, receiptId);
@@ -199,7 +199,7 @@ export async function runScheduledForwardOperation(env, scheduledAt = new Date()
   return { ...result, replayed: false };
 }
 
-export async function commissionForwardPaperOperation(env) {
+async function commissionLegacyForwardPaperOperation(env) {
   const rows = await env.DB.prepare(
     `SELECT closed_at FROM market_candles
      WHERE pair = ? AND interval = ?
@@ -214,7 +214,7 @@ export async function commissionForwardPaperOperation(env) {
   });
 }
 
-export async function getForwardOperationSummary(env) {
+async function getLegacyForwardOperationSummary(env) {
   const [cycle, scheduler] = await Promise.all([
     env.DB.prepare(
       `SELECT id, result_json, created_at FROM forward_operation_cycles
