@@ -66,7 +66,7 @@ secretPatterns.push({
   id: "literal_secret_assignment",
   blocking: false,
   expression: new RegExp(
-    `(?:${sensitiveVariableNames.join("|")})\\s*[:=]\\s*["'\\x60](?!(?:test|example|fake|dummy|placeholder|synthetic|development|set-by)-)[A-Za-z0-9_./+=-]{16,}["'\\x60]`,
+    `(?:${sensitiveVariableNames.join("|")})\\s*[:=]\\s*["'\\x60](?!(?:test|server-side-test|example|fake|dummy|placeholder|synthetic|development|set-by)-)[A-Za-z0-9_./+=-]{16,}["'\\x60]`,
     "g",
   ),
 });
