@@ -162,5 +162,8 @@ test("hardening incidents require ordered complete closure evidence", () => {
   }).ok, true);
   assert.equal(validateHardeningTransition({ state: "deployed" }, { target_state: "verified" }).error, "hardening_live_verification_required");
   assert.equal(validateHardeningTransition({ state: "verified" }, { target_state: "closed" }).error, "hardening_resume_result_required");
+  const source = readFileSync(new URL("../src/operator/handlers/controlPlane.js", import.meta.url), "utf8");
+  assert.match(source, /transition\.meta\?\.changes/);
+  assert.match(source, /hardening_transition_race/);
 });
 

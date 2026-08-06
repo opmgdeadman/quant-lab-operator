@@ -464,7 +464,7 @@ async function advance_hardening_incident(inputs, context) {
     live_verification_summary: inputs.live_verification_summary || null,
     resume_result_summary: inputs.resume_result_summary || null,
   };
-  await context.env.DB.prepare(
+  const transition = await context.env.DB.prepare(
     `UPDATE operator_hardening_incidents SET
       state = ?,
       root_cause = COALESCE(?, root_cause),
@@ -497,6 +497,9 @@ async function advance_hardening_incident(inputs, context) {
     inputs.incident_id,
     row.state,
   ).run();
+  if (Number(transition.meta?.changes || 0) !== 1) {
+    return { ok: false, error: "hardening_transition_race" };
+  }
   await context.env.DB.prepare(
     `INSERT INTO operator_hardening_incident_events (
       id, incident_id, from_state, to_state, evidence_json, created_at
