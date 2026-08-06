@@ -37,7 +37,7 @@ Authority: Sole canonical engineering continuation ledger
 
 ## Active Job
 
-Job ID: `stage-13-directional-shadow-paper-research`
+Job ID: \`stage-13-directional-shadow-paper-research\`
 State: ACTIVE
 
 ## Current Action
