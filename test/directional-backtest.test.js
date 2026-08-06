@@ -4,6 +4,7 @@ import { compileDirectionalSignal, runDirectionalWalkForward, runDirectionalWind
 import { DIRECTIONAL_RESEARCH_POLICY, buildWalkForwardWindows } from "../src/directionalResearch.js";
 import { DIRECTIONAL_STRATEGIES, directionalSignal } from "../src/directionalShadow.js";
 
+// Keep the full institutional workload covered so prefix-slicing CPU blowups cannot return unnoticed.
 function candles(count = 4320) {
   const start = Date.parse("2026-01-01T00:00:00.000Z");
   return Array.from({ length: count }, (_, index) => {
