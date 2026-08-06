@@ -551,8 +551,14 @@ async function read_continuation(inputs, context) {
       authority: "sole_canonical_git_engineering_continuation_ledger",
     };
   }
-  const activeJobId = continuation.content.match(/Job ID:\s*`([^`]+)`/)?.[1] || null;
-  const currentAction = continuation.content.match(/## Current Action\s+([^\n]+)/)?.[1]?.trim() || null;
+  const lines = continuation.content.split(/\r?\n/);
+  const jobLine = lines.find((line) => line.trim().startsWith("Job ID:")) || "";
+  const rawJobId = jobLine.slice(jobLine.indexOf(":") + 1).trim();
+  const activeJobId = rawJobId.replace(/^`|`$/g, "") || null;
+  const currentActionHeading = lines.findIndex((line) => line.trim() === "## Current Action");
+  const currentAction = currentActionHeading >= 0
+    ? lines.slice(currentActionHeading + 1).map((line) => line.trim()).find(Boolean) || null
+    : null;
   return {
     ok: true,
     state: activeJobId ? "active" : "completed",
