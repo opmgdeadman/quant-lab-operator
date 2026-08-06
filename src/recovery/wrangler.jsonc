@@ -1,0 +1,19 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "quant-lab-recovery",
+  "main": "index.js",
+  "compatibility_date": "2025-09-27",
+  "workers_dev": true,
+  "preview_urls": false,
+  "vars": {
+    "RECOVERY_DEPLOYMENT_SHA": "development",
+    "MAIN_HEALTH_URL": "https://quant-lab-operator.briangriffin355.workers.dev/api/public/status",
+    "GITHUB_OWNER": "opmgdeadman",
+    "GITHUB_REPO": "quant-lab-operator",
+    "GITHUB_BRANCH": "main"
+  },
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  }
+}
