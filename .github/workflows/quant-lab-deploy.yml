@@ -21,7 +21,7 @@ permissions:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: macos-15-intel
     steps:
       - name: Validate exact SHA input
         shell: bash
