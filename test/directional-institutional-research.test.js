@@ -103,6 +103,14 @@ test("production orchestration persists exact 4320-candle, 12-candidate, five-wi
   assert.equal(first.replayed, false);
   assert.match(first.batch_hash, /^[a-f0-9]{64}$/);
 
+  const windowIds = new Set(DB.statements
+    .filter((row) => row.sql.includes("INSERT INTO directional_research_windows"))
+    .map((row) => row.args[0]));
+  const persistedRuns = DB.statements.filter((row) => row.sql.includes("INSERT INTO directional_research_runs"));
+  assert.equal(windowIds.size, 5);
+  assert.equal(persistedRuns.length, 60);
+  assert.equal(persistedRuns.every((row) => windowIds.has(row.args[2])), true);
+
   const second = await runProductionDirectionalInstitutionalResearch(env, {
     asOfClosedAt: history.at(-1).closed_at,
   });

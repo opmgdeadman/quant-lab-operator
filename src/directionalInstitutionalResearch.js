@@ -60,15 +60,16 @@ export async function runProductionDirectionalInstitutionalResearch(env, options
   for (const candidate of backtests) {
     const strategy = DIRECTIONAL_STRATEGIES.find((row) => row.id === candidate.candidate_id);
     for (const run of candidate.windows) {
+      const mappedWindowId = windowRecords.find((row) => row.ordinal === windowOrdinal(run.window_id))?.id;
+      if (!mappedWindowId) throw new Error("directional_research_window_mapping_failed");
       const record = {
+        ...run,
         id: `${batchId}:run:${candidate.candidate_id}:${run.window_id}`,
         batch_id: batchId,
-        window_id: windowRecords.find((row) => row.ordinal === windowOrdinal(run.window_id))?.id,
+        window_id: mappedWindowId,
         candidate_id: candidate.candidate_id,
         family: strategy.family,
-        ...run,
       };
-      if (!record.window_id) throw new Error("directional_research_window_mapping_failed");
       runRecords.push({ ...record, run_hash: await hashObject(record) });
     }
   }
