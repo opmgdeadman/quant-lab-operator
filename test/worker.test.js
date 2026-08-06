@@ -326,7 +326,7 @@ test("continuation diagnostic state", async () => {
 
 test("continuation diagnostic authority", async () => {
   const result = await continuationDiagnosticResult("op-continuation-diagnostic-authority");
-  assert.equal(result.authority, "source_controlled_git_engineering_continuation_ledger");
+  assert.equal(result.authority, "[REDACTED]");
 });
 
 test("continuation diagnostic identity", async () => {
