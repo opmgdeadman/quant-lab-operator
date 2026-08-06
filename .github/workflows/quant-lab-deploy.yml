@@ -48,9 +48,37 @@ jobs:
       - name: Verify exact release identity
         shell: bash
         run: test "$(git rev-parse HEAD)" = "${{ inputs.deploy_sha }}"
-      - name: Audit category group - provider secrets
+      - name: Audit provider category - GitHub legacy token
         env:
-          AUDIT_CATEGORIES: github_legacy_token,github_fine_grained_token,openai_secret_key,stripe_live_secret,aws_access_key,slack_token,private_key,credentialed_url
+          AUDIT_CATEGORIES: github_legacy_token
+        run: node test/public-repository-audit.mjs
+      - name: Audit provider category - GitHub fine-grained token
+        env:
+          AUDIT_CATEGORIES: github_fine_grained_token
+        run: node test/public-repository-audit.mjs
+      - name: Audit provider category - OpenAI secret key
+        env:
+          AUDIT_CATEGORIES: openai_secret_key
+        run: node test/public-repository-audit.mjs
+      - name: Audit provider category - Stripe live secret
+        env:
+          AUDIT_CATEGORIES: stripe_live_secret
+        run: node test/public-repository-audit.mjs
+      - name: Audit provider category - AWS access key
+        env:
+          AUDIT_CATEGORIES: aws_access_key
+        run: node test/public-repository-audit.mjs
+      - name: Audit provider category - Slack token
+        env:
+          AUDIT_CATEGORIES: slack_token
+        run: node test/public-repository-audit.mjs
+      - name: Audit provider category - private key marker
+        env:
+          AUDIT_CATEGORIES: private_key
+        run: node test/public-repository-audit.mjs
+      - name: Audit provider category - credentialed URL
+        env:
+          AUDIT_CATEGORIES: credentialed_url
         run: node test/public-repository-audit.mjs
       - name: Audit category group - sensitive files
         env:
