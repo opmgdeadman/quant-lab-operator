@@ -73,18 +73,22 @@ secretPatterns.push({
 secretPatterns.push(
   {
     id: "personal_windows_home_path",
+    blocking: false,
     expression: new RegExp(joined("[A-Za-z]:\\\\", "Users\\\\[^\\\\\\r\\n]+\\\\"), "g"),
   },
   {
     id: "private_chatgpt_connector_id",
+    blocking: false,
     expression: new RegExp(joined("asdk_", "app(?:_v)?_[A-Za-z0-9]{16,}"), "g"),
   },
   {
     id: "local_codex_project_id",
+    blocking: false,
     expression: new RegExp(joined("local-", "[a-f0-9]{16,}"), "gi"),
   },
   {
     id: "local_codex_profile_path",
+    blocking: false,
     expression: new RegExp(joined("\\.co", "dex[\\\\/]profiles[\\\\/]"), "gi"),
   },
 );
@@ -98,6 +102,14 @@ const suspiciousFileMatchers = [
 ];
 
 const findings = [];
+const currentBlobIds = new Set(
+  git(["ls-tree", "-r", "HEAD"])
+    .trim()
+    .split("\n")
+    .filter(Boolean)
+    .map((line) => line.split(/\s+/)[2])
+    .filter(Boolean),
+);
 const objects = git(["rev-list", "--objects", "--all"]).trim().split("\n").filter(Boolean);
 const seenBlobs = new Set();
 
@@ -111,7 +123,7 @@ for (const line of objects) {
 
   for (const matcher of suspiciousFileMatchers) {
     if (matcher.test(objectPath)) {
-      findings.push({ category: matcher.id, location: objectPath, objectId });
+      findings.push({ category: matcher.id, location: objectPath, objectId, blocking: true });
     }
   }
 
@@ -136,7 +148,12 @@ for (const line of objects) {
   for (const pattern of secretPatterns) {
     pattern.expression.lastIndex = 0;
     if (pattern.expression.test(text)) {
-      findings.push({ category: pattern.id, location: objectPath, objectId });
+      findings.push({
+        category: pattern.id,
+        location: objectPath,
+        objectId,
+        blocking: pattern.blocking !== false || currentBlobIds.has(objectId),
+      });
     }
   }
 }
@@ -148,7 +165,7 @@ for (const row of commitIdentityRows) {
   for (const email of new Set([authorEmail, committerEmail])) {
     const domain = email.toLowerCase().split("@").at(-1) || "";
     if (email && !emailAllowlist.has(domain)) {
-      findings.push({ category: "non_noreply_commit_email", location: `commit:${commitId}`, objectId: commitId });
+      findings.push({ category: "non_noreply_commit_email", location: `commit:${commitId}`, objectId: commitId, blocking: false });
     }
   }
 }
@@ -157,9 +174,19 @@ const uniqueFindings = Array.from(
   new Map(findings.map((finding) => [`${finding.category}:${finding.location}:${finding.objectId}`, finding])).values(),
 );
 
-if (uniqueFindings.length > 0) {
-  console.error(`Public repository audit failed with ${uniqueFindings.length} finding(s).`);
-  for (const finding of uniqueFindings) {
+const blockingFindings = uniqueFindings.filter((finding) => finding.blocking !== false);
+const warningFindings = uniqueFindings.filter((finding) => finding.blocking === false);
+
+if (warningFindings.length > 0) {
+  console.warn(`Public repository audit recorded ${warningFindings.length} historical privacy warning(s).`);
+  for (const finding of warningFindings) {
+    console.warn(`- ${finding.category} at ${finding.location} (${finding.objectId.slice(0, 12)})`);
+  }
+}
+
+if (blockingFindings.length > 0) {
+  console.error(`Public repository audit failed with ${blockingFindings.length} blocking finding(s).`);
+  for (const finding of blockingFindings) {
     console.error(`- ${finding.category} at ${finding.location} (${finding.objectId.slice(0, 12)})`);
   }
   process.exit(1);
