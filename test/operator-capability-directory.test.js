@@ -9,7 +9,7 @@ import {
   supportedIntents,
   validateCapabilityLifecycle,
 } from "../src/operator/capabilityDirectory.js";
-import { findDispatchedRun, handlers } from "../src/operator/handlers/controlPlane.js";
+import { findDispatchedRun, handlers, validateHardeningTransition } from "../src/operator/handlers/controlPlane.js";
 import { buildActionClosure, parseContinuationMetadata } from "../src/operator/executionKernel.js";
 import { operationLeaseMs } from "../src/operator/receipts.js";
 
@@ -139,5 +139,28 @@ test("ambiguous workflow dispatches reconcile the created exact-SHA run", () => 
   ], "target", createdAfter);
   assert.equal(run.id, 3);
   assert.equal(findDispatchedRun([], "target", createdAfter), null);
+});
+
+test("hardening incidents require ordered complete closure evidence", () => {
+  assert.equal(validateHardeningTransition({ state: "open" }, { target_state: "fixed" }).error, "hardening_transition_out_of_order");
+  assert.equal(validateHardeningTransition({ state: "open" }, { target_state: "diagnosed" }).error, "hardening_diagnosis_evidence_required");
+  assert.equal(validateHardeningTransition({ state: "open" }, {
+    target_state: "diagnosed",
+    root_cause: "duplicate dispatch response ambiguity",
+    generalized_cause: "external mutation responses require side-effect reconciliation",
+  }).ok, true);
+  assert.equal(validateHardeningTransition({ state: "diagnosed" }, { target_state: "fixed" }).error, "hardening_prevention_rule_required");
+  assert.equal(validateHardeningTransition({ state: "fixed" }, {
+    target_state: "validated",
+    tested_sha: "abc",
+    regression_test_ids: ["dispatch-reconciliation"],
+  }).error, "hardening_validation_evidence_required");
+  assert.equal(validateHardeningTransition({ state: "fixed" }, {
+    target_state: "validated",
+    tested_sha: "0123456789abcdef0123456789abcdef01234567",
+    regression_test_ids: ["dispatch-reconciliation"],
+  }).ok, true);
+  assert.equal(validateHardeningTransition({ state: "deployed" }, { target_state: "verified" }).error, "hardening_live_verification_required");
+  assert.equal(validateHardeningTransition({ state: "verified" }, { target_state: "closed" }).error, "hardening_resume_result_required");
 });
 

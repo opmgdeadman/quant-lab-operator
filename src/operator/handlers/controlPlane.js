@@ -40,6 +40,8 @@ export const handlers = {
   run_rolling_research,
   get_historical_bootstrap,
   run_historical_bootstrap,
+  get_hardening_status,
+  advance_hardening_incident,
   read_continuation,
   inspect_repository,
   list_repo_files,
@@ -392,6 +394,148 @@ async function run_historical_bootstrap(inputs, context) {
       error: error instanceof Error ? error.message : "historical_bootstrap_failed",
     };
   }
+}
+
+const HARDENING_STATES = ["open", "diagnosed", "fixed", "validated", "deployed", "verified", "closed"];
+
+export function validateHardeningTransition(row, inputs) {
+  const currentIndex = HARDENING_STATES.indexOf(row?.state);
+  const targetIndex = HARDENING_STATES.indexOf(inputs?.target_state);
+  if (currentIndex < 0 || targetIndex !== currentIndex + 1) {
+    return { ok: false, error: "hardening_transition_out_of_order" };
+  }
+  const target = inputs.target_state;
+  if (target === "diagnosed" && (!inputs.root_cause || !inputs.generalized_cause)) {
+    return { ok: false, error: "hardening_diagnosis_evidence_required" };
+  }
+  if (target === "fixed" && !inputs.prevention_rule_id) {
+    return { ok: false, error: "hardening_prevention_rule_required" };
+  }
+  if (target === "validated" && (!isExactSha(inputs.tested_sha) || !Array.isArray(inputs.regression_test_ids) || inputs.regression_test_ids.length < 1)) {
+    return { ok: false, error: "hardening_validation_evidence_required" };
+  }
+  if (target === "deployed" && !inputs.deployment_id) {
+    return { ok: false, error: "hardening_deployment_evidence_required" };
+  }
+  if (target === "verified" && !inputs.live_verification_summary) {
+    return { ok: false, error: "hardening_live_verification_required" };
+  }
+  if (target === "closed" && !inputs.resume_result_summary) {
+    return { ok: false, error: "hardening_resume_result_required" };
+  }
+  return { ok: true, error: null };
+}
+
+async function get_hardening_status(inputs, context) {
+  const limit = Math.min(50, Math.max(1, Number(inputs.limit || 20)));
+  const incidentId = inputs.incident_id || null;
+  const rows = incidentId
+    ? await context.env.DB.prepare("SELECT * FROM operator_hardening_incidents WHERE id = ? LIMIT 1").bind(incidentId).all()
+    : await context.env.DB.prepare("SELECT * FROM operator_hardening_incidents ORDER BY CASE WHEN state = 'closed' THEN 1 ELSE 0 END, updated_at DESC LIMIT ?").bind(limit).all();
+  const incidents = (rows.results || []).map(serializeHardeningIncident);
+  const events = incidentId
+    ? await context.env.DB.prepare("SELECT id, incident_id, from_state, to_state, evidence_json, created_at FROM operator_hardening_incident_events WHERE incident_id = ? ORDER BY created_at ASC").bind(incidentId).all()
+    : { results: [] };
+  return {
+    ok: true,
+    incidents,
+    events: (events.results || []).map((event) => ({
+      ...event,
+      evidence: JSON.parse(event.evidence_json || "{}"),
+      evidence_json: undefined,
+    })),
+    open_count: incidents.filter((incident) => incident.state !== "closed").length,
+  };
+}
+
+async function advance_hardening_incident(inputs, context) {
+  const row = await context.env.DB.prepare("SELECT * FROM operator_hardening_incidents WHERE id = ? LIMIT 1").bind(inputs.incident_id).first();
+  if (!row) return { ok: false, error: "hardening_incident_not_found" };
+  const validation = validateHardeningTransition(row, inputs);
+  if (!validation.ok) return validation;
+  const now = new Date().toISOString();
+  const evidence = {
+    root_cause: inputs.root_cause || null,
+    generalized_cause: inputs.generalized_cause || null,
+    prevention_rule_id: inputs.prevention_rule_id || null,
+    regression_test_ids: inputs.regression_test_ids || [],
+    tested_sha: inputs.tested_sha || null,
+    deployment_id: inputs.deployment_id || null,
+    live_verification_summary: inputs.live_verification_summary || null,
+    resume_result_summary: inputs.resume_result_summary || null,
+  };
+  await context.env.DB.prepare(
+    `UPDATE operator_hardening_incidents SET
+      state = ?,
+      root_cause = COALESCE(?, root_cause),
+      generalized_cause = COALESCE(?, generalized_cause),
+      prevention_rule_id = COALESCE(?, prevention_rule_id),
+      regression_test_ids_json = CASE WHEN ? IS NULL THEN regression_test_ids_json ELSE ? END,
+      tested_sha = COALESCE(?, tested_sha),
+      deployment_id = COALESCE(?, deployment_id),
+      live_verification_json = CASE WHEN ? IS NULL THEN live_verification_json ELSE ? END,
+      resume_result_json = CASE WHEN ? IS NULL THEN resume_result_json ELSE ? END,
+      updated_at = ?,
+      closed_at = CASE WHEN ? = 'closed' THEN ? ELSE closed_at END
+     WHERE id = ? AND state = ?`,
+  ).bind(
+    inputs.target_state,
+    inputs.root_cause || null,
+    inputs.generalized_cause || null,
+    inputs.prevention_rule_id || null,
+    inputs.regression_test_ids ? JSON.stringify(inputs.regression_test_ids) : null,
+    JSON.stringify(inputs.regression_test_ids || []),
+    inputs.tested_sha || null,
+    inputs.deployment_id || null,
+    inputs.live_verification_summary || null,
+    JSON.stringify(inputs.live_verification_summary ? { summary: inputs.live_verification_summary } : {}),
+    inputs.resume_result_summary || null,
+    JSON.stringify(inputs.resume_result_summary ? { summary: inputs.resume_result_summary } : {}),
+    now,
+    inputs.target_state,
+    now,
+    inputs.incident_id,
+    row.state,
+  ).run();
+  await context.env.DB.prepare(
+    `INSERT INTO operator_hardening_incident_events (
+      id, incident_id, from_state, to_state, evidence_json, created_at
+    ) VALUES (?, ?, ?, ?, ?, ?)`,
+  ).bind(
+    `operator_hardening_event_${crypto.randomUUID()}`,
+    inputs.incident_id,
+    row.state,
+    inputs.target_state,
+    JSON.stringify(evidence),
+    now,
+  ).run();
+  const updated = await context.env.DB.prepare("SELECT * FROM operator_hardening_incidents WHERE id = ? LIMIT 1").bind(inputs.incident_id).first();
+  return { ok: true, incident: serializeHardeningIncident(updated) };
+}
+
+function serializeHardeningIncident(row) {
+  return {
+    id: row.id,
+    signature: row.signature,
+    operation_id: row.operation_id,
+    intent: row.intent,
+    severity: row.severity,
+    state: row.state,
+    summary: row.summary,
+    observed: JSON.parse(row.observed_json || "{}"),
+    root_cause: row.root_cause || null,
+    generalized_cause: row.generalized_cause || null,
+    prevention_rule_id: row.prevention_rule_id || null,
+    regression_test_ids: JSON.parse(row.regression_test_ids_json || "[]"),
+    tested_sha: row.tested_sha || null,
+    deployment_id: row.deployment_id || null,
+    live_verification: JSON.parse(row.live_verification_json || "{}"),
+    resume_capsule: JSON.parse(row.resume_capsule_json || "{}"),
+    resume_result: JSON.parse(row.resume_result_json || "{}"),
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+    closed_at: row.closed_at || null,
+  };
 }
 
 async function read_continuation(inputs, context) {

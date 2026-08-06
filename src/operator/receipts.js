@@ -101,19 +101,48 @@ export async function writeReceipt(env, receipt) {
 }
 
 export async function recordIncident(env, input) {
-  const id = `operator_incident_${input.operation_id}`;
+  const signature = await fingerprintIntent("hardening_incident", {
+    intent: input.intent,
+    error: input.error,
+  });
+  const id = `operator_hardening_${signature.slice(7, 31)}`;
   const summary = String(redactValue(`Unexpected ${input.intent} failure: ${input.error}`)).slice(0, 1000);
-  const nextAction = "Fix the root cause, add a focused regression, validate the exact SHA, deploy it, verify production, then resume the canonical Git ECL action.";
+  const observed = redactValue({ error: input.error, operation_id: input.operation_id, intent: input.intent });
+  const resumeCapsule = { operation_id: input.operation_id, intent: input.intent };
   await env.DB.prepare(
-    `INSERT INTO operator_incidents (
-      id, operation_id, severity, status, summary, root_cause, next_action, created_at, updated_at
-    ) VALUES (?, ?, 'P1', 'open', ?, NULL, ?, ?, ?)
-    ON CONFLICT(id) DO UPDATE SET
+    `INSERT INTO operator_hardening_incidents (
+      id, signature, operation_id, intent, severity, state, summary, observed_json,
+      resume_capsule_json, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, 'P1', 'open', ?, ?, ?, ?, ?)
+    ON CONFLICT(signature) DO UPDATE SET
+      operation_id = excluded.operation_id,
       summary = excluded.summary,
-      next_action = excluded.next_action,
+      observed_json = excluded.observed_json,
+      resume_capsule_json = excluded.resume_capsule_json,
       updated_at = excluded.updated_at`,
-  ).bind(id, input.operation_id, summary, nextAction, input.created_at, input.created_at).run();
-  return { id, severity: "P1", status: "open", next_action: nextAction };
+  ).bind(
+    id,
+    signature,
+    input.operation_id,
+    input.intent,
+    summary,
+    JSON.stringify(observed),
+    JSON.stringify(resumeCapsule),
+    input.created_at,
+    input.created_at,
+  ).run();
+  await env.DB.prepare(
+    `INSERT OR IGNORE INTO operator_hardening_incident_events (
+      id, incident_id, from_state, to_state, evidence_json, created_at
+    ) VALUES (?, ?, NULL, 'open', ?, ?)`,
+  ).bind(`operator_hardening_event_${id}_open`, id, JSON.stringify(observed), input.created_at).run();
+  return {
+    id,
+    signature,
+    severity: "P1",
+    state: "open",
+    next_action: "diagnose_root_cause_and_generalize_prevention",
+  };
 }
 
 export async function writeAuditLog(env, entry) {
