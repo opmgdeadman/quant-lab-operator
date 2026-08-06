@@ -178,9 +178,12 @@ jobs:
       - name: Test Worker public console surface
         if: steps.validation_evidence.outputs.reuse != 'true'
         run: node --test --test-name-pattern="internal status|home renders|brand assets|public live status|professional console|legacy public" test/worker.test.js
-      - name: Test Worker MCP and execution kernel surface
+      - name: Test Worker MCP auth and session surface
         if: steps.validation_evidence.outputs.reuse != 'true'
-        run: node --test --test-name-pattern="operator mcp|generic intent|direct operator|read_continuation|execute_quant_lab_intent|forbidden public|run_validation|production market|validate_production" test/worker.test.js
+        run: node --test --test-name-pattern="operator mcp|operator intents|generic intent" test/worker.test.js
+      - name: Test Worker direct execution and receipts
+        if: steps.validation_evidence.outputs.reuse != 'true'
+        run: node --test --test-name-pattern="direct operator|read_continuation|execute_quant_lab_intent|forbidden public|run_validation|production market|validate_production" test/worker.test.js
       - name: Test Worker repository and deployment controls
         if: steps.validation_evidence.outputs.reuse != 'true'
         run: node --test --test-name-pattern="list_github|engineering access|repo file|apply_repo|create_repo|GitHub Actions|deploy_cloudflare" test/worker.test.js
