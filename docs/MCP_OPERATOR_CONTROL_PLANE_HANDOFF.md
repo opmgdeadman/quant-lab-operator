@@ -1,5 +1,7 @@
 # MCP Operator Control Plane Handoff
 
+> Historical implementation handoff. Superseded by `docs/MCP_OPERATOR_TOOL_SURFACE_HANDOFF.md`, `OPERATING_MEMORY.md`, and the direct typed MCP `0.4.0` source contract. References below to `execute_quant_lab_intent`, D1 continuation authority, or the original two-tool surface are retained only as history and must not be reintroduced.
+
 Last updated: 2026-07-26
 
 ## Current State

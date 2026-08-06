@@ -1,5 +1,7 @@
 # Lensically-Style MCP Architecture For Quant Lab
 
+> Historical design record. Superseded by `docs/MCP_OPERATOR_TOOL_SURFACE_HANDOFF.md`, the direct typed MCP `0.4.0` contract, and the mandatory capability lifecycle. Do not restore the generic intent envelope described below.
+
 Last updated: 2026-07-26
 
 Quant Lab should not grow as a pile of MCP tools. Build the operator MCP as a small professional control plane modeled after Lensically.

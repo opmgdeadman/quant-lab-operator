@@ -46,8 +46,9 @@ Keep this file limited to active reusable rules. Historical debugging belongs in
 
 ## Repository Operations
 
-- GitHub `main` is authoritative.
+- GitHub `main` is authoritative and the repository is intentionally public to use GitHub-hosted validation without private-repository minute exhaustion.
 - Read the current head before mutations.
+- Every CI and deployment path must run `npm run audit:public` against the complete Git history before tests, migrations, or deployment. Secret material or secret-file artifacts anywhere in history block release; current-tree personal metadata blocks release; sanitized historical privacy metadata is reported without casually rewriting immutable SHA lineage.
 - Repository paths are allowlisted. Use exact find/replace patch sets with match-count enforcement and non-forced Git commits.
 - Do not expose arbitrary shell, arbitrary SQL, free-form patch execution, unrestricted GitHub/Cloudflare passthrough, or secret values.
 - A stale head or ambiguous replacement requires refreshed source and corrected input, not a bypass.
