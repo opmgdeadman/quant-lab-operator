@@ -605,11 +605,11 @@ test("GitHub Actions intents call bounded GitHub API routes", async () => {
           workflow_id: 7,
           status: "completed",
           conclusion: "success",
-          event: "push",
+          event: "workflow_dispatch",
           head_branch: "main",
           head_sha: "a".repeat(40),
-          created_at: "2026-07-26T00:00:00Z",
-          updated_at: "2026-07-26T00:01:00Z",
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
           html_url: "https://github.com/opmgdeadman/quant-lab-operator/actions/runs/101",
         }],
       });
@@ -666,11 +666,30 @@ test("deploy_cloudflare_worker and apply_d1_migrations dispatch fixed workflow w
   const env = { ...createEnv(), GITHUB_TOKEN: "server-side-test-token" };
   const exactSha = "b".repeat(40);
   const restore = mockFetch(async (url, options) => {
-    assert.match(url, /\/actions\/workflows\/quant-lab-deploy\.yml\/dispatches$/);
-    const body = JSON.parse(options.body);
-    assert.equal(body.ref, "main");
-    assert.equal(body.inputs.deploy_sha, exactSha);
-    return new Response(null, { status: 204 });
+    if (url.match(/\/actions\/workflows\/quant-lab-deploy\.yml\/dispatches$/)) {
+      const body = JSON.parse(options.body);
+      assert.equal(body.ref, "main");
+      assert.equal(body.inputs.deploy_sha, exactSha);
+      return new Response(null, { status: 204 });
+    }
+    if (url.includes("/actions/workflows/quant-lab-deploy.yml/runs")) {
+      return jsonResponse({
+        workflow_runs: [{
+          id: 301,
+          name: "Quant Lab deploy",
+          workflow_id: 9,
+          status: "queued",
+          conclusion: null,
+          event: "workflow_dispatch",
+          head_branch: "main",
+          head_sha: exactSha,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          html_url: "https://github.com/opmgdeadman/quant-lab-operator/actions/runs/301",
+        }],
+      });
+    }
+    throw new Error(`unexpected fetch URL: ${url}`);
   });
 
   try {
