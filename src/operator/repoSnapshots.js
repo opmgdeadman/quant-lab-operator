@@ -37,12 +37,12 @@ Authority: Sole canonical engineering continuation ledger
 
 ## Active Job
 
-Job ID: stage-1-truthful-data-foundation
+Job ID: `stage-13-directional-shadow-paper-research`
 State: ACTIVE
 
 ## Current Action
 
-Implement and production-validate reliable BTC-USD 1-hour closed-candle ingestion, continuity checks, idempotent storage, gap recovery, scheduled execution, and website data-health visibility.
+Complete the engineering-control prerequisite, deploy MCP version 0.4.0, then resume the institutional directional-authority transition without weakening evidence gates.
 
 No chat context, model memory, D1 continuation summary, runtime receipt, website state, or other document may override this ledger.`,
   "src/index.js": `src/index.js routes HTTP/OAuth/MCP requests and delegates public tool execution to the operator registry and execution kernel.`,
