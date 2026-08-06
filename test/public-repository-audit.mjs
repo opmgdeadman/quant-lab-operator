@@ -65,7 +65,7 @@ const sensitiveVariableNames = [
 secretPatterns.push({
   id: "literal_secret_assignment",
   expression: new RegExp(
-    `(?:${sensitiveVariableNames.join("|")})\\s*[:=]\\s*["'\\x60][A-Za-z0-9_./+=-]{16,}["'\\x60]`,
+    `(?:${sensitiveVariableNames.join("|")})\\s*[:=]\\s*["'\\x60](?!(?:test|example|fake|dummy|placeholder|synthetic|development|set-by)-)[A-Za-z0-9_./+=-]{16,}["'\\x60]`,
     "g",
   ),
 });
