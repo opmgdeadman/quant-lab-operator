@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: quant-lab-ci-${{ github.event_name }}-${{ github.ref }}
+  group: quant-lab-ci-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
