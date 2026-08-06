@@ -150,6 +150,9 @@ test("workflows use one validation runner and reuse exact-SHA evidence", () => {
   assert.match(deploy, /Reuse successful exact-SHA CI evidence/);
   assert.match(deploy, /steps\.validation_evidence\.outputs\.reuse != 'true'/);
   assert.doesNotMatch(deploy, /Cancel older Quant Lab deploy runs/);
+  assert.match(deploy, /Dispatch independent exact-SHA Recovery deployment/);
+  assert.match(deploy, /quant-lab-recovery-deploy\.yml/);
+  assert.match(deploy, /recovery_run_id/);
 });
 
 test("ambiguous workflow dispatches reconcile the created exact-SHA run", () => {

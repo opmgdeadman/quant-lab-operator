@@ -169,3 +169,27 @@ jobs:
           console.log("Production public status passed");
           console.log("Production branding smoke verification passed");
           NODE
+
+      - name: Dispatch independent exact-SHA Recovery deployment
+        if: ${{ inputs.mode == 'deploy' }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_SHA: ${{ inputs.deploy_sha }}
+        run: |
+          set -euo pipefail
+          started_at="$(date -u +%s)"
+          gh workflow run quant-lab-recovery-deploy.yml --ref main -f deploy_sha="${RELEASE_SHA}"
+          recovery_run_id=""
+          for attempt in $(seq 1 20); do
+            recovery_run_id="$(gh api "repos/${{ github.repository }}/actions/workflows/quant-lab-recovery-deploy.yml/runs?event=workflow_dispatch&per_page=20" --jq ".workflow_runs | map(select(.head_sha == \"${RELEASE_SHA}\" and ((.created_at | fromdateiso8601) >= ${started_at} - 5))) | sort_by(.id) | last | .id // empty")"
+            if [[ -n "${recovery_run_id}" ]]; then
+              break
+            fi
+            sleep 1
+          done
+          if [[ -z "${recovery_run_id}" ]]; then
+            echo "Recovery dispatch side effect could not be reconciled." >&2
+            exit 1
+          fi
+          echo "Recovery workflow dispatched for exact SHA ${RELEASE_SHA}: run ${recovery_run_id}"
