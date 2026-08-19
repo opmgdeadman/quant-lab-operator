@@ -36,9 +36,18 @@ jobs:
         run: npm ci
       - name: Install Python dependencies
         run: python -m pip install -r requirements.txt
-      - name: Run Worker integration tests
+      - name: Run Worker public-surface integration tests
         if: ${{ always() }}
-        run: node --test test/worker.test.js
+        run: node --test --test-name-pattern="internal status|home renders|canonical Quant Lab brand assets|public live status|professional console|legacy public proof|oauth metadata" test/worker.test.js
+      - name: Run Worker MCP integration tests
+        if: ${{ always() }}
+        run: node --test --test-name-pattern="operator mcp|operator intents|generic intent envelope|direct operator_status|startup context|read_continuation|continuation diagnostic|execute_quant_lab_intent|forbidden public input|run_validation" test/worker.test.js
+      - name: Run Worker repository-control integration tests
+        if: ${{ always() }}
+        run: node --test --test-name-pattern="validate_production_sha|list_github_actions_runs|engineering access|repo file|apply_repo_patch_set|create_repo_file|GitHub Actions|actions diagnostic|deploy_cloudflare_worker" test/worker.test.js
+      - name: Run Worker production-commission integration tests
+        if: ${{ always() }}
+        run: node --test --test-name-pattern="production" test/worker.test.js
       - name: Run operator capability tests
         if: ${{ always() }}
         run: node --test test/operator-capability-directory.test.js
