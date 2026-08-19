@@ -594,8 +594,8 @@ test("GitHub Actions intents call bounded GitHub API routes", async () => {
   const calls = [];
   const restore = mockFetch(async (url, options) => {
     calls.push({ url, options });
-    if (url.endsWith("/git/ref/heads/main")) {
-      return jsonResponse({ object: { sha: "a".repeat(40) } });
+    if (url.endsWith("/commits/main")) {
+      return jsonResponse({ sha: "a".repeat(40) });
     }
     if (url.includes("/actions/workflows/ci.yml/runs")) {
       return jsonResponse({
@@ -667,8 +667,8 @@ async function githubActionsDiagnosticResult() {
   const calls = [];
   const restore = mockFetch(async (url, options) => {
     calls.push({ url, options });
-    if (url.endsWith("/git/ref/heads/main")) {
-      return jsonResponse({ object: { sha: "a".repeat(40) } });
+    if (url.endsWith("/commits/main")) {
+      return jsonResponse({ sha: "a".repeat(40) });
     }
     if (url.includes("/actions/workflows/ci.yml/runs")) {
       return jsonResponse({

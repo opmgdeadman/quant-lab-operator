@@ -45,9 +45,27 @@ jobs:
       - name: Run direct operator-status integration test
         if: ${{ always() }}
         run: node --test --test-name-pattern="direct operator_status" test/worker.test.js
-      - name: Run continuation integration tests
+      - name: Run continuation primary integration test
         if: ${{ always() }}
-        run: node --test --test-name-pattern="read_continuation|continuation diagnostic" test/worker.test.js
+        run: node --test --test-name-pattern="read_continuation returns" test/worker.test.js
+      - name: Run continuation state integration test
+        if: ${{ always() }}
+        run: node --test --test-name-pattern="continuation diagnostic state" test/worker.test.js
+      - name: Run continuation authority integration test
+        if: ${{ always() }}
+        run: node --test --test-name-pattern="continuation diagnostic authority" test/worker.test.js
+      - name: Run continuation identity integration test
+        if: ${{ always() }}
+        run: node --test --test-name-pattern="continuation diagnostic identity" test/worker.test.js
+      - name: Run continuation active-job integration test
+        if: ${{ always() }}
+        run: node --test --test-name-pattern="continuation diagnostic active job" test/worker.test.js
+      - name: Run continuation current-action integration test
+        if: ${{ always() }}
+        run: node --test --test-name-pattern="continuation diagnostic current action" test/worker.test.js
+      - name: Run continuation mutation-boundary integration test
+        if: ${{ always() }}
+        run: node --test --test-name-pattern="continuation diagnostic mutation boundary" test/worker.test.js
       - name: Run idempotency integration test
         if: ${{ always() }}
         run: node --test --test-name-pattern="execute_quant_lab_intent" test/worker.test.js
