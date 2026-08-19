@@ -36,9 +36,40 @@ jobs:
         run: npm ci
       - name: Install Python dependencies
         run: python -m pip install -r requirements.txt
-      - name: Run Worker tests
-        run: npm test
+      - name: Run Worker integration tests
+        if: ${{ always() }}
+        run: node --test test/worker.test.js
+      - name: Run operator capability tests
+        if: ${{ always() }}
+        run: node --test test/operator-capability-directory.test.js
+      - name: Run operator client-safety tests
+        if: ${{ always() }}
+        run: node --test test/operator-client-safety.test.js
+      - name: Run Recovery Worker tests
+        if: ${{ always() }}
+        run: node --test test/recovery-worker.test.js
+      - name: Run research and execution Worker tests
+        if: ${{ always() }}
+        run: >-
+          node --test
+          test/baseline-bench.test.js
+          test/champion-selection.test.js
+          test/directional-backtest.test.js
+          test/directional-institutional-research.test.js
+          test/directional-main.test.js
+          test/directional-research.test.js
+          test/directional-shadow.test.js
+          test/forward-paper.test.js
+          test/historical-bootstrap.test.js
+          test/hostile-judge.test.js
+          test/live-qualification.test.js
+          test/market-data.test.js
+          test/paper-ledger.test.js
+          test/rolling-research.test.js
+          test/strategy-factory.test.js
       - name: Run quant core tests
+        if: ${{ always() }}
         run: python -m pytest
       - name: Validate Wrangler config
+        if: ${{ always() }}
         run: npm run check
