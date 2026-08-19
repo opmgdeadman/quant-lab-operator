@@ -11,6 +11,7 @@ import { commissionForwardPaperOperation, getForwardOperationSummary, runProduct
 import { getDirectionalShadowSummary, runProductionDirectionalShadowCycle } from "../../directionalShadow.js";
 import { getDirectionalInstitutionalResearchSummary, runProductionDirectionalInstitutionalResearch } from "../../directionalInstitutionalResearch.js";
 import { getInstitutionalResearchPortfolioSummary, registerInstitutionalHypothesis, advanceInstitutionalHypothesis } from "../../institutionalResearchPortfolio.js";
+import { getInstitutionalEvaluationSummary, runInstitutionalHypothesisEvaluation, runInstitutionalIndependentJudge } from "../../institutionalResearchEvaluation.js";
 import { getLiveQualificationSummary, runProductionLiveQualification } from "../../liveQualification.js";
 import { getRollingResearchSummary, runProductionRollingResearch } from "../../rollingResearch.js";
 import { getHistoricalBootstrapSummary, runProductionHistoricalBootstrap } from "../../historicalBootstrap.js";
@@ -38,6 +39,9 @@ export const handlers = {
   get_institutional_research_portfolio,
   register_institutional_hypothesis,
   advance_institutional_hypothesis,
+  get_institutional_research_evaluation,
+  run_institutional_hypothesis_evaluation,
+  run_institutional_independent_judge,
   get_live_qualification,
   run_live_qualification,
   get_rolling_research,
@@ -351,6 +355,40 @@ async function advance_institutional_hypothesis(inputs, context) {
       stage13_promotion_authority_unchanged: true,
       status: "institutional_hypothesis_lifecycle_failed",
       error: error instanceof Error ? error.message : "institutional_hypothesis_lifecycle_failed",
+    };
+  }
+}
+
+async function get_institutional_research_evaluation(inputs, context) {
+  return await getInstitutionalEvaluationSummary(context.env, inputs.hypothesis_id || null);
+}
+
+async function run_institutional_hypothesis_evaluation(inputs, context) {
+  try {
+    return await runInstitutionalHypothesisEvaluation(context.env, { hypothesisId: inputs.hypothesis_id });
+  } catch (error) {
+    return {
+      ok: false,
+      paper_only: true,
+      live_capital_enabled: false,
+      stage13_promotion_authority_changed: false,
+      status: "institutional_hypothesis_evaluation_failed",
+      error: error instanceof Error ? error.message : "institutional_hypothesis_evaluation_failed",
+    };
+  }
+}
+
+async function run_institutional_independent_judge(inputs, context) {
+  try {
+    return await runInstitutionalIndependentJudge(context.env, { hypothesisId: inputs.hypothesis_id });
+  } catch (error) {
+    return {
+      ok: false,
+      paper_only: true,
+      live_capital_enabled: false,
+      stage13_promotion_authority_changed: false,
+      status: "institutional_independent_judge_failed",
+      error: error instanceof Error ? error.message : "institutional_independent_judge_failed",
     };
   }
 }
