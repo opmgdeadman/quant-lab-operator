@@ -1,9 +1,11 @@
+import { validateInstitutionalResearchSpec } from "./institutionalResearchSpec.js";
+
 const MARKET = "BTC-USD";
 const INTERVAL = "1h";
 
 export const INSTITUTIONAL_RESEARCH_POLICY = Object.freeze({
-  id: "institutional-research-portfolio-v1",
-  version: 1,
+  id: "institutional-research-portfolio-v2",
+  version: 2,
   market: MARKET,
   interval: INTERVAL,
   allowed_families: Object.freeze([
@@ -21,27 +23,17 @@ export const INSTITUTIONAL_RESEARCH_POLICY = Object.freeze({
   transitions: Object.freeze({
     proposed: Object.freeze(["admitted", "rejected", "retired"]),
     admitted: Object.freeze(["testing", "rejected", "retired"]),
-    testing: Object.freeze(["rejected", "retired"]),
+    testing: Object.freeze(["rejected", "qualified", "retired"]),
     rejected: Object.freeze([]),
     qualified: Object.freeze(["retired", "superseded"]),
     retired: Object.freeze([]),
     superseded: Object.freeze([]),
   }),
-  qualification_transition_enabled: false,
+  qualification_transition_enabled: true,
   stage13_promotion_authority_unchanged: true,
   paper_only: true,
   live_capital_enabled: false,
 });
-
-const REQUIRED_PREREGISTRATION_FIELDS = Object.freeze([
-  "dataset_id",
-  "feature_spec",
-  "parameter_bounds",
-  "cost_model",
-  "partition_plan",
-  "judge_id",
-  "promotion_criteria",
-]);
 
 export async function registerInstitutionalHypothesis(env, input, options = {}) {
   requireDatabase(env);
@@ -190,8 +182,9 @@ export async function advanceInstitutionalHypothesis(env, input, options = {}) {
   if (current.state === targetState) {
     return { ok: true, paper_only: true, live_capital_enabled: false, hypothesis: current, replayed: true };
   }
-  if (targetState === "qualified" && !INSTITUTIONAL_RESEARCH_POLICY.qualification_transition_enabled) {
-    throw new Error("institutional_qualification_requires_independent_judge_integration");
+  if (targetState === "qualified") {
+    if (!INSTITUTIONAL_RESEARCH_POLICY.qualification_transition_enabled) throw new Error("institutional_qualification_requires_independent_judge_integration");
+    await assertIndependentQualification(env, hypothesisId);
   }
   const allowed = INSTITUTIONAL_RESEARCH_POLICY.transitions[current.state] || [];
   if (!allowed.includes(targetState)) throw new Error("institutional_hypothesis_transition_not_allowed");
@@ -404,6 +397,16 @@ export function buildResearchThroughput(hypotheses, now = new Date().toISOString
   };
 }
 
+async function assertIndependentQualification(env, hypothesisId) {
+  const row = await env.DB.prepare(
+    `SELECT verdict, verdict_hash FROM institutional_research_verdicts WHERE hypothesis_id = ? ORDER BY sequence DESC LIMIT 1`,
+  ).bind(hypothesisId).first();
+  if (!row || row.verdict !== "qualified" || !row.verdict_hash) {
+    throw new Error("institutional_qualification_requires_sealed_independent_verdict");
+  }
+  return row;
+}
+
 async function readHypothesis(env, id) {
   const row = await env.DB.prepare(
     `SELECT id, title, family, origin, market, interval, economic_mechanism, market_premise,
@@ -442,12 +445,7 @@ async function readHypothesis(env, id) {
 }
 
 function validatePreregistration(value) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("institutional_preregistration_object_required");
-  const result = {};
-  for (const field of REQUIRED_PREREGISTRATION_FIELDS) result[field] = cleanString(value[field], `preregistration_${field}`, 4000);
-  const extras = Object.keys(value).filter((key) => !REQUIRED_PREREGISTRATION_FIELDS.includes(key));
-  if (extras.length > 0) throw new Error("institutional_preregistration_unknown_field");
-  return result;
+  return validateInstitutionalResearchSpec(value);
 }
 
 function validateFactoryAdmission(value) {
