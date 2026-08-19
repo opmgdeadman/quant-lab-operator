@@ -96,6 +96,27 @@ jobs:
       - name: Run Recovery Worker tests
         if: ${{ always() }}
         run: node --test test/recovery-worker.test.js
+      - name: Diagnose Stage 14 migration contract
+        if: ${{ always() }}
+        run: node --test --test-name-pattern="0018 creates" test/institutional-research-portfolio.test.js
+      - name: Diagnose Stage 14 preregistration contract
+        if: ${{ always() }}
+        run: node --test --test-name-pattern="preregistration is strict" test/institutional-research-portfolio.test.js
+      - name: Diagnose Stage 14 qualification boundary
+        if: ${{ always() }}
+        run: node --test --test-name-pattern="qualification is fail-closed" test/institutional-research-portfolio.test.js
+      - name: Diagnose Stage 14 immutable rejection lifecycle
+        if: ${{ always() }}
+        run: node --test --test-name-pattern="registration is immutable" test/institutional-research-portfolio.test.js
+      - name: Diagnose Stage 14 rejected-lineage rule
+        if: ${{ always() }}
+        run: node --test --test-name-pattern="rejected ideas require" test/institutional-research-portfolio.test.js
+      - name: Diagnose Stage 14 bounded factory
+        if: ${{ always() }}
+        run: node --test --test-name-pattern="bounded factory admission" test/institutional-research-portfolio.test.js
+      - name: Diagnose Stage 14 throughput authority boundary
+        if: ${{ always() }}
+        run: node --test --test-name-pattern="portfolio summary derives" test/institutional-research-portfolio.test.js
       - name: Run research and execution Worker tests
         if: ${{ always() }}
         run: >-
@@ -110,7 +131,6 @@ jobs:
           test/forward-paper.test.js
           test/historical-bootstrap.test.js
           test/hostile-judge.test.js
-          test/institutional-research-portfolio.test.js
           test/live-qualification.test.js
           test/market-data.test.js
           test/paper-ledger.test.js
