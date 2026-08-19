@@ -139,6 +139,15 @@ test("typed Stage 14 strategy executes only through proven next-candle walk-forw
   assert.equal(result[0].windows.every((row) => Number.isFinite(row.test_return_percent)), true);
 });
 
+test("Stage 14 canonical action admits hypotheses before sealed evaluation", async () => {
+  const ledger = await readFile(new URL("../docs/ENGINEERING_CONTINUATION_LEDGER.md", import.meta.url), "utf8");
+  const currentAction = ledger.split("## Current Action")[1]?.split("## Steady-State Operating Gate")[0] ?? "";
+  const admissionIndex = currentAction.indexOf("advance lifecycle from `proposed` to `admitted`");
+  const evaluationIndex = currentAction.indexOf("run the sealed 4,320-candle five-window evaluation");
+  assert.ok(admissionIndex >= 0, "current action must require explicit proposed-to-admitted transition");
+  assert.ok(evaluationIndex > admissionIndex, "sealed evaluation must occur only after explicit admission");
+});
+
 test("independent judge rejects weak sealed historical evidence", () => {
   const result = judgeInstitutionalResearchEvidence({
     artifact: historicalArtifact({ median_test_return_percent: -1, positive_test_windows: 1 }),
