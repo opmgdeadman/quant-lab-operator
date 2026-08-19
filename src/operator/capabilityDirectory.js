@@ -331,7 +331,7 @@ export const capabilityDirectory = [
               exit_lower: { type: "number", minimum: 20, maximum: 55 },
               exit_upper: { type: "number", minimum: 45, maximum: 80 },
               deviations: { type: "number", minimum: 0.5, maximum: 5 },
-            }),
+            }, []),
           }, ["template", "feature_set_id", "parameters"]),
           walk_forward_policy_id: { type: "string", enum: ["institutional-walk-forward-v1"] },
           cost_model_id: { type: "string", enum: ["institutional-cost-model-v1"] },

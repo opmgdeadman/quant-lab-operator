@@ -60,6 +60,16 @@ test("directional institutional research intents are discoverable and handler-ba
   assert.ok(validation.input_schema.properties.validation.enum.includes("production directional institutional research commission"));
 });
 
+test("institutional hypothesis tool permits template-specific parameter shapes", () => {
+  const registration = capabilityDirectory.find((entry) => entry.intent === "register_institutional_hypothesis");
+  const parameters = registration.input_schema.properties.hypothesis.properties.preregistration.properties.strategy.properties.parameters;
+  assert.deepEqual(parameters.required, []);
+  assert.equal(parameters.additionalProperties, false);
+  for (const name of ["fast", "slow", "lookback", "threshold_percent", "period", "multiplier", "lower", "upper", "exit_lower", "exit_upper", "deviations"]) {
+    assert.ok(parameters.properties[name]);
+  }
+});
+
 test("capability lifecycle contains mandatory sequence", () => {
   assert.deepEqual(lifecycleMandatorySequence, [
     "resolve_existing_capability",
