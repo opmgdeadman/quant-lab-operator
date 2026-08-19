@@ -20,7 +20,7 @@ Quant Lab is now governed as an industrial quantitative research organization ra
 
 Every scheduled operator run must use the maximum available execution budget to advance the active job through research, implementation, hostile validation, deployment, production verification, repair, or durable rejection. Status-only work is prohibited while a safe executable action exists.
 
-The current Stage 13 bridge has absolute precedence because the new twelve-candidate directional paper operation is running while canonical champion selection still relies on the legacy eight-candidate, 720-candle system. Until this split is closed, the institution does not possess one coherent research-to-portfolio authority.
+Stage 13 is complete and the directional institutional selection is the sole canonical production promotion authority. Stage 14 now has absolute engineering precedence: build the institutional hypothesis and research-portfolio control system while preserving the completed Stage 13 authority, independent judging, explicit all-cash behavior, and unchanged live-capital gates.
 
 ## Active Job
 
@@ -47,7 +47,7 @@ Permanent boundaries:
 
 - paper only until explicit owner approval after evidence eligibility;
 - simulated 1.0x long and short exposure is allowed for research; leverage above 1.0x, live derivatives, paid data, synthetic candles, hidden parameter tuning, and silent threshold changes remain prohibited;
-- no strategy may be promoted merely to create activity, but bounded candidates must trade in isolated shadow paper accounts to generate forward evidence.
+- no strategy may be promoted merely to create activity; existing Stage 13 directional candidates continue isolated shadow-paper evidence collection, while new Stage 14 hypotheses may enter executable research only through preregistered bounded admission.
 
 ## Completed Evidence
 
@@ -178,7 +178,7 @@ Quant Lab remains healthy only while:
 - hourly ingestion remains completed-candle-only, gap-free, and duplicate-safe;
 - no champion means explicit safe idle with no fallback trade;
 - only hostile-judge-qualified evidence can become champion;
-- rolling research uses the fixed catalog and immutable daily epochs;
+- Stage 13 directional institutional selection remains the sole canonical production promotion authority until a later canonical ledger transition explicitly supersedes it; Stage 14 research remains preregistered, bounded, and independently judged;
 - live-capital qualification remains evidence-only and owner approval remains separate;
 - paper accounting stays reconciled;
 - public surfaces remain truthful and expose no unsafe controls;
