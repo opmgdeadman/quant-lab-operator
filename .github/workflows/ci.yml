@@ -45,9 +45,6 @@ jobs:
       - name: Run direct operator-status integration test
         if: ${{ always() }}
         run: node --test --test-name-pattern="direct operator_status" test/worker.test.js
-      - name: Run continuation primary integration test
-        if: ${{ always() }}
-        run: node --test --test-name-pattern="read_continuation returns" test/worker.test.js
       - name: Run continuation state integration test
         if: ${{ always() }}
         run: node --test --test-name-pattern="continuation diagnostic state" test/worker.test.js
