@@ -11,6 +11,7 @@ import { getHistoricalBootstrapSummary, runScheduledHistoricalBootstrap } from "
 import { getDirectionalShadowSummary, runScheduledDirectionalShadow } from "./directionalShadow.js";
 import { getDirectionalInstitutionalResearchSummary, runProductionDirectionalInstitutionalResearch } from "./directionalInstitutionalResearch.js";
 import { getInstitutionalResearchPortfolioSummary } from "./institutionalResearchPortfolio.js";
+import { runScheduledInstitutionalResearchForwardEvidence } from "./institutionalResearchEvaluation.js";
 import { renderProfessionalConsole } from "./professionalConsole.js";
 import { BRAND_ASSETS as CANONICAL_BRAND_ASSETS, BRAND_MANIFEST } from "./brandAssetsCanonical.js";
 import { executeQuantLabIntent, executionKernelInfo } from "./operator/executionKernel.js";
@@ -100,10 +101,11 @@ async function runScheduledQuantLabOperation(env, scheduledAt) {
   const forward = await runScheduledForwardOperation(env, scheduledAt);
   const directionalShadow = await runScheduledDirectionalShadow(env, scheduledAt);
   const directionalResearch = await runProductionDirectionalInstitutionalResearch(env, { now: scheduledAt });
+  const institutionalForward = await runScheduledInstitutionalResearchForwardEvidence(env, { now: scheduledAt });
   const qualification = await runProductionLiveQualification(env);
   const rollingResearch = await runScheduledRollingResearch(env, scheduledAt);
   const historicalBootstrap = await runScheduledHistoricalBootstrap(env, scheduledAt);
-  return { forward, directionalShadow, directionalResearch, qualification, rollingResearch, historicalBootstrap };
+  return { forward, directionalShadow, directionalResearch, institutionalForward, qualification, rollingResearch, historicalBootstrap };
 }
 
 async function publicStatusPayload(env) {

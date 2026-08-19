@@ -10,6 +10,7 @@ import {
   buildInstitutionalBacktestPolicy,
 } from "../src/institutionalResearchSpec.js";
 import { judgeInstitutionalResearchEvidence } from "../src/institutionalResearchJudge.js";
+import { isInstitutionalForwardExecutionEligible } from "../src/institutionalResearchEvaluation.js";
 
 function typedSpec(overrides = {}) {
   return {
@@ -140,6 +141,26 @@ test("independent judge rejects caller-supplied performance-metric artifacts", (
     artifact: historicalArtifact({ caller_supplied_performance_metrics: true }),
     forwardEvidence: { cycle_count: 200, closed_trade_count: 7, return_percent: 3.1, max_drawdown_percent: 5, evidence_integrity_passed: true },
   }), /caller_metrics_flag_invalid/);
+});
+
+test("Stage 14 forward evidence begins only after testing and on the next completed candle", () => {
+  assert.equal(isInstitutionalForwardExecutionEligible({ testingStartedAt: "2026-08-19T20:27:47.457Z", signalClosedAt: "2026-08-19T20:00:00.000Z", executionClosedAt: "2026-08-19T21:00:00.000Z" }), false);
+  assert.equal(isInstitutionalForwardExecutionEligible({ testingStartedAt: "2026-08-19T20:27:47.457Z", signalClosedAt: "2026-08-19T21:00:00.000Z", executionClosedAt: "2026-08-19T22:00:00.000Z" }), true);
+  assert.equal(isInstitutionalForwardExecutionEligible({ testingStartedAt: "2026-08-19T20:27:47.457Z", signalClosedAt: "2026-08-19T21:00:00.000Z", executionClosedAt: "2026-08-19T21:00:00.000Z" }), false);
+});
+
+test("0020 adds only a mutable forward projection while evidence remains immutable", async () => {
+  const sql = await readFile(new URL("../migrations/0020_institutional_research_forward_portfolio.sql", import.meta.url), "utf8");
+  assert.match(sql, /CREATE TABLE IF NOT EXISTS institutional_research_forward_portfolios/);
+  assert.match(sql, /testing_started_at TEXT NOT NULL/);
+  assert.match(sql, /closed_trade_count INTEGER NOT NULL/);
+  assert.doesNotMatch(sql, /UPDATE ON institutional_research_forward_evidence/);
+});
+
+test("hourly production operation wires Stage 14 forward collection", async () => {
+  const source = await readFile(new URL("../src/index.js", import.meta.url), "utf8");
+  assert.match(source, /runScheduledInstitutionalResearchForwardEvidence/);
+  assert.match(source, /institutionalForward/);
 });
 
 test("0019 seals evaluation, forward evidence, and verdict tables against mutation", async () => {
