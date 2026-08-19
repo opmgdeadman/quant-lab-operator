@@ -242,7 +242,7 @@ test("portfolio summary derives throughput without granting Stage 13 promotion a
   const summary = await getInstitutionalResearchPortfolioSummary(env, { now: "2026-08-19T20:00:00.000Z" });
   assert.equal(summary.ok, true);
   assert.equal(summary.stage13_promotion_authority_unchanged, true);
-  assert.equal(summary.qualification_transition_enabled, false);
+  assert.equal(summary.qualification_transition_enabled, true);
   assert.equal(summary.hypothesis_count, 1);
   assert.equal(summary.throughput.open_count, 1);
   assert.equal(summary.throughput.oldest_open_age_hours, 2);

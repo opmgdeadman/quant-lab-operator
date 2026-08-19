@@ -313,7 +313,7 @@ export async function getInstitutionalResearchPortfolioSummary(env, options = {}
     paper_only: true,
     live_capital_enabled: false,
     stage13_promotion_authority_unchanged: true,
-    qualification_transition_enabled: false,
+    qualification_transition_enabled: INSTITUTIONAL_RESEARCH_POLICY.qualification_transition_enabled,
     policy: INSTITUTIONAL_RESEARCH_POLICY,
     hypothesis_count: hypotheses.length,
     hypotheses,
