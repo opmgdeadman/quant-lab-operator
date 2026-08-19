@@ -132,9 +132,12 @@ jobs:
       - name: Diagnose research failure · Stage 14 evaluation
         if: ${{ failure() }}
         run: node --test test/institutional-research-evaluation.test.js
-      - name: Diagnose Stage 14 evaluation · regime momentum
+      - name: Diagnose Stage 14 evaluation · regime momentum preregistration
         if: ${{ failure() }}
-        run: node --test --test-name-pattern="regime momentum" test/institutional-research-evaluation.test.js
+        run: node --test --test-name-pattern="regime momentum preregistration" test/institutional-research-evaluation.test.js
+      - name: Diagnose Stage 14 evaluation · regime momentum execution
+        if: ${{ failure() }}
+        run: node --test --test-name-pattern="regime momentum executes" test/institutional-research-evaluation.test.js
       - name: Diagnose Stage 14 evaluation · typed baseline
         if: ${{ failure() }}
         run: node --test --test-name-pattern="typed Stage 14" test/institutional-research-evaluation.test.js
