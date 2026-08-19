@@ -109,7 +109,7 @@ test("regime momentum preregistration is distinct, bounded, and long-regime filt
     strategy: {
       template: "regime_momentum",
       feature_set_id: "close-regime-momentum-v1",
-      parameters: { lookback: 168, regime_lookback: 24, threshold_percent: 0.5 },
+      parameters: { lookback: 48, regime_lookback: 24, threshold_percent: 0.5 },
     },
   })), /regime_momentum_lookback_order_invalid/);
 });
