@@ -39,12 +39,21 @@ jobs:
       - name: Run Worker public-surface integration tests
         if: ${{ always() }}
         run: node --test --test-name-pattern="internal status|home renders|canonical Quant Lab brand assets|public live status|professional console|legacy public proof|oauth metadata" test/worker.test.js
-      - name: Run Worker MCP integration tests
+      - name: Run Worker MCP protocol integration tests
         if: ${{ always() }}
-        run: node --test --test-name-pattern="operator mcp|operator intents|generic intent envelope|direct operator_status|startup context|read_continuation|continuation diagnostic|execute_quant_lab_intent|forbidden public input|run_validation" test/worker.test.js
-      - name: Run Worker repository-control integration tests
+        run: node --test --test-name-pattern="operator mcp|operator intents fail|generic intent envelope" test/worker.test.js
+      - name: Run Worker direct-kernel integration tests
         if: ${{ always() }}
-        run: node --test --test-name-pattern="validate_production_sha|list_github_actions_runs|engineering access|repo file|apply_repo_patch_set|create_repo_file|GitHub Actions|actions diagnostic|deploy_cloudflare_worker" test/worker.test.js
+        run: node --test --test-name-pattern="direct operator_status|read_continuation|continuation diagnostic|execute_quant_lab_intent|forbidden public input|run_validation" test/worker.test.js
+      - name: Run Worker basic repository-control integration tests
+        if: ${{ always() }}
+        run: node --test --test-name-pattern="validate_production_sha|list_github_actions_runs reports|engineering access|repo file list and read|apply_repo_patch_set|create_repo_file" test/worker.test.js
+      - name: Run Worker GitHub Actions integration tests
+        if: ${{ always() }}
+        run: node --test --test-name-pattern="GitHub Actions intents|actions diagnostic" test/worker.test.js
+      - name: Run Worker deployment-control integration tests
+        if: ${{ always() }}
+        run: node --test --test-name-pattern="deploy_cloudflare_worker" test/worker.test.js
       - name: Run Worker production-commission integration tests
         if: ${{ always() }}
         run: node --test --test-name-pattern="production" test/worker.test.js
