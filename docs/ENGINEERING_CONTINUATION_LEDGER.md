@@ -1,6 +1,6 @@
 # Quant Lab Engineering Continuation Ledger
 
-Last updated: 2026-08-06
+Last updated: 2026-08-19
 Status: ACTIVE
 Authority: Sole canonical engineering continuation ledger
 
@@ -24,24 +24,24 @@ The current Stage 13 bridge has absolute precedence because the new twelve-candi
 
 ## Active Job
 
-Job ID: `stage-13-directional-shadow-paper-research`
+Job ID: `stage-14-institutional-research-portfolio`
 Priority: P0
 State: ACTIVE
 
 Engineering objective:
 
-End the safe-idle failure mode by turning Quant Lab into an active directional paper-research system. Every bounded candidate must be able to gather real forward-paper evidence in an isolated account, take either long or short BTC-USD exposure, and compete for promotion without waiting for a prequalified champion before any trading occurs.
+Turn Quant Lab from a fixed directional candidate program into a bounded institutional research portfolio that can continuously propose, preregister, test, reject, remember, and prioritize economically grounded hypotheses without weakening independent validation or creating fallback trading activity.
 
 Required scope:
 
-- add signed long/flat/short paper positions with conservative, explicit short carry, fees, slippage, next-candle execution, and accounting reconciliation;
-- cap every candidate at 1.0x gross exposure with no leverage above paper equity, no live derivatives, and no live-capital path;
-- run each approved research candidate hourly in its own isolated shadow paper portfolio so failed candidates lose paper money and useful evidence accumulates immediately;
-- expand beyond four EMA and four RSI variants into predeclared trend, breakout, momentum, volatility, and mean-reversion families that can express both directions;
-- use longer history and multiple immutable walk-forward windows rather than relying on one 30-day split;
-- select champions using cost-adjusted historical robustness plus independent forward-paper evidence;
-- keep the canonical `paper-main` portfolio qualification-gated while exposing every shadow account, position, trade, return, drawdown, and blocker on the website;
-- preserve completed-candle-only data, no look-ahead, immutable strategy lineage, duplicate protection, and hostile judging.
+- create an immutable hypothesis registry with explicit economic mechanism, market premise, expected failure modes, research owner/function, and lineage;
+- preregister datasets, features, parameters, costs, partitions, judges, and promotion criteria before results are observed;
+- implement a bounded hypothesis lifecycle from proposed through admitted, testing, rejected, qualified, retired, or superseded without silent state changes;
+- make rejection memory durable so failed ideas cannot be recycled without materially new evidence;
+- add a research-throughput scorecard that measures useful evidence production, rejection discipline, queue age, and unresolved bottlenecks without rewarding raw experiment count;
+- add a bounded hypothesis factory that may generate new research candidates only inside declared families, dependency order, capacity limits, and independent hostile-validation rules;
+- prioritize research by expected information gain, plausible economic mechanism, independence, cost, scalability, portfolio need, and operational risk;
+- preserve the Stage 13 directional institutional authority, paper-main all-cash behavior, completed-candle-only data, no look-ahead, immutable lineage, duplicate protection, and unchanged live-capital gates while Stage 14 research capabilities are built.
 
 Permanent boundaries:
 
@@ -152,21 +152,23 @@ Permanent boundaries:
 - D1 migration `0017_operator_hardening_lifecycle.sql` adds the durable hardening incident and event ledgers. The source-controlled MCP contract is version `0.4.0` and requires a connector refresh after deployment because the advertised public schema changes from three wrapper tools to startup, bounded status, and one direct closed tool per capability.
 - The GitHub repository is intentionally public to remove private-repository Actions-minute exhaustion while retaining encrypted GitHub and Cloudflare secret storage. Current-tree inspection found no committed credential files or literal production secrets. One historical setup runbook contained personal Windows paths, local Codex identifiers, temporary-secret locations, and ChatGPT connector IDs but no secret values; the current branch now contains a public-safe replacement.
 - `test/public-repository-audit.mjs` scans every reachable Git blob and filename without printing matched values. It blocks credential patterns, private keys, credentialed URLs, secret assignments, `.env`/`.dev.vars`, key files, and credential bundles anywhere in history; it also blocks current-tree personal metadata and reports sanitized historical privacy metadata as warnings so immutable research and release SHAs are not casually rewritten. CI, Main deployment, and Recovery deployment all run this audit before other work.
+- Stage 13 authority transition is complete on production SHA `8309b9f4ee5ba473d0ed686c3916242e06d20e2f`. Exact-head CI run `32287402855` passed the full repository-history audit, Worker integration, operator capability/client-safety, Recovery, research/execution, quant-core, and Wrangler validation; Main deployment run `32288072614` and Recovery deployment run `32288285548` completed successfully and repository/production alignment was proven exact.
+- The directional institutional authority is now exclusive for canonical `paper-main` promotion and forward paper operation; the legacy eight-candidate rolling selector remains readable historical evidence but has `legacy_selection_authority=false` and no canonical promotion authority. Production forward commissioning passed with `authority_source=directional_institutional_research`, no qualified champion, no fallback decision, and explicit `blocked_no_champion`.
+- Final Stage 13 institutional commissioning replayed deterministically with exactly 4,320 candles, 12 candidates, 5 immutable windows, 60 candidate-window runs, 0 qualified, and 12 rejected. Qualified-only portfolio selection remained explicit cash; `paper-main-directional` remained reconciled at $10,000 cash with zero position, zero fills, and zero live-capital authority.
+- Live-capital qualification remains evidence-only and `not_qualified`: 8 of 14 gates passed, six gates failed, owner approval absent, and funding, credential collection, live authorization, and live order execution remain disabled. The attempted qualification-commission invocation was blocked by the current client before Quant Lab received it, so closure used the authoritative production qualification read without bypassing that boundary.
+- P1 hardening incident `operator_hardening_zP5IyWZxXWTykJ04ZhFiSr2s` is closed. Workflow dispatch now enforces workflow-specific semantics; the repaired live production path dispatched `ci.yml` with `ref=main` and no undeclared inputs, and replay run `32288459261` completed successfully on exact SHA `8309b9f4ee5ba473d0ed686c3916242e06d20e2f`. Open hardening incident count returned to zero.
 
 ## Current Action
 
-Complete the engineering-control prerequisite and then resume the institutional Stage 13 authority transition:
+Build the Stage 14 institutional research-control foundation without changing Stage 13 trading authority or evidence gates:
 
-1. validate the exact public-safe ledger head through the consolidated workflow, including the full-history repository audit, Worker tests, quant-core tests, and Main plus Recovery Wrangler validation; then apply migrations and deploy that exact SHA;
-2. verify production reports that exact SHA, MCP version `0.4.0`, deployment-scoped sessions, the direct typed capability surface, the retired generic intent envelope, capability-lifecycle enforcement, operation leases, and the durable hardening tables/capabilities;
-3. require the current ChatGPT connector to refresh after live schema verification; do not add a compatibility bridge for the stale three-tool schema;
-4. expose batch, window, verdict, rejection-reason, shadow-forward, and qualified-only portfolio evidence in the professional console rather than only the public status payload;
-5. make the new directional institutional portfolio selection the sole canonical promotion authority for `paper-main` while preserving explicit all-cash behavior when no candidate qualifies;
-6. retire the legacy eight-candidate, 720-candle rolling selection path from canonical promotion authority only after side-by-side migration proof and regression coverage;
-7. reconnect live-capital qualification and forward paper operation to the new qualified directional authority without changing any evidence gate or creating fallback activity;
-8. run adversarial validation, deploy the exact Stage 13 completion SHA, commission production, prove repository/deployment alignment, and close Stage 13 with exact verdict counts and unresolved risks.
+1. inspect the current research, directional, judge, selection, D1 migration, console, and operator-capability surfaces and define the smallest source-controlled Stage 14 contract that can own a hypothesis registry, preregistration records, lifecycle transitions, rejection memory, throughput metrics, and bounded hypothesis-factory admission;
+2. implement immutable D1 lineage and bounded operator capabilities for the registry and lifecycle, with fail-closed schema validation and no arbitrary SQL or shell surface;
+3. add adversarial regression coverage proving hypotheses cannot change preregistered evidence boundaries after results, rejected ideas cannot silently recycle, and factory output cannot bypass independent judging or Stage 13 promotion authority;
+4. expose truthful Stage 14 research-portfolio state and bottlenecks in the professional console without implying profitability or live-capital readiness;
+5. validate the exact implementation SHA through consolidated CI, apply migrations, deploy Main and Recovery, verify production alignment, commission the new research-control surface, and establish the next highest-information Stage 14 research action.
 
-The engineering-control prerequisite is not complete until its exact head is validated, deployed, and live-verified. Preserve active hourly shadow portfolios throughout. Do not promote a strategy merely to create activity. Do not weaken historical or forward gates after seeing the production results.
+Stage 13 remains the production trading/research authority while Stage 14 is built. Do not alter the directional institutional judge, qualified-only selection, paper-main safe-idle behavior, or live-capital qualification thresholds to create activity.
 
 ## Steady-State Operating Gate
 
@@ -196,8 +198,8 @@ Quant Lab remains healthy only while:
 10. `stage-10-bounded-historical-bootstrap` — COMPLETE
 11. `stage-11-professional-quant-console` — COMPLETE
 12. `stage-12-canonical-brand-identity` — COMPLETE
-13. `stage-13-directional-shadow-paper-research` — ACTIVE
-14. `stage-14-institutional-research-portfolio` — PLANNED; hypothesis registry, preregistration, lifecycle, rejection memory, research-throughput scorecard, and bounded hypothesis factory
+13. `stage-13-directional-shadow-paper-research` — COMPLETE
+14. `stage-14-institutional-research-portfolio` — ACTIVE; hypothesis registry, preregistration, lifecycle, rejection memory, research-throughput scorecard, and bounded hypothesis factory
 15. `stage-15-multi-market-data-and-feature-platform` — PLANNED; justified market/timeframe expansion, feature lineage, provider reconciliation, regime evidence, and data-quality economics
 16. `stage-16-portfolio-execution-and-independent-risk` — PLANNED; correlation-aware paper portfolios, execution realism, capacity, risk veto, decay detection, and anomaly response
 17. `stage-17-autonomous-institutional-control-plane` — PLANNED; hourly CIO allocation across research, validation, engineering, portfolio, risk, and incident workstreams with durable metrics
