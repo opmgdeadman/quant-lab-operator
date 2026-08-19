@@ -24,13 +24,13 @@ function baseHypothesis(overrides = {}) {
     expected_failure_modes: ["range-bound chop", "cost sensitivity", "regime reversal"],
     research_function: "alpha_research",
     preregistration: {
-      dataset_id: "btc-usd-1h-completed-v1",
-      feature_spec: "volatility expansion plus directional persistence; no post-result feature changes",
-      parameter_bounds: "all thresholds preregistered before evidence execution",
-      cost_model: "Stage 13 base, doubled, and tripled fees/slippage/carry",
-      partition_plan: "immutable walk-forward chronology with untouched test windows",
-      judge_id: "stage13-directional-independent-judge",
-      promotion_criteria: "no direct promotion; independent judge integration required",
+      spec_version: 2,
+      dataset_id: "btc-usd-1h-completed-4320-v1",
+      strategy: { template: "ema_trend", feature_set_id: "close-ema-v1", parameters: { fast: 12, slow: 36 } },
+      walk_forward_policy_id: "institutional-walk-forward-v1",
+      cost_model_id: "institutional-cost-model-v1",
+      judge_policy_id: "institutional-independent-judge-v1",
+      evidence_integrity_policy_id: "institutional-evidence-integrity-v1",
     },
     ...overrides,
   };
@@ -131,19 +131,19 @@ test("0018 creates append-only hypothesis, lifecycle, rejection, and factory evi
   assert.match(sql, /interval TEXT NOT NULL CHECK \(interval = '1h'\)/);
 });
 
-test("preregistration is strict and rejects post-hoc unknown fields", () => {
+test("preregistration is typed and rejects post-hoc unknown fields", () => {
   assert.equal(validateHypothesisInput(baseHypothesis()).market, "BTC-USD");
   assert.throws(() => validateHypothesisInput(baseHypothesis({
     preregistration: { ...baseHypothesis().preregistration, rescue_threshold_after_results: "not allowed" },
-  })), /institutional_preregistration_unknown_field/);
+  })), /institutional_research_spec_shape_invalid/);
   const missing = baseHypothesis();
-  delete missing.preregistration.judge_id;
-  assert.throws(() => validateHypothesisInput(missing), /institutional_preregistration_judge_id_required/);
+  delete missing.preregistration.judge_policy_id;
+  assert.throws(() => validateHypothesisInput(missing), /institutional_research_spec_shape_invalid/);
 });
 
-test("qualification is fail-closed until independent judge integration exists", () => {
-  assert.equal(INSTITUTIONAL_RESEARCH_POLICY.qualification_transition_enabled, false);
-  assert.throws(() => assertLifecycleTransition("testing", "qualified"), /institutional_qualification_requires_independent_judge_integration/);
+test("qualification transition exists only behind the independent verdict gate", () => {
+  assert.equal(INSTITUTIONAL_RESEARCH_POLICY.qualification_transition_enabled, true);
+  assert.equal(assertLifecycleTransition("testing", "qualified"), true);
   assert.equal(assertLifecycleTransition("proposed", "admitted"), true);
   assert.throws(() => assertLifecycleTransition("rejected", "admitted"), /institutional_hypothesis_transition_not_allowed/);
 });
@@ -176,6 +176,18 @@ test("registration is immutable by id and lifecycle rejection is terminal durabl
   await assert.rejects(
     advanceInstitutionalHypothesis(env, { hypothesis_id: first.hypothesis.id, target_state: "admitted", reason_codes: ["retry"] }),
     /institutional_hypothesis_transition_not_allowed/,
+  );
+});
+
+test("qualified lifecycle transition fails without a sealed independent verdict", async () => {
+  const DB = fakeDb();
+  const env = { DB };
+  const registered = await registerInstitutionalHypothesis(env, baseHypothesis(), { now: "2026-08-19T18:00:00.000Z" });
+  await advanceInstitutionalHypothesis(env, { hypothesis_id: registered.hypothesis.id, target_state: "admitted", reason_codes: ["admission_gate_passed"] }, { now: "2026-08-19T19:00:00.000Z" });
+  await advanceInstitutionalHypothesis(env, { hypothesis_id: registered.hypothesis.id, target_state: "testing", reason_codes: ["research_started"] }, { now: "2026-08-19T20:00:00.000Z" });
+  await assert.rejects(
+    advanceInstitutionalHypothesis(env, { hypothesis_id: registered.hypothesis.id, target_state: "qualified", reason_codes: ["attempted_bypass"] }, { now: "2026-08-19T21:00:00.000Z" }),
+    /institutional_qualification_requires_sealed_independent_verdict/,
   );
 });
 
