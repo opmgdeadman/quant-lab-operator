@@ -407,7 +407,7 @@ export const capabilityDirectory = [
     output_schema: objectSchema({ ok: { type: "boolean" } }, ["ok"]),
     external_systems: ["d1"],
     risk_gates: ["auth_required", "session_required", "idempotency_required", "independent_judge", "sealed_evaluator_artifact_required", "append_only_forward_evidence", "no_caller_metrics", "stage13_authority_unchanged", "paper_only", "no_live_capital"],
-    tests: ["independent judge rejects weak sealed history", "historically qualified evidence awaits forward proof", "qualified verdict requires sealed historical and forward evidence"],
+    tests: ["independent judge rejects weak sealed history", "historically qualified evidence awaits forward proof", "qualified verdict requires sealed historical and forward evidence", "repeated judge operation replays the same sealed evidence hash without duplicate verdict effects"],
   }),
   capability({
     id: "live_qualification.summary_read",
