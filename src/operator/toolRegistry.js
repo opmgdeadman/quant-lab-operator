@@ -35,8 +35,9 @@ export function publicTools(publicStatusSchema, startupContextSchema, executeInt
 }
 
 export function buildDirectCapabilityTool(capability, executeIntentOutputSchema) {
-  const capabilityProperties = capability.input_schema?.properties || {};
-  const capabilityRequired = capability.input_schema?.required || [];
+  const publicInputSchema = publicCapabilityInputSchema(capability);
+  const capabilityProperties = publicInputSchema?.properties || {};
+  const capabilityRequired = publicInputSchema?.required || [];
   return {
     name: capability.intent,
     title: capability.title,
@@ -63,5 +64,20 @@ export function buildDirectCapabilityTool(capability, executeIntentOutputSchema)
     ]),
     outputSchema: executeIntentOutputSchema,
   };
+}
+
+export function publicCapabilityInputSchema(capability) {
+  if (capability.intent !== "register_institutional_hypothesis") {
+    return capability.input_schema;
+  }
+
+  const schema = structuredClone(capability.input_schema);
+  const parameters = schema?.properties?.hypothesis?.properties?.preregistration?.properties?.strategy?.properties?.parameters;
+  if (parameters) {
+    parameters.properties = {};
+    parameters.required = [];
+    parameters.additionalProperties = true;
+  }
+  return schema;
 }
 

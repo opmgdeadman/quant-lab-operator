@@ -12,6 +12,7 @@ import {
 import { findDispatchedRun, handlers, validateHardeningTransition } from "../src/operator/handlers/controlPlane.js";
 import { buildActionClosure, classifyStructuredFailure, parseContinuationMetadata } from "../src/operator/executionKernel.js";
 import { operationLeaseMs } from "../src/operator/receipts.js";
+import { buildDirectCapabilityTool } from "../src/operator/toolRegistry.js";
 
 test("every supported intent exists in capability directory with lifecycle declaration and handler", () => {
   const declarationIds = new Set(lifecycleDeclarations.map((item) => item.id));
@@ -68,6 +69,14 @@ test("institutional hypothesis tool permits template-specific parameter shapes",
   for (const name of ["fast", "slow", "lookback", "threshold_percent", "period", "multiplier", "lower", "upper", "exit_lower", "exit_upper", "deviations"]) {
     assert.ok(parameters.properties[name]);
   }
+
+  const publicTool = buildDirectCapabilityTool(registration, { type: "object" });
+  const publicParameters = publicTool.inputSchema.properties.hypothesis.properties.preregistration.properties.strategy.properties.parameters;
+  assert.deepEqual(publicParameters.required, []);
+  assert.deepEqual(publicParameters.properties, {});
+  assert.equal(publicParameters.additionalProperties, true);
+  assert.deepEqual(parameters.required, []);
+  assert.equal(parameters.additionalProperties, false);
 });
 
 test("capability lifecycle contains mandatory sequence", () => {
