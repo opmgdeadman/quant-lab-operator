@@ -117,54 +117,6 @@ jobs:
           test/paper-ledger.test.js
           test/rolling-research.test.js
           test/strategy-factory.test.js
-      - name: Diagnose research failure · directional core
-        if: ${{ failure() }}
-        run: >-
-          node --test
-          test/directional-backtest.test.js
-          test/directional-institutional-research.test.js
-          test/directional-main.test.js
-          test/directional-research.test.js
-          test/directional-shadow.test.js
-      - name: Diagnose research failure · Stage 14 portfolio
-        if: ${{ failure() }}
-        run: node --test test/institutional-research-portfolio.test.js
-      - name: Diagnose research failure · Stage 14 evaluation
-        if: ${{ failure() }}
-        run: node --test test/institutional-research-evaluation.test.js
-      - name: Diagnose Stage 14 evaluation · regime momentum preregistration
-        if: ${{ failure() }}
-        run: node --test --test-name-pattern="regime momentum preregistration" test/institutional-research-evaluation.test.js
-      - name: Diagnose Stage 14 evaluation · regime momentum execution
-        if: ${{ failure() }}
-        run: node --test --test-name-pattern="regime momentum executes" test/institutional-research-evaluation.test.js
-      - name: Diagnose Stage 14 evaluation · typed baseline
-        if: ${{ failure() }}
-        run: node --test --test-name-pattern="typed Stage 14" test/institutional-research-evaluation.test.js
-      - name: Diagnose Stage 14 evaluation · judge
-        if: ${{ failure() }}
-        run: node --test --test-name-pattern="independent judge" test/institutional-research-evaluation.test.js
-      - name: Diagnose Stage 14 evaluation · forward
-        if: ${{ failure() }}
-        run: node --test --test-name-pattern="forward evidence|hourly production|0019|0020" test/institutional-research-evaluation.test.js
-      - name: Diagnose research failure · execution
-        if: ${{ failure() }}
-        run: >-
-          node --test
-          test/forward-paper.test.js
-          test/live-qualification.test.js
-          test/paper-ledger.test.js
-      - name: Diagnose research failure · legacy research
-        if: ${{ failure() }}
-        run: >-
-          node --test
-          test/baseline-bench.test.js
-          test/champion-selection.test.js
-          test/historical-bootstrap.test.js
-          test/hostile-judge.test.js
-          test/market-data.test.js
-          test/rolling-research.test.js
-          test/strategy-factory.test.js
       - name: Run quant core tests
         if: ${{ always() }}
         run: python -m pytest
