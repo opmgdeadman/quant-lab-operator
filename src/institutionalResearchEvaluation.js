@@ -303,6 +303,9 @@ export async function getInstitutionalEvaluationSummary(env, hypothesisId = null
   const verdicts = hypothesisId
     ? (await env.DB.prepare(`SELECT * FROM institutional_research_verdicts WHERE hypothesis_id = ? ORDER BY sequence DESC`).bind(hypothesisId).all()).results || []
     : (await env.DB.prepare(`SELECT * FROM institutional_research_verdicts ORDER BY created_at DESC LIMIT 200`).all()).results || [];
+  const forwardEvidenceRows = hypothesisId ? await readForwardEvidence(env, hypothesisId) : [];
+  const forwardPortfolio = hypothesisId ? await readForwardPortfolio(env, hypothesisId) : null;
+  const forwardMetrics = aggregateForwardEvidence(forwardEvidenceRows);
   return {
     ok: true,
     paper_only: true,
@@ -310,6 +313,10 @@ export async function getInstitutionalEvaluationSummary(env, hypothesisId = null
     stage13_promotion_authority_changed: false,
     evaluation_count: evaluations.length,
     verdict_count: verdicts.length,
+    forward_evidence_count: forwardEvidenceRows.length,
+    forward_metrics: forwardMetrics,
+    forward_portfolio: forwardPortfolio,
+    latest_forward_evidence: forwardEvidenceRows.at(-1) || null,
     evaluations: evaluations.map(decodeEvaluationRow),
     verdicts: verdicts.map(decodeVerdictRow),
   };

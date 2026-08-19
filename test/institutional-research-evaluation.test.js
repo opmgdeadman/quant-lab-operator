@@ -161,6 +161,9 @@ test("hourly production operation wires Stage 14 forward collection", async () =
   const source = await readFile(new URL("../src/index.js", import.meta.url), "utf8");
   assert.match(source, /runScheduledInstitutionalResearchForwardEvidence/);
   assert.match(source, /institutionalForward/);
+  const evaluationSource = await readFile(new URL("../src/institutionalResearchEvaluation.js", import.meta.url), "utf8");
+  assert.match(evaluationSource, /forward_evidence_count/);
+  assert.match(evaluationSource, /forward_portfolio/);
 });
 
 test("0019 seals evaluation, forward evidence, and verdict tables against mutation", async () => {
