@@ -126,12 +126,12 @@ jobs:
           test/directional-main.test.js
           test/directional-research.test.js
           test/directional-shadow.test.js
-      - name: Diagnose research failure · Stage 14
+      - name: Diagnose research failure · Stage 14 portfolio
         if: ${{ failure() }}
-        run: >-
-          node --test
-          test/institutional-research-portfolio.test.js
-          test/institutional-research-evaluation.test.js
+        run: node --test test/institutional-research-portfolio.test.js
+      - name: Diagnose research failure · Stage 14 evaluation
+        if: ${{ failure() }}
+        run: node --test test/institutional-research-evaluation.test.js
       - name: Diagnose research failure · execution
         if: ${{ failure() }}
         run: >-
