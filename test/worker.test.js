@@ -95,6 +95,23 @@ test("public live status is safe and does not require operator credentials", asy
   assert.equal(body.workerStatus, "online");
 });
 
+test("professional console exposes truthful Stage 14 research portfolio boundary", () => {
+  const body = renderProfessionalConsole({
+    institutionalResearchPortfolio: {
+      hypothesis_count: 0,
+      qualification_transition_enabled: false,
+      rejection_memory: [],
+      hypotheses: [],
+      throughput: { open_count: 0, useful_evidence_count: 0, oldest_open_age_hours: 0 },
+    },
+  });
+
+  assert.match(body, /Institutional research portfolio/);
+  assert.match(body, /No Stage 14 hypotheses are registered yet/);
+  assert.match(body, /Qualification remains disabled until independent judge integration/);
+  assert.match(body, /Stage 13 remains the sole production promotion authority/);
+});
+
 test("professional console escapes runtime identifiers by default", () => {
   const body = renderProfessionalConsole({
     forwardOperation: {

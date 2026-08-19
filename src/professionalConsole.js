@@ -7,7 +7,7 @@ export function renderProfessionalConsole(model = {}) {
     baselineBench = null, hostileJudge = null, strategyFactory = null,
     championSelection = null, forwardOperation = null, liveQualification = null,
     rollingResearch = null, historicalBootstrap = null, directionalShadow = null,
-    directionalResearch = null,
+    directionalResearch = null, institutionalResearchPortfolio = null,
   } = model;
 
   const forward = forwardOperation?.latest_cycle || null;
@@ -74,6 +74,16 @@ export function renderProfessionalConsole(model = {}) {
   const institutionalWindows = (directionalResearch?.windows || []).map((entry) =>
     listRow("clock", `Window ${entry.ordinal}`, `Train ${date(entry.train_start_closed_at)} to ${date(entry.train_end_closed_at)} · Validate ${date(entry.validation_start_closed_at)} to ${date(entry.validation_end_closed_at)} · Test ${date(entry.test_start_closed_at)} to ${date(entry.test_end_closed_at)}`)
   ).join("");
+  const researchPortfolioHypotheses = institutionalResearchPortfolio?.hypotheses || [];
+  const researchThroughput = institutionalResearchPortfolio?.throughput || {};
+  const researchPortfolioRows = researchPortfolioHypotheses.map((entry) => `<tr>
+    <td><div class="strategy-name">${esc(entry.title || entry.id)}</div><div class="strategy-id">${esc(entry.id)}</div></td>
+    <td><span class="family">${esc(human(entry.family))}</span></td>
+    <td>${badge(entry.state)}</td>
+    <td>${esc(human(entry.research_function))}</td>
+    <td class="numeric">${integer(entry.state_sequence)}</td>
+    <td><details><summary>View preregistration</summary><div class="reasons"><span class="reason">Dataset: ${esc(entry.preregistration?.dataset_id || "—")}</span><span class="reason">Judge: ${esc(entry.preregistration?.judge_id || "—")}</span><span class="reason">Lineage: ${esc(entry.lineage_parent_id || "root")}</span></div></details></td>
+  </tr>`).join("");
 
   return `<!doctype html>
 <html lang="en">
@@ -178,7 +188,9 @@ export function renderProfessionalConsole(model = {}) {
           ${research("Hostile evidence gates", "Activity, return, drawdown, integrity, and cost-stress gates.", [["Qualified", hostileJudge?.qualified_count],["Rejected", hostileJudge?.rejected_count]])}
           ${research("Directional shadow accounts", "Twelve isolated 1× long/short paper competitors across six strategy families.", [["Candidates", directionalShadow?.candidate_count],["Latest trades", shadowCycle?.trade_count]])}
           ${research("Institutional authority", "The 4,320-candle directional judge is the sole canonical promotion source.", [["Windows", directionalResearch?.window_count],["Persisted runs", directionalResearch?.run_count],["Qualified", directionalResearch?.qualified_count],["Rejected", directionalResearch?.rejected_count]])}
+          ${research("Institutional research portfolio", "Preregistered hypotheses, append-only lifecycle evidence, durable rejection memory, and bounded factory admission. Qualification remains locked until independent judge integration.", [["Hypotheses", institutionalResearchPortfolio?.hypothesis_count ?? 0],["Open", researchThroughput?.open_count ?? 0],["Useful evidence", researchThroughput?.useful_evidence_count ?? 0],["Rejections", institutionalResearchPortfolio?.rejection_memory?.length ?? 0]])}
         </div>
+        <article class="panel table-panel"><div class="panel-head"><div class="panel-title"><b>Institutional research portfolio</b><span>Stage 14 registry. Preregistration is immutable; rejection is durable; Stage 13 remains the sole production promotion authority.</span></div>${badge(institutionalResearchPortfolio?.qualification_transition_enabled ? "judge_wired" : "qualification_locked")}</div><div class="list">${listRow("shield", "Independent qualification boundary", institutionalResearchPortfolio?.qualification_transition_enabled ? "Independent judge integration is enabled." : "Qualification remains disabled until independent judge integration is explicitly wired and validated.")}${listRow("cycle", "Research throughput", `${researchThroughput?.useful_evidence_count ?? 0} useful evidence outcomes · ${researchThroughput?.open_count ?? 0} open · ${format(researchThroughput?.oldest_open_age_hours ?? 0, 1)}h oldest open queue age`)}${listRow("alert", "Rejected hypothesis memory", `${institutionalResearchPortfolio?.rejection_memory?.length ?? 0} durable rejections · recycled ideas require materially new evidence`)}</div><div class="table-scroll"><table><thead><tr><th>Hypothesis</th><th>Family</th><th>State</th><th>Function</th><th>Events</th><th>Evidence contract</th></tr></thead><tbody>${researchPortfolioRows || '<tr><td colspan="6">No Stage 14 hypotheses are registered yet. The empty registry is a valid starting state.</td></tr>'}</tbody></table></div></article>
         <article class="panel table-panel"><div class="panel-head"><div class="panel-title"><b>Institutional directional verdicts</b><span>Historical robustness, cost stress, regime, fragility, evidence integrity, and independent shadow-forward gates.</span></div>${badge(institutionalSelection?.state || directionalResearch?.state || "not_run")}</div><div class="table-scroll"><table><thead><tr><th>Candidate</th><th>Verdict</th><th>Median test return</th><th>Shadow return</th><th>Shadow cycles</th><th>Rejection evidence</th></tr></thead><tbody>${institutionalRows || '<tr><td colspan="6">No institutional verdict batch is available.</td></tr>'}</tbody></table></div></article>
         <article class="panel table-panel"><div class="panel-head"><div class="panel-title"><b>Immutable walk-forward windows</b><span>Five chronological train, validation, and untouched test windows over exactly 4,320 candles.</span></div><span class="family">${esc(directionalResearch?.batch_id || "not commissioned")}</span></div><div class="list">${institutionalWindows || listRow("alert", "Window evidence", "No window evidence available")}</div></article>
         <article class="panel table-panel"><div class="panel-head"><div class="panel-title"><b>Live shadow-paper competition</b><span>Every balance is virtual. Long and short exposure is capped at 1× entry equity.</span></div>${badge(shadowCycle?.state || "initializing")}</div><div class="table-scroll"><table><thead><tr><th>Candidate</th><th>Family</th><th>Exposure</th><th>Virtual equity</th><th>Return</th><th>Drawdown</th><th>Cycles</th></tr></thead><tbody>${shadowRows || '<tr><td colspan="7">Shadow portfolios are initializing.</td></tr>'}</tbody></table></div></article>

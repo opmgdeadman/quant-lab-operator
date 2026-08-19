@@ -10,6 +10,7 @@ import { getRollingResearchSummary, runScheduledRollingResearch } from "./rollin
 import { getHistoricalBootstrapSummary, runScheduledHistoricalBootstrap } from "./historicalBootstrap.js";
 import { getDirectionalShadowSummary, runScheduledDirectionalShadow } from "./directionalShadow.js";
 import { getDirectionalInstitutionalResearchSummary, runProductionDirectionalInstitutionalResearch } from "./directionalInstitutionalResearch.js";
+import { getInstitutionalResearchPortfolioSummary } from "./institutionalResearchPortfolio.js";
 import { renderProfessionalConsole } from "./professionalConsole.js";
 import { BRAND_ASSETS as CANONICAL_BRAND_ASSETS, BRAND_MANIFEST } from "./brandAssetsCanonical.js";
 import { executeQuantLabIntent, executionKernelInfo } from "./operator/executionKernel.js";
@@ -764,7 +765,7 @@ function constantTimeBytesEqual(left, right) {
 }
 
 async function renderHome(env, siteOrigin) {
-  const [latest, candles, health, paperAccount, baselineBench, hostileJudge, strategyFactory, championSelection, forwardOperation, liveQualification, rollingResearch, historicalBootstrap, directionalShadow, directionalResearch] = await Promise.all([
+  const [latest, candles, health, paperAccount, baselineBench, hostileJudge, strategyFactory, championSelection, forwardOperation, liveQualification, rollingResearch, historicalBootstrap, directionalShadow, directionalResearch, institutionalResearchPortfolio] = await Promise.all([
     latestCandleForHome(env),
     recentCandlesForHome(env),
     marketDataHealthForHome(env),
@@ -779,6 +780,7 @@ async function renderHome(env, siteOrigin) {
     historicalBootstrapForHome(env),
     directionalShadowForHome(env),
     directionalResearchForHome(env),
+    institutionalResearchPortfolioForHome(env),
   ]);
   return renderProfessionalConsole({
     siteOrigin,
@@ -799,6 +801,7 @@ async function renderHome(env, siteOrigin) {
     historicalBootstrap,
     directionalShadow,
     directionalResearch,
+    institutionalResearchPortfolio,
   });
 }
 
@@ -1213,6 +1216,14 @@ async function directionalShadowForHome(env) {
 async function directionalResearchForHome(env) {
   try {
     return await getDirectionalInstitutionalResearchSummary(env);
+  } catch {
+    return null;
+  }
+}
+
+async function institutionalResearchPortfolioForHome(env) {
+  try {
+    return await getInstitutionalResearchPortfolioSummary(env);
   } catch {
     return null;
   }

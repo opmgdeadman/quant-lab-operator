@@ -797,7 +797,7 @@ export async function runValidation(inputs, context) {
         source: row.source,
       }));
       const latest = candles.at(-1) || null;
-      const [paperAccount, baselineBench, hostileJudge, strategyFactory, championSelection, forwardOperation, liveQualification, rollingResearch, historicalBootstrap] = await Promise.all([
+      const [paperAccount, baselineBench, hostileJudge, strategyFactory, championSelection, forwardOperation, liveQualification, rollingResearch, historicalBootstrap, institutionalResearchPortfolio] = await Promise.all([
         getPaperAccountSummary(context.env),
         getBaselineBenchSummary(context.env),
         getHostileJudgeSummary(context.env),
@@ -807,6 +807,7 @@ export async function runValidation(inputs, context) {
         getLiveQualificationSummary(context.env),
         getRollingResearchSummary(context.env),
         getHistoricalBootstrapSummary(context.env),
+        getInstitutionalResearchPortfolioSummary(context.env),
       ]);
       const html = renderProfessionalConsole({
         environment: context.env.ENVIRONMENT || "unknown",
@@ -828,6 +829,7 @@ export async function runValidation(inputs, context) {
         liveQualification,
         rollingResearch,
         historicalBootstrap,
+        institutionalResearchPortfolio,
       });
       const checks = {
         professional_title: html.includes("Autonomous Research Console"),
@@ -839,6 +841,8 @@ export async function runValidation(inputs, context) {
         paper_only_boundary: html.includes("PAPER ONLY") && html.includes("Live orders disabled"),
         legacy_definition_grid_removed: !html.includes("<dl>") && !html.includes("max-width: 760px"),
         runtime_data_escaped: !html.includes("<img src=x onerror="),
+        stage14_research_portfolio: html.includes("Institutional research portfolio") && html.includes("No Stage 14 hypotheses are registered yet"),
+        stage14_qualification_boundary: html.includes("Qualification remains disabled until independent judge integration") && html.includes("Stage 13 remains the sole production promotion authority"),
       };
       const passed = Object.values(checks).every(Boolean);
       return {
