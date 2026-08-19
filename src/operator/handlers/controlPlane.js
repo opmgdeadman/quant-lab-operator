@@ -1065,14 +1065,28 @@ async function trigger_github_workflow(inputs, context) {
   }
   const config = githubConfig(context.env);
   const ref = inputs.ref || config.branch;
+  if (isExactSha(ref)) {
+    return { ok: false, status: "workflow_dispatch_ref_must_be_branch_or_tag" };
+  }
   const workflowInputs = {};
+  let expectedHeadSha;
   if (inputs.deploy_sha) {
     if (!isExactSha(inputs.deploy_sha)) {
       return { ok: false, status: "invalid_exact_sha" };
     }
-    workflowInputs.deploy_sha = inputs.deploy_sha;
+    if (inputs.workflow_id === "ci.yml") {
+      const refHeadSha = await resolveGitRefSha(context.env, ref);
+      if (refHeadSha !== inputs.deploy_sha) {
+        return { ok: false, status: "workflow_dispatch_ref_sha_mismatch", ref, expected_sha: inputs.deploy_sha, ref_sha: refHeadSha };
+      }
+      expectedHeadSha = inputs.deploy_sha;
+    } else {
+      workflowInputs.deploy_sha = inputs.deploy_sha;
+      expectedHeadSha = inputs.deploy_sha;
+    }
+  } else {
+    expectedHeadSha = await resolveGitRefSha(context.env, ref);
   }
-  const expectedHeadSha = inputs.deploy_sha || await resolveGitRefSha(context.env, ref);
   return reconcileWorkflowDispatch(context.env, {
     workflowId: inputs.workflow_id,
     ref,

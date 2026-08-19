@@ -769,6 +769,39 @@ test("actions diagnostic dispatch request shape", async () => {
   assert.deepEqual(JSON.parse(dispatchCall.options.body), { ref: "main", inputs: {} });
 });
 
+test("GitHub Actions intents enforce CI dispatch ref and input contract", async () => {
+  const env = { ...createEnv(), GITHUB_TOKEN: "server-side-test-token" };
+  const exactSha = "c".repeat(40);
+  const calls = [];
+  const restore = mockFetch(async (url, options) => {
+    calls.push({ url, options });
+    if (url.endsWith("/commits/main")) {
+      return jsonResponse({ sha: exactSha });
+    }
+    if (url.includes("/actions/workflows/ci.yml/dispatches")) {
+      assert.deepEqual(JSON.parse(options.body), { ref: "main", inputs: {} });
+      return new Response(null, { status: 204 });
+    }
+    if (url.includes("/actions/workflows/ci.yml/runs")) {
+      return jsonResponse({ workflow_runs: [{ id: 401, name: "CI", workflow_id: 7, status: "queued", conclusion: null, event: "workflow_dispatch", head_branch: "main", head_sha: exactSha, created_at: new Date().toISOString(), updated_at: new Date().toISOString(), html_url: "https://github.com/opmgdeadman/quant-lab-operator/actions/runs/401" }] });
+    }
+    throw new Error(`unexpected fetch URL: ${url}`);
+  });
+  try {
+    const rawShaRef = await executeIntent(env, "op-ci-raw-sha-ref", "trigger_github_workflow", { workflow_id: "ci.yml", ref: exactSha });
+    const mismatch = await executeIntent(env, "op-ci-sha-mismatch", "trigger_github_workflow", { workflow_id: "ci.yml", ref: "main", deploy_sha: "d".repeat(40) });
+    const valid = await executeIntent(env, "op-ci-exact-head", "trigger_github_workflow", { workflow_id: "ci.yml", ref: "main", deploy_sha: exactSha });
+
+    assert.equal(rawShaRef.result.structuredContent.result.status, "workflow_dispatch_ref_must_be_branch_or_tag");
+    assert.equal(mismatch.result.structuredContent.result.status, "workflow_dispatch_ref_sha_mismatch");
+    assert.equal(valid.result.structuredContent.result.status, "dispatched");
+    const dispatchCall = calls.find((call) => call.url.includes("/actions/workflows/ci.yml/dispatches"));
+    assert.deepEqual(JSON.parse(dispatchCall.options.body), { ref: "main", inputs: {} });
+  } finally {
+    restore();
+  }
+});
+
 test("deploy_cloudflare_worker and apply_d1_migrations dispatch fixed workflow with exact SHA only", async () => {
   const env = { ...createEnv(), GITHUB_TOKEN: "server-side-test-token" };
   const exactSha = "b".repeat(40);
