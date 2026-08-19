@@ -111,6 +111,7 @@ jobs:
           test/historical-bootstrap.test.js
           test/hostile-judge.test.js
           test/institutional-research-portfolio.test.js
+          test/institutional-research-evaluation.test.js
           test/live-qualification.test.js
           test/market-data.test.js
           test/paper-ledger.test.js
