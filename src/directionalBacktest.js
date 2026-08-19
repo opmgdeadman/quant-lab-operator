@@ -93,6 +93,20 @@ export function compileDirectionalSignal(strategy, candles) {
     };
   }
 
+  if (family === "regime_momentum") {
+    const lookback = integer(parameters.lookback, "lookback");
+    const regimeLookback = integer(parameters.regime_lookback, "regime_lookback");
+    const threshold = finite(parameters.threshold_percent, "threshold_percent") / 100;
+    return (executionIndex, currentExposure = 0) => {
+      const current = clamp(currentExposure);
+      if (executionIndex < regimeLookback + 1) return current;
+      const signalIndex = executionIndex - 1;
+      const momentumReturn = (closes[signalIndex] / closes[signalIndex - lookback]) - 1;
+      const regimeReturn = (closes[signalIndex] / closes[signalIndex - regimeLookback]) - 1;
+      return regimeReturn > 0 && momentumReturn > threshold ? 1 : 0;
+    };
+  }
+
   if (family === "volatility_breakout") {
     const period = integer(parameters.period, "period");
     const multiplier = finite(parameters.multiplier, "multiplier");
