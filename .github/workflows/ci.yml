@@ -42,15 +42,30 @@ jobs:
       - name: Run Worker MCP protocol integration tests
         if: ${{ always() }}
         run: node --test --test-name-pattern="operator mcp|operator intents fail|generic intent envelope" test/worker.test.js
-      - name: Run Worker direct-kernel integration tests
+      - name: Run direct operator-status integration test
         if: ${{ always() }}
-        run: node --test --test-name-pattern="direct operator_status|read_continuation|continuation diagnostic|execute_quant_lab_intent|forbidden public input|run_validation" test/worker.test.js
+        run: node --test --test-name-pattern="direct operator_status" test/worker.test.js
+      - name: Run continuation integration tests
+        if: ${{ always() }}
+        run: node --test --test-name-pattern="read_continuation|continuation diagnostic" test/worker.test.js
+      - name: Run idempotency integration test
+        if: ${{ always() }}
+        run: node --test --test-name-pattern="execute_quant_lab_intent" test/worker.test.js
+      - name: Run client-input integration test
+        if: ${{ always() }}
+        run: node --test --test-name-pattern="forbidden public input" test/worker.test.js
+      - name: Run validation-boundary integration test
+        if: ${{ always() }}
+        run: node --test --test-name-pattern="run_validation" test/worker.test.js
       - name: Run Worker basic repository-control integration tests
         if: ${{ always() }}
         run: node --test --test-name-pattern="validate_production_sha|list_github_actions_runs reports|engineering access|repo file list and read|apply_repo_patch_set|create_repo_file" test/worker.test.js
-      - name: Run Worker GitHub Actions integration tests
+      - name: Run GitHub Actions primary integration test
         if: ${{ always() }}
-        run: node --test --test-name-pattern="GitHub Actions intents|actions diagnostic" test/worker.test.js
+        run: node --test --test-name-pattern="GitHub Actions intents" test/worker.test.js
+      - name: Run GitHub Actions diagnostic integration tests
+        if: ${{ always() }}
+        run: node --test --test-name-pattern="actions diagnostic" test/worker.test.js
       - name: Run Worker deployment-control integration tests
         if: ${{ always() }}
         run: node --test --test-name-pattern="deploy_cloudflare_worker" test/worker.test.js
