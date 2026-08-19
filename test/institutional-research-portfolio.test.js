@@ -240,4 +240,4 @@ test("portfolio summary derives throughput without granting Stage 13 promotion a
   ], "2026-08-19T20:00:00.000Z");
   assert.equal(pure.useful_evidence_count, 1);
   assert.equal(pure.rejection_rate_percent, 100);
-}
+});
