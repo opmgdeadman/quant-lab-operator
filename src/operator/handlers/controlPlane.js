@@ -10,6 +10,7 @@ import { getChampionSelectionSummary, runProductionChampionSelection } from "../
 import { commissionForwardPaperOperation, getForwardOperationSummary, runProductionForwardPaperCycle } from "../../forwardPaper.js";
 import { getDirectionalShadowSummary, runProductionDirectionalShadowCycle } from "../../directionalShadow.js";
 import { getDirectionalInstitutionalResearchSummary, runProductionDirectionalInstitutionalResearch } from "../../directionalInstitutionalResearch.js";
+import { getInstitutionalResearchPortfolioSummary, registerInstitutionalHypothesis, advanceInstitutionalHypothesis } from "../../institutionalResearchPortfolio.js";
 import { getLiveQualificationSummary, runProductionLiveQualification } from "../../liveQualification.js";
 import { getRollingResearchSummary, runProductionRollingResearch } from "../../rollingResearch.js";
 import { getHistoricalBootstrapSummary, runProductionHistoricalBootstrap } from "../../historicalBootstrap.js";
@@ -34,6 +35,9 @@ export const handlers = {
   run_directional_shadow,
   get_directional_institutional_research,
   run_directional_institutional_research,
+  get_institutional_research_portfolio,
+  register_institutional_hypothesis,
+  advance_institutional_hypothesis,
   get_live_qualification,
   run_live_qualification,
   get_rolling_research,
@@ -313,6 +317,40 @@ async function run_directional_institutional_research(inputs, context) {
       live_capital_enabled: false,
       status: "directional_institutional_research_failed",
       error: error instanceof Error ? error.message : "directional_institutional_research_failed",
+    };
+  }
+}
+
+async function get_institutional_research_portfolio(inputs, context) {
+  return await getInstitutionalResearchPortfolioSummary(context.env);
+}
+
+async function register_institutional_hypothesis(inputs, context) {
+  try {
+    return await registerInstitutionalHypothesis(context.env, inputs.hypothesis);
+  } catch (error) {
+    return {
+      ok: false,
+      paper_only: true,
+      live_capital_enabled: false,
+      stage13_promotion_authority_unchanged: true,
+      status: "institutional_hypothesis_registration_failed",
+      error: error instanceof Error ? error.message : "institutional_hypothesis_registration_failed",
+    };
+  }
+}
+
+async function advance_institutional_hypothesis(inputs, context) {
+  try {
+    return await advanceInstitutionalHypothesis(context.env, inputs);
+  } catch (error) {
+    return {
+      ok: false,
+      paper_only: true,
+      live_capital_enabled: false,
+      stage13_promotion_authority_unchanged: true,
+      status: "institutional_hypothesis_lifecycle_failed",
+      error: error instanceof Error ? error.message : "institutional_hypothesis_lifecycle_failed",
     };
   }
 }
