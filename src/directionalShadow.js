@@ -389,6 +389,16 @@ export function directionalSignal(spec, candles, currentExposure = 0) {
     if (change < -threshold) return signal(-TARGET_EXPOSURE, "momentum_short");
     return signal(0, "momentum_flat");
   }
+  if (spec.family === "regime_momentum") {
+    const lookback = integer(spec.parameters.lookback, "lookback");
+    const regimeLookback = integer(spec.parameters.regime_lookback, "regime_lookback");
+    const threshold = finite(spec.parameters.threshold_percent, "threshold_percent") / 100;
+    if (closes.length < regimeLookback + 1) return signal(current, "regime_momentum_insufficient_history");
+    const momentumReturn = (closes.at(-1) / closes.at(-(lookback + 1))) - 1;
+    const regimeReturn = (closes.at(-1) / closes.at(-(regimeLookback + 1))) - 1;
+    if (regimeReturn > 0 && momentumReturn > threshold) return signal(TARGET_EXPOSURE, "regime_momentum_up_up_long");
+    return signal(0, regimeReturn <= 0 ? "regime_momentum_non_up_regime_flat" : "regime_momentum_weak_momentum_flat");
+  }
   if (spec.family === "volatility_breakout") {
     const period = integer(spec.parameters.period, "period");
     const multiplier = finite(spec.parameters.multiplier, "multiplier");

@@ -91,6 +91,33 @@ test("typed Stage 14 spec rejects unknown templates, mismatched features, rescue
   })), /threshold_percent_out_of_bounds/);
 });
 
+test("regime momentum is a distinct preregistered long-flat strategy class", () => {
+  const spec = typedSpec({
+    strategy: {
+      template: "regime_momentum",
+      feature_set_id: "close-regime-momentum-v1",
+      parameters: { lookback: 24, regime_lookback: 168, threshold_percent: 0.5 },
+    },
+  });
+  const validated = validateInstitutionalResearchSpec(spec);
+  assert.equal(validated.strategy.template, "regime_momentum");
+  assert.equal(validated.strategy.parameters.regime_lookback, 168);
+  assert.throws(() => validateInstitutionalResearchSpec(typedSpec({
+    strategy: {
+      template: "regime_momentum",
+      feature_set_id: "close-regime-momentum-v1",
+      parameters: { lookback: 168, regime_lookback: 24, threshold_percent: 0.5 },
+    },
+  })), /regime_momentum_lookback_order_invalid/);
+  const policy = buildInstitutionalBacktestPolicy();
+  const windows = buildWalkForwardWindows(syntheticCandles(), policy);
+  const strategy = buildStrategyFromResearchSpec("typed-regime-momentum-test-001", spec);
+  const result = runDirectionalWalkForward({ windows, strategies: [strategy], policy });
+  assert.equal(result.length, 1);
+  assert.equal(result[0].windows.every((row) => row.evidence_integrity_passed === true), true);
+  assert.equal(result[0].windows.every((row) => Number.isFinite(row.test_return_percent)), true);
+});
+
 test("typed Stage 14 strategy executes only through proven next-candle walk-forward math", () => {
   const spec = typedSpec();
   const policy = buildInstitutionalBacktestPolicy();

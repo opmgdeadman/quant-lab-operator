@@ -63,6 +63,18 @@ export const INSTITUTIONAL_STRATEGY_TEMPLATES = deepFreeze({
       threshold_percent: numberRule(0.05, 10),
     },
   },
+  regime_momentum: {
+    family: "regime_momentum",
+    feature_set_id: "close-regime-momentum-v1",
+    parameters: {
+      lookback: integerRule(2, 120),
+      regime_lookback: integerRule(24, 240),
+      threshold_percent: numberRule(0.05, 10),
+    },
+    cross_validate(parameters) {
+      if (parameters.lookback >= parameters.regime_lookback) throw new Error("institutional_spec_regime_momentum_lookback_order_invalid");
+    },
+  },
   volatility_breakout: {
     family: "volatility_breakout",
     feature_set_id: "ohlc-true-range-v1",
