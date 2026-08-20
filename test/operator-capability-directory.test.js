@@ -66,7 +66,7 @@ test("institutional hypothesis tool permits template-specific parameter shapes",
   const parameters = registration.input_schema.properties.hypothesis.properties.preregistration.properties.strategy.properties.parameters;
   assert.deepEqual(parameters.required, []);
   assert.equal(parameters.additionalProperties, false);
-  for (const name of ["fast", "slow", "lookback", "threshold_percent", "period", "multiplier", "lower", "upper", "exit_lower", "exit_upper", "deviations"]) {
+  for (const name of ["fast", "slow", "lookback", "regime_lookback", "regime_period", "threshold_percent", "period", "multiplier", "lower", "upper", "exit_lower", "exit_upper", "deviations"]) {
     assert.ok(parameters.properties[name]);
   }
 

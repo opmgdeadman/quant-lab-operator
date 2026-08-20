@@ -410,6 +410,21 @@ export function directionalSignal(spec, candles, currentExposure = 0) {
     if (latestClose < previousClose - range * multiplier) return signal(-TARGET_EXPOSURE, "volatility_breakout_short");
     return signal(current, "volatility_hold");
   }
+  if (spec.family === "volatility_regime_breakout") {
+    const period = integer(spec.parameters.period, "period");
+    const regimePeriod = integer(spec.parameters.regime_period, "regime_period");
+    const multiplier = finite(spec.parameters.multiplier, "multiplier");
+    if (rows.length < regimePeriod + 2) return signal(current, "volatility_regime_insufficient_history");
+    const previousRows = rows.slice(0, -1);
+    const shortRange = atr(previousRows, period);
+    const regimeRange = atr(previousRows, regimePeriod);
+    if (shortRange <= regimeRange) return signal(0, "volatility_regime_not_expanding_flat");
+    const previousClose = closes.at(-2);
+    const latestClose = closes.at(-1);
+    if (latestClose > previousClose + shortRange * multiplier) return signal(TARGET_EXPOSURE, "volatility_regime_breakout_long");
+    if (latestClose < previousClose - shortRange * multiplier) return signal(-TARGET_EXPOSURE, "volatility_regime_breakout_short");
+    return signal(current, "volatility_regime_hold");
+  }
   if (spec.family === "rsi_mean_reversion") {
     const period = integer(spec.parameters.period, "period");
     const value = rsi(closes, period);

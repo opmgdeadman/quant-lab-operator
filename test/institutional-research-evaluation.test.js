@@ -124,6 +124,39 @@ test("regime momentum executes through sealed next-candle walk-forward math", ()
   assert.equal(result[0].windows.every((row) => Number.isFinite(row.test_return_percent)), true);
 });
 
+function volatilityRegimeBreakoutSpec() {
+  return typedSpec({
+    strategy: {
+      template: "volatility_regime_breakout",
+      feature_set_id: "ohlc-true-range-regime-v1",
+      parameters: { period: 20, regime_period: 80, multiplier: 2 },
+    },
+  });
+}
+
+test("volatility regime breakout preregistration is distinct and bounded", () => {
+  const validated = validateInstitutionalResearchSpec(volatilityRegimeBreakoutSpec());
+  assert.equal(validated.strategy.template, "volatility_regime_breakout");
+  assert.equal(validated.strategy.parameters.regime_period, 80);
+  assert.throws(() => validateInstitutionalResearchSpec(typedSpec({
+    strategy: {
+      template: "volatility_regime_breakout",
+      feature_set_id: "ohlc-true-range-regime-v1",
+      parameters: { period: 80, regime_period: 20, multiplier: 2 },
+    },
+  })), /volatility_regime_period_order_invalid/);
+});
+
+test("volatility regime breakout executes through sealed next-candle walk-forward math", () => {
+  const policy = buildInstitutionalBacktestPolicy();
+  const windows = buildWalkForwardWindows(syntheticCandles(), policy);
+  const strategy = buildStrategyFromResearchSpec("typed-volatility-regime-test-001", volatilityRegimeBreakoutSpec());
+  const result = runDirectionalWalkForward({ windows, strategies: [strategy], policy });
+  assert.equal(result.length, 1);
+  assert.equal(result[0].windows.every((row) => row.execution_model === "next_completed_candle_open"), true);
+  assert.equal(result[0].windows.every((row) => row.evidence_integrity_passed === true), true);
+});
+
 test("typed Stage 14 strategy executes only through proven next-candle walk-forward math", () => {
   const spec = typedSpec();
   const policy = buildInstitutionalBacktestPolicy();

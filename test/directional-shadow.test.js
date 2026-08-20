@@ -74,6 +74,37 @@ test("EMA strategy can express long and short targets", () => {
   assert.equal(falling.target_exposure, -1);
 });
 
+test("volatility regime breakout trades only during true-range expansion", () => {
+  const spec = { family: "volatility_regime_breakout", parameters: { period: 20, regime_period: 80, multiplier: 1 } };
+  const expanding = Array.from({ length: 82 }, (_, index) => ({
+    pair: "BTC-USD",
+    interval: "1h",
+    closed_at: new Date(Date.UTC(2026, 0, 1, index)).toISOString(),
+    open: 100,
+    high: index >= 61 && index < 81 ? 110 : 101,
+    low: index >= 61 && index < 81 ? 90 : 99,
+    close: index === 81 ? 130 : 100,
+    volume: 1,
+    source: "test",
+  }));
+  const breakout = directionalSignal(spec, expanding, 0);
+  assert.equal(breakout.target_exposure, 1);
+
+  const calm = Array.from({ length: 82 }, (_, index) => ({
+    pair: "BTC-USD",
+    interval: "1h",
+    closed_at: new Date(Date.UTC(2026, 0, 2, index)).toISOString(),
+    open: 100,
+    high: 101,
+    low: 99,
+    close: 100,
+    volume: 1,
+    source: "test",
+  }));
+  const flattened = directionalSignal(spec, calm, 1);
+  assert.equal(flattened.target_exposure, 0);
+});
+
 test("long paper exposure earns marked profit without exceeding entry equity", () => {
   const result = applySignedRebalance({
     portfolio: portfolio(),

@@ -83,6 +83,18 @@ export const INSTITUTIONAL_STRATEGY_TEMPLATES = deepFreeze({
       multiplier: numberRule(0.25, 5),
     },
   },
+  volatility_regime_breakout: {
+    family: "volatility_regime_breakout",
+    feature_set_id: "ohlc-true-range-regime-v1",
+    parameters: {
+      period: integerRule(2, 120),
+      regime_period: integerRule(24, 240),
+      multiplier: numberRule(0.25, 5),
+    },
+    cross_validate(parameters) {
+      if (parameters.period >= parameters.regime_period) throw new Error("institutional_spec_volatility_regime_period_order_invalid");
+    },
+  },
   rsi_mean_reversion: {
     family: "rsi_mean_reversion",
     feature_set_id: "close-rsi-v1",
