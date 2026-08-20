@@ -52,6 +52,20 @@ test("mutations list idempotency tests and path capabilities have allowlists", (
   }
 });
 
+test("position-hold execution research evolves internal contracts without expanding public tools", () => {
+  const registration = capabilityDirectory.find((entry) => entry.id === "institutional_research.hypothesis_register");
+  const strategySchema = registration?.input_schema?.properties?.hypothesis?.properties?.preregistration?.properties?.strategy;
+  const preregistrationSchema = registration?.input_schema?.properties?.hypothesis?.properties?.preregistration;
+  assert.ok(preregistrationSchema?.properties?.walk_forward_policy_id?.enum?.includes("directional-position-hold-v2"));
+  assert.ok(strategySchema?.properties?.template?.enum?.includes("donchian_breakout"));
+  const comparison = capabilityDirectory.find((entry) => entry.id === "institutional_research.execution_policy_compare");
+  assert.equal(comparison?.operation_class, "read");
+  assert.equal(typeof handlers.compare_institutional_execution_policies, "function");
+  const tools = publicTools({ type: "object" }, { type: "object" }, { type: "object" });
+  assert.equal(tools.length, 5);
+  assert.doesNotMatch(JSON.stringify(tools), /compare_institutional_execution_policies|directional-position-hold-v2/);
+});
+
 test("DMI ADX trend evolves internal registration without expanding public tools", () => {
   const registration = capabilityDirectory.find((entry) => entry.id === "institutional_research.hypothesis_register");
   const strategySchema = registration?.input_schema?.properties?.hypothesis?.properties?.preregistration?.properties?.strategy;

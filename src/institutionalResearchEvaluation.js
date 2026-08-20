@@ -1,5 +1,5 @@
 import { buildWalkForwardWindows } from "./directionalResearch.js";
-import { runDirectionalWalkForward } from "./directionalBacktest.js";
+import { runDirectionalExecutionPolicyComparison, runDirectionalWalkForward } from "./directionalBacktest.js";
 import { buildStrategyFromResearchSpec, buildInstitutionalBacktestPolicy, validateInstitutionalResearchSpec } from "./institutionalResearchSpec.js";
 import { judgeInstitutionalResearchEvidence } from "./institutionalResearchJudge.js";
 import { directionalSignal, applySignedRebalance } from "./directionalShadow.js";
@@ -19,7 +19,7 @@ export async function runInstitutionalHypothesisEvaluation(env, { hypothesisId, 
   if (existing) return { ok: true, paper_only: true, live_capital_enabled: false, evaluation: existing, replayed: true };
 
   const spec = validateInstitutionalResearchSpec(hypothesis.preregistration);
-  const policy = buildInstitutionalBacktestPolicy();
+  const policy = buildInstitutionalBacktestPolicy(spec.walk_forward_policy_id);
   const asOfClosedAt = await latestClosedAt(env);
   if (!asOfClosedAt) throw new Error("institutional_evaluation_market_history_missing");
   const candles = await readExactHistory(env, asOfClosedAt, policy.required_candles);
@@ -100,6 +100,68 @@ export async function runInstitutionalHypothesisEvaluation(env, { hypothesisId, 
     throw error;
   }
   return { ok: true, paper_only: true, live_capital_enabled: false, evaluation, replayed: false };
+}
+
+export async function runInstitutionalExecutionPolicyComparison(env) {
+  requireDatabase(env);
+  const benchmarkId = "btc-donchian-72-breakout-v1";
+  const researchId = "btc-donchian-72-position-hold-v2";
+  const research = await readRegisteredHypothesis(env, researchId);
+  if (research.research_function !== "execution_research") throw new Error("institutional_execution_research_function_invalid");
+  if (!["admitted", "testing"].includes(research.state)) throw new Error("institutional_execution_research_not_admitted");
+  const researchSpec = validateInstitutionalResearchSpec(research.preregistration);
+  if (researchSpec.walk_forward_policy_id !== "directional-position-hold-v2") throw new Error("institutional_execution_research_policy_invalid");
+  if (researchSpec.strategy.template !== "donchian_breakout" || researchSpec.strategy.feature_set_id !== "ohlc-donchian-v1" || researchSpec.strategy.parameters.lookback !== 72) {
+    throw new Error("institutional_execution_research_benchmark_shape_invalid");
+  }
+
+  const benchmark = await readRegisteredHypothesis(env, benchmarkId);
+  const benchmarkSpec = validateInstitutionalResearchSpec(benchmark.preregistration);
+  const benchmarkEvaluation = await readEvaluationByHypothesis(env, benchmarkId);
+  if (!benchmarkEvaluation) throw new Error("institutional_execution_research_benchmark_evaluation_missing");
+  if (benchmarkSpec.walk_forward_policy_id !== "institutional-walk-forward-v1") throw new Error("institutional_execution_research_benchmark_policy_invalid");
+  const v1Policy = buildInstitutionalBacktestPolicy("institutional-walk-forward-v1");
+  const v2Policy = buildInstitutionalBacktestPolicy("directional-position-hold-v2");
+  const candles = await readExactHistory(env, benchmarkEvaluation.as_of_closed_at, v1Policy.required_candles);
+  assertContiguousHourly(candles);
+  const windows = buildWalkForwardWindows(candles, v1Policy);
+  const strategy = buildStrategyFromResearchSpec(benchmarkId, benchmarkSpec);
+  const paired = runDirectionalExecutionPolicyComparison({ windows, strategy, policyV1: v1Policy, policyV2: v2Policy });
+  const improvedBase = paired.filter((row) => row.delta.base_return_percent > 0).length;
+  const improvedDoubled = paired.filter((row) => row.delta.doubled_cost_return_percent > 0).length;
+  const improvedTripled = paired.filter((row) => row.delta.tripled_cost_return_percent > 0).length;
+  const lowerTurnover = paired.filter((row) => row.delta.turnover_notional < 0).length;
+  const lowerFees = paired.filter((row) => row.delta.total_fees < 0).length;
+  const lowerSlippage = paired.filter((row) => row.delta.total_slippage < 0).length;
+  const broadImprovement = improvedBase >= 4 && improvedDoubled >= 4 && improvedTripled >= 4 && lowerTurnover >= 4 && lowerFees >= 4 && lowerSlippage >= 4;
+  return {
+    ok: true,
+    paper_only: true,
+    live_capital_enabled: false,
+    stage13_promotion_authority_changed: false,
+    preregistered_question: {
+      benchmark_hypothesis_id: benchmarkId,
+      execution_research_hypothesis_id: researchId,
+      v1_policy_id: v1Policy.id,
+      v2_policy_id: v2Policy.id,
+      success_interpretation: "v2 must improve base, doubled-cost, and tripled-cost returns while reducing turnover, fees, and slippage in at least four of five identical sealed windows; concentration in one window is insufficient",
+      existing_v1_evidence_mutated: false,
+    },
+    benchmark_as_of_closed_at: benchmarkEvaluation.as_of_closed_at,
+    window_count: paired.length,
+    improved_base_windows: improvedBase,
+    improved_doubled_cost_windows: improvedDoubled,
+    improved_tripled_cost_windows: improvedTripled,
+    lower_turnover_windows: lowerTurnover,
+    lower_fee_windows: lowerFees,
+    lower_slippage_windows: lowerSlippage,
+    median_base_return_delta_percent: median(paired.map((row) => row.delta.base_return_percent)),
+    median_doubled_cost_return_delta_percent: median(paired.map((row) => row.delta.doubled_cost_return_percent)),
+    median_tripled_cost_return_delta_percent: median(paired.map((row) => row.delta.tripled_cost_return_percent)),
+    median_turnover_delta_notional: median(paired.map((row) => row.delta.turnover_notional)),
+    broad_improvement_passed: broadImprovement,
+    windows: paired,
+  };
 }
 
 export async function runInstitutionalIndependentJudge(env, { hypothesisId, now = new Date() } = {}) {

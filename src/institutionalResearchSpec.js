@@ -1,5 +1,6 @@
 const MARKET = "BTC-USD";
 const INTERVAL = "1h";
+export const POSITION_HOLD_WALK_FORWARD_POLICY_ID = "directional-position-hold-v2";
 
 export const INSTITUTIONAL_RESEARCH_SPEC_POLICY = deepFreeze({
   id: "institutional-research-spec-v2",
@@ -159,7 +160,7 @@ export function validateInstitutionalResearchSpec(value) {
   assertExactKeys(value, ["spec_version", "dataset_id", "strategy", "walk_forward_policy_id", "cost_model_id", "judge_policy_id", "evidence_integrity_policy_id"], "research_spec");
   if (value.spec_version !== INSTITUTIONAL_RESEARCH_SPEC_POLICY.version) throw new Error("institutional_research_spec_version_not_supported");
   if (value.dataset_id !== INSTITUTIONAL_RESEARCH_SPEC_POLICY.dataset.id) throw new Error("institutional_research_spec_dataset_not_allowed");
-  if (value.walk_forward_policy_id !== INSTITUTIONAL_RESEARCH_SPEC_POLICY.walk_forward.id) throw new Error("institutional_research_spec_walk_forward_not_allowed");
+  if (![INSTITUTIONAL_RESEARCH_SPEC_POLICY.walk_forward.id, POSITION_HOLD_WALK_FORWARD_POLICY_ID].includes(value.walk_forward_policy_id)) throw new Error("institutional_research_spec_walk_forward_not_allowed");
   if (value.cost_model_id !== INSTITUTIONAL_RESEARCH_SPEC_POLICY.cost_model.id) throw new Error("institutional_research_spec_cost_model_not_allowed");
   if (value.judge_policy_id !== INSTITUTIONAL_RESEARCH_SPEC_POLICY.judge_policy_id) throw new Error("institutional_research_spec_judge_not_allowed");
   if (value.evidence_integrity_policy_id !== "institutional-evidence-integrity-v1") throw new Error("institutional_research_spec_integrity_policy_not_allowed");
@@ -184,10 +185,11 @@ export function buildStrategyFromResearchSpec(hypothesisId, spec) {
   });
 }
 
-export function buildInstitutionalBacktestPolicy() {
+export function buildInstitutionalBacktestPolicy(walkForwardPolicyId = INSTITUTIONAL_RESEARCH_SPEC_POLICY.walk_forward.id) {
   const policy = INSTITUTIONAL_RESEARCH_SPEC_POLICY;
+  if (![policy.walk_forward.id, POSITION_HOLD_WALK_FORWARD_POLICY_ID].includes(walkForwardPolicyId)) throw new Error("institutional_research_spec_walk_forward_not_allowed");
   return deepFreeze({
-    id: policy.walk_forward.id,
+    id: walkForwardPolicyId,
     required_candles: policy.dataset.required_contiguous_candles,
     train_candles: policy.walk_forward.train_candles,
     validation_candles: policy.walk_forward.validation_candles,

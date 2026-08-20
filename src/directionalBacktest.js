@@ -3,6 +3,7 @@ import { DIRECTIONAL_STRATEGIES } from "./directionalShadow.js";
 const INITIAL_EQUITY = 10000;
 const HOURS_PER_DAY = 24;
 const EPSILON = 1e-9;
+export const DIRECTIONAL_POSITION_HOLD_POLICY_ID = "directional-position-hold-v2";
 
 export function runDirectionalWalkForward({ windows, strategies = DIRECTIONAL_STRATEGIES, policy }) {
   if (!Array.isArray(windows) || windows.length === 0) throw new Error("directional_windows_required");
@@ -40,6 +41,58 @@ export function runDirectionalWindow({ window, strategy, policy }) {
     ending_equity: base.ending_equity,
     evidence_integrity_passed: true,
     execution_model: "next_completed_candle_open",
+  };
+}
+
+export function runDirectionalExecutionPolicyComparison({ windows, strategy, policyV1, policyV2 }) {
+  if (!Array.isArray(windows) || windows.length === 0) throw new Error("directional_windows_required");
+  if (!strategy) throw new Error("directional_strategy_required");
+  if (!policyV1 || !policyV2) throw new Error("directional_execution_policies_required");
+  if (policyV1.id === policyV2.id) throw new Error("directional_execution_policies_must_differ");
+  return Object.freeze(windows.map((window) => {
+    const history = normalizeCandles([...window.train, ...window.validation, ...window.test]);
+    const testStart = window.train.length + window.validation.length;
+    const evaluateSignal = compileDirectionalSignal(strategy, history);
+    const v1 = policyResearchMetrics(history, testStart, policyV1, evaluateSignal);
+    const v2 = policyResearchMetrics(history, testStart, policyV2, evaluateSignal);
+    return Object.freeze({
+      window_id: window.id,
+      start_closed_at: window.start_closed_at,
+      end_closed_at: window.end_closed_at,
+      v1: Object.freeze(v1),
+      v2: Object.freeze(v2),
+      delta: Object.freeze({
+        base_return_percent: round(v2.base_return_percent - v1.base_return_percent),
+        doubled_cost_return_percent: round(v2.doubled_cost_return_percent - v1.doubled_cost_return_percent),
+        tripled_cost_return_percent: round(v2.tripled_cost_return_percent - v1.tripled_cost_return_percent),
+        max_drawdown_percent: round(v2.max_drawdown_percent - v1.max_drawdown_percent),
+        fill_count: v2.fill_count - v1.fill_count,
+        closed_trade_count: v2.closed_trade_count - v1.closed_trade_count,
+        turnover_notional: round(v2.turnover_notional - v1.turnover_notional),
+        total_fees: round(v2.total_fees - v1.total_fees),
+        total_slippage: round(v2.total_slippage - v1.total_slippage),
+        total_carry: round(v2.total_carry - v1.total_carry),
+      }),
+    });
+  }));
+}
+
+function policyResearchMetrics(history, testStart, policy, evaluateSignal) {
+  const base = simulate(history, testStart, policy, 1, evaluateSignal);
+  const doubled = simulate(history, testStart, policy, 2, evaluateSignal);
+  const tripled = simulate(history, testStart, policy, 3, evaluateSignal);
+  return {
+    policy_id: policy.id,
+    base_return_percent: base.return_percent,
+    doubled_cost_return_percent: doubled.return_percent,
+    tripled_cost_return_percent: tripled.return_percent,
+    max_drawdown_percent: base.max_drawdown_percent,
+    fill_count: base.fill_count,
+    closed_trade_count: base.closed_trade_count,
+    turnover_notional: base.turnover_notional,
+    total_fees: base.total_fees,
+    total_slippage: base.total_slippage,
+    total_carry: base.total_carry,
   };
 }
 
@@ -279,22 +332,30 @@ function simulate(candles, testStart, policy, costMultiplier, evaluateSignal) {
   let maxDrawdown = 0;
   let totalFees = 0;
   let totalCarry = 0;
+  let totalSlippage = 0;
+  let turnoverNotional = 0;
   let closedTrades = 0;
   let fillCount = 0;
+  const positionHold = policy.id === DIRECTIONAL_POSITION_HOLD_POLICY_ID;
 
   for (let executionIndex = testStart; executionIndex < candles.length; executionIndex += 1) {
     const execution = candles[executionIndex];
     const markBefore = candles[executionIndex - 1].close;
     const equityBefore = cash + quantity * markBefore;
     const markedExposure = Math.abs(equityBefore) <= EPSILON ? 0 : (quantity * markBefore) / equityBefore;
-    const currentExposure = clamp(markedExposure);
+    const currentExposure = positionHold ? Math.sign(quantity) : clamp(markedExposure);
     const targetExposure = clamp(evaluateSignal(executionIndex, currentExposure));
     const rawFill = execution.open * (targetExposure >= currentExposure ? 1 + slippageRate : 1 - slippageRate);
-    const targetQuantity = Math.abs(equityBefore) <= EPSILON ? 0 : (targetExposure * equityBefore) / rawFill;
+    const sameDirectionHold = positionHold && Math.sign(quantity) !== 0 && Math.sign(targetExposure) === Math.sign(quantity);
+    const targetQuantity = sameDirectionHold
+      ? quantity
+      : Math.abs(equityBefore) <= EPSILON ? 0 : (targetExposure * equityBefore) / rawFill;
     const delta = targetQuantity - quantity;
 
     if (Math.abs(delta) > EPSILON) {
       const fee = Math.abs(delta * rawFill) * feeRate;
+      turnoverNotional += Math.abs(delta * execution.open);
+      totalSlippage += Math.abs(delta) * Math.abs(rawFill - execution.open);
       const oldSign = Math.sign(quantity);
       const newSign = Math.sign(targetQuantity);
       if (oldSign !== 0 && (newSign !== oldSign || Math.abs(targetQuantity) < Math.abs(quantity))) closedTrades += 1;
@@ -330,6 +391,8 @@ function simulate(candles, testStart, policy, costMultiplier, evaluateSignal) {
     cash += quantity * liquidation;
     cash -= fee;
     totalFees += fee;
+    turnoverNotional += Math.abs(quantity * lastClose);
+    totalSlippage += Math.abs(quantity) * Math.abs(liquidation - lastClose);
     fillCount += 1;
     closedTrades += 1;
     quantity = 0;
@@ -343,6 +406,8 @@ function simulate(candles, testStart, policy, costMultiplier, evaluateSignal) {
     fill_count: fillCount,
     total_fees: round(totalFees),
     total_carry: round(totalCarry),
+    turnover_notional: round(turnoverNotional),
+    total_slippage: round(totalSlippage),
   };
 }
 

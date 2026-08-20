@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { compileDirectionalSignal, runDirectionalWalkForward, runDirectionalWindow } from "../src/directionalBacktest.js";
+import { DIRECTIONAL_POSITION_HOLD_POLICY_ID, compileDirectionalSignal, runDirectionalExecutionPolicyComparison, runDirectionalWalkForward, runDirectionalWindow } from "../src/directionalBacktest.js";
 import { DIRECTIONAL_RESEARCH_POLICY, buildWalkForwardWindows } from "../src/directionalResearch.js";
 import { DIRECTIONAL_STRATEGIES, directionalSignal } from "../src/directionalShadow.js";
 
@@ -93,6 +93,23 @@ test("v1 intentionally rebalances unchanged directional exposure and records eco
   assert.ok(result.fill_count > 400);
   assert.ok(result.closed_trade_count > 400);
   assert.ok(result.total_fees > 0);
+});
+
+test("position-hold v2 removes recurring same-direction rebalance fills without changing the signal", () => {
+  const windows = buildWalkForwardWindows(candles());
+  const v2Policy = Object.freeze({ ...DIRECTIONAL_RESEARCH_POLICY, id: DIRECTIONAL_POSITION_HOLD_POLICY_ID });
+  const comparison = runDirectionalExecutionPolicyComparison({
+    windows: [windows[0]],
+    strategy: ema,
+    policyV1: DIRECTIONAL_RESEARCH_POLICY,
+    policyV2: v2Policy,
+  })[0];
+  assert.ok(comparison.v1.fill_count > 400);
+  assert.equal(comparison.v2.fill_count, 2);
+  assert.equal(comparison.v2.closed_trade_count, 1);
+  assert.ok(comparison.v2.turnover_notional < comparison.v1.turnover_notional);
+  assert.ok(comparison.v2.total_fees < comparison.v1.total_fees);
+  assert.ok(comparison.v2.total_slippage < comparison.v1.total_slippage);
 });
 
 test("liquidates open exposure at the end of the immutable test window", () => {

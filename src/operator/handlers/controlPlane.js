@@ -11,7 +11,7 @@ import { commissionForwardPaperOperation, getForwardOperationSummary, runProduct
 import { getDirectionalShadowSummary, runProductionDirectionalShadowCycle } from "../../directionalShadow.js";
 import { getDirectionalInstitutionalResearchSummary, runProductionDirectionalInstitutionalResearch } from "../../directionalInstitutionalResearch.js";
 import { getInstitutionalResearchPortfolioSummary, registerInstitutionalHypothesis, advanceInstitutionalHypothesis } from "../../institutionalResearchPortfolio.js";
-import { getInstitutionalEvaluationSummary, runInstitutionalHypothesisEvaluation, runInstitutionalIndependentJudge } from "../../institutionalResearchEvaluation.js";
+import { getInstitutionalEvaluationSummary, runInstitutionalExecutionPolicyComparison, runInstitutionalHypothesisEvaluation, runInstitutionalIndependentJudge } from "../../institutionalResearchEvaluation.js";
 import { getLiveQualificationSummary, runProductionLiveQualification } from "../../liveQualification.js";
 import { getRollingResearchSummary, runProductionRollingResearch } from "../../rollingResearch.js";
 import { getHistoricalBootstrapSummary, runProductionHistoricalBootstrap } from "../../historicalBootstrap.js";
@@ -42,6 +42,7 @@ export const handlers = {
   register_institutional_hypothesis,
   advance_institutional_hypothesis,
   get_institutional_research_evaluation,
+  compare_institutional_execution_policies,
   run_institutional_hypothesis_evaluation,
   run_institutional_independent_judge,
   get_live_qualification,
@@ -372,6 +373,10 @@ async function advance_institutional_hypothesis(inputs, context) {
 
 async function get_institutional_research_evaluation(inputs, context) {
   return await getInstitutionalEvaluationSummary(context.env, inputs.hypothesis_id || null);
+}
+
+async function compare_institutional_execution_policies(inputs, context) {
+  return await runInstitutionalExecutionPolicyComparison(context.env);
 }
 
 async function run_institutional_hypothesis_evaluation(inputs, context) {
