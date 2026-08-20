@@ -132,6 +132,44 @@ export function compileDirectionalSignal(strategy, candles) {
     };
   }
 
+  if (family === "volatility_regime_breakout") {
+    const period = integer(parameters.period, "period");
+    const regimePeriod = integer(parameters.regime_period, "regime_period");
+    const multiplier = finite(parameters.multiplier, "multiplier");
+    return (executionIndex, currentExposure = 0) => {
+      const current = clamp(currentExposure);
+      if (executionIndex < regimePeriod + 2) return current;
+      let shortRangeTotal = 0;
+      for (let index = executionIndex - period - 1; index <= executionIndex - 2; index += 1) {
+        const row = rows[index];
+        const priorClose = rows[index - 1].close;
+        shortRangeTotal += Math.max(
+          row.high - row.low,
+          Math.abs(row.high - priorClose),
+          Math.abs(row.low - priorClose),
+        );
+      }
+      let regimeRangeTotal = 0;
+      for (let index = executionIndex - regimePeriod - 1; index <= executionIndex - 2; index += 1) {
+        const row = rows[index];
+        const priorClose = rows[index - 1].close;
+        regimeRangeTotal += Math.max(
+          row.high - row.low,
+          Math.abs(row.high - priorClose),
+          Math.abs(row.low - priorClose),
+        );
+      }
+      const shortRange = shortRangeTotal / period;
+      const regimeRange = regimeRangeTotal / regimePeriod;
+      if (shortRange <= regimeRange) return 0;
+      const previousClose = closes[executionIndex - 2];
+      const latestClose = closes[executionIndex - 1];
+      if (latestClose > previousClose + shortRange * multiplier) return 1;
+      if (latestClose < previousClose - shortRange * multiplier) return -1;
+      return current;
+    };
+  }
+
   if (family === "rsi_mean_reversion") {
     const period = integer(parameters.period, "period");
     const values = rsiSeries(closes, period);
