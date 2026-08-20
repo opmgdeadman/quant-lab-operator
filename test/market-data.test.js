@@ -5,6 +5,7 @@ import {
   getMarketDataHealth,
   runHistoricalCandleWindow,
   runHourlyCandleIngestion,
+  summarizeMarketVolumeRows,
   validateCompletedCandle,
 } from "../src/marketData.js";
 
@@ -16,6 +17,30 @@ function createEnv() {
     DB: new MarketDataMemoryD1(),
   };
 }
+
+test("volume audit requires complete positive single-provider contiguous evidence", () => {
+  const rows = [0, 1, 2, 3].map((offset) => ({
+    closed_at: new Date(Date.parse("2026-08-01T00:00:00.000Z") + offset * 60 * 60 * 1000).toISOString(),
+    volume: 10 + offset,
+    source: "coinbase_exchange",
+  }));
+  const healthy = summarizeMarketVolumeRows(rows, 4);
+  assert.equal(healthy.ok, true);
+  assert.equal(healthy.volume_comparable_across_window, true);
+  assert.deepEqual(healthy.blocker_codes, []);
+  assert.deepEqual(healthy.provider_lineage, [{ source: "coinbase_exchange", candle_count: 4 }]);
+
+  const mixed = summarizeMarketVolumeRows([
+    rows[0],
+    { ...rows[1], source: "bitstamp_btcusd" },
+    { ...rows[2], volume: 0 },
+    { ...rows[3], closed_at: "2026-08-01T05:00:00.000Z" },
+  ], 4);
+  assert.equal(mixed.ok, false);
+  assert.ok(mixed.blocker_codes.includes("mixed_provider_volume_not_comparable"));
+  assert.ok(mixed.blocker_codes.includes("zero_volume_values"));
+  assert.ok(mixed.blocker_codes.includes("gapped_history"));
+});
 
 test("hourly ingestion stores only completed candles and is idempotent", async () => {
   const env = createEnv();

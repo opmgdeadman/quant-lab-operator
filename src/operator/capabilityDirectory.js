@@ -6,6 +6,7 @@ import { objectSchema } from "./schemas.js";
 export const supportedIntents = [
   "get_engineering_access_state",
   "operator_status",
+  "get_market_data_volume_audit",
   "get_paper_account",
   "execute_paper_decision",
   "get_baseline_bench",
@@ -76,6 +77,18 @@ export const capabilityDirectory = [
     external_systems: ["d1"],
     risk_gates: ["auth_required", "session_required", "bounded_output"],
     tests: ["operator_status succeeds", "no response contains secret-looking values"],
+  }),
+  capability({
+    id: "market_data.volume_audit",
+    intent: "get_market_data_volume_audit",
+    title: "Get Market Data Volume Audit",
+    operation_class: "read",
+    handler_id: "get_market_data_volume_audit",
+    input_schema: objectSchema({}),
+    output_schema: objectSchema({ ok: { type: "boolean" } }, ["ok"]),
+    external_systems: ["d1", "market_candles"],
+    risk_gates: ["auth_required", "session_required", "bounded_output", "completed_candles_only", "provider_lineage_required", "paper_only", "no_live_capital"],
+    tests: ["volume audit fails closed on missing, zero, invalid, gapped, or mixed-provider volume evidence"],
   }),
   capability({
     id: "paper.account_read",

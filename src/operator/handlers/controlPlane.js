@@ -15,11 +15,13 @@ import { getInstitutionalEvaluationSummary, runInstitutionalHypothesisEvaluation
 import { getLiveQualificationSummary, runProductionLiveQualification } from "../../liveQualification.js";
 import { getRollingResearchSummary, runProductionRollingResearch } from "../../rollingResearch.js";
 import { getHistoricalBootstrapSummary, runProductionHistoricalBootstrap } from "../../historicalBootstrap.js";
+import { getMarketVolumeAudit } from "../../marketData.js";
 import { renderProfessionalConsole } from "../../professionalConsole.js";
 
 export const handlers = {
   get_engineering_access_state,
   operator_status,
+  get_market_data_volume_audit,
   get_paper_account,
   execute_paper_decision,
   get_baseline_bench,
@@ -102,6 +104,15 @@ async function operator_status(inputs, context) {
     exposed_tool_count: capabilityDirectory.length + 2,
     supported_intents: supportedIntents,
     capability_count: capabilityDirectory.length,
+  };
+}
+
+async function get_market_data_volume_audit(inputs, context) {
+  const audit = await getMarketVolumeAudit(context.env, 4320);
+  return {
+    ...audit,
+    paper_only: true,
+    live_capital_enabled: false,
   };
 }
 

@@ -312,6 +312,82 @@ export async function getMarketDataHealth(env, now = new Date()) {
   };
 }
 
+export async function getMarketVolumeAudit(env, expectedCount = 4320) {
+  const boundedCount = Math.max(1, Math.min(4320, Math.trunc(Number(expectedCount) || 4320)));
+  const result = await env.DB.prepare(
+    `SELECT closed_at, volume, source
+     FROM market_candles
+     WHERE pair = ? AND interval = ?
+     ORDER BY closed_at DESC
+     LIMIT ?`,
+  ).bind(PAIR, INTERVAL, boundedCount).all();
+  const rows = resultRows(result).sort((left, right) => String(left.closed_at).localeCompare(String(right.closed_at)));
+  return summarizeMarketVolumeRows(rows, boundedCount);
+}
+
+export function summarizeMarketVolumeRows(rows, expectedCount = 4320) {
+  const sourceCounts = new Map();
+  let invalidVolumeCount = 0;
+  let zeroVolumeCount = 0;
+  let missingSourceCount = 0;
+  let missingCandles = 0;
+  let providerTransitionCount = 0;
+  let previousSource = null;
+
+  for (let index = 0; index < rows.length; index += 1) {
+    const row = rows[index] || {};
+    const volume = Number(row.volume);
+    const source = typeof row.source === "string" ? row.source.trim() : "";
+    if (!Number.isFinite(volume) || volume < 0) invalidVolumeCount += 1;
+    else if (volume === 0) zeroVolumeCount += 1;
+    if (!source) missingSourceCount += 1;
+    else sourceCounts.set(source, (sourceCounts.get(source) || 0) + 1);
+    if (previousSource && source && source !== previousSource) providerTransitionCount += 1;
+    if (source) previousSource = source;
+    if (index > 0) {
+      const previousMs = Date.parse(rows[index - 1]?.closed_at);
+      const currentMs = Date.parse(row.closed_at);
+      if (!Number.isFinite(previousMs) || !Number.isFinite(currentMs) || currentMs <= previousMs) {
+        missingCandles += 1;
+      } else {
+        const deltaHours = Math.round((currentMs - previousMs) / HOUR_MS);
+        if (deltaHours > 1) missingCandles += deltaHours - 1;
+      }
+    }
+  }
+
+  const providerLineage = [...sourceCounts.entries()]
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([source, candle_count]) => ({ source, candle_count }));
+  const blockerCodes = [];
+  if (rows.length !== expectedCount) blockerCodes.push("insufficient_candle_count");
+  if (invalidVolumeCount > 0) blockerCodes.push("invalid_volume_values");
+  if (zeroVolumeCount > 0) blockerCodes.push("zero_volume_values");
+  if (missingSourceCount > 0) blockerCodes.push("missing_source_lineage");
+  if (missingCandles > 0) blockerCodes.push("gapped_history");
+  if (providerLineage.length !== 1 || providerTransitionCount > 0) blockerCodes.push("mixed_provider_volume_not_comparable");
+
+  return {
+    ok: blockerCodes.length === 0,
+    pair: PAIR,
+    interval: INTERVAL,
+    expected_candle_count: expectedCount,
+    candle_count: rows.length,
+    start_closed_at: rows[0]?.closed_at || null,
+    end_closed_at: rows.at(-1)?.closed_at || null,
+    finite_nonnegative_volume_count: rows.length - invalidVolumeCount,
+    positive_volume_count: rows.length - invalidVolumeCount - zeroVolumeCount,
+    invalid_volume_count: invalidVolumeCount,
+    zero_volume_count: zeroVolumeCount,
+    missing_source_count: missingSourceCount,
+    missing_candles: missingCandles,
+    provider_transition_count: providerTransitionCount,
+    provider_lineage: providerLineage,
+    volume_comparable_across_window: blockerCodes.length === 0,
+    blocker_codes: blockerCodes,
+  };
+}
+
 function assertExactHistoricalCoverage(candles, startClosedAt, endClosedAt, expectedHours) {
   if (candles.length !== expectedHours) {
     throw new Error("historical_provider_window_incomplete");

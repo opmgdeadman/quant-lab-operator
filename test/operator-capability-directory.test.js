@@ -52,6 +52,16 @@ test("mutations list idempotency tests and path capabilities have allowlists", (
   }
 });
 
+test("market volume audit is an internal stable-gateway capability", () => {
+  const audit = capabilityDirectory.find((entry) => entry.intent === "get_market_data_volume_audit");
+  assert.equal(audit?.id, "market_data.volume_audit");
+  assert.equal(audit?.operation_class, "read");
+  assert.equal(typeof handlers.get_market_data_volume_audit, "function");
+  const tools = publicTools({ type: "object" }, { type: "object" }, { type: "object" });
+  assert.equal(tools.length, 5);
+  assert.doesNotMatch(JSON.stringify(tools), /get_market_data_volume_audit/);
+});
+
 test("directional institutional research intents are discoverable and handler-backed", () => {
   assert.ok(supportedIntents.includes("get_directional_institutional_research"));
   assert.ok(supportedIntents.includes("run_directional_institutional_research"));
