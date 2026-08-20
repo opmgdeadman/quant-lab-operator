@@ -142,7 +142,7 @@ test("volatility regime breakout preregistration is distinct and bounded", () =>
     strategy: {
       template: "volatility_regime_breakout",
       feature_set_id: "ohlc-true-range-regime-v1",
-      parameters: { period: 80, regime_period: 20, multiplier: 2 },
+      parameters: { period: 80, regime_period: 40, multiplier: 2 },
     },
   })), /volatility_regime_period_order_invalid/);
 });
