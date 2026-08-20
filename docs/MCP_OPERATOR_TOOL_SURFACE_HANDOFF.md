@@ -8,25 +8,19 @@ Quant Lab is operated through an authenticated, deployment-scoped MCP. The sourc
 
 ## Public Contract
 
-The public MCP advertises:
+The public MCP advertises exactly five stable tools:
 
 - `get_quant_lab_startup_context`
 - `get_quant_lab_status`
-- one direct typed tool for every entry in `src/operator/capabilityDirectory.js`
+- `get_quant_lab_capability_definition`
+- `execute_quant_lab_read_action`
+- `execute_quant_lab_mutation_action`
 
-`execute_quant_lab_intent` is retired from the public surface. Public payloads do not contain an intent selector or generic `inputs` object.
+Internal capabilities remain strict entries in `src/operator/capabilityDirectory.js`, but they are server-side registry data rather than one ChatGPT tool per capability. Strategy templates, feature sets, parameter contracts, datasets, workflows, and future research classes therefore evolve without changing `tools/list`.
 
-Every capability tool has:
+`get_quant_lab_capability_definition` dynamically returns the bounded current registry or one exact source-controlled capability definition. The two execution gateways carry a stable outer envelope with `operation_id`, exact Startup Authority acknowledgment, current Git ECL SHA, a capability selector, and a generic arguments object. The server then resolves the capability, rejects read/mutation effect mismatches, validates the exact strict capability schema, and dispatches only through the existing execution kernel.
 
-- a closed schema with `additionalProperties: false`
-- a stable `operation_id`
-- the exact `governing_authority_ack`
-- the current `canonical_continuation_sha`
-- only the capability's declared domain inputs
-- deterministic source-defined routing
-- bounded output
-- idempotent receipts
-- read or mutation annotations derived from its capability declaration
+The gateway contract preserves deterministic source-defined routing, bounded output, idempotent receipts, leases, incident handling, and truthful read-vs-mutation annotations without exporting domain vocabulary into the public MCP schema.
 
 ## Execution Kernel
 
@@ -53,7 +47,7 @@ A call that is already active returns `operation_already_in_progress`; it does n
 - one directory entry
 - one strict schema
 - one canonical handler
-- one static public route
+- one stable gateway route
 - focused regression coverage
 - a minimum validation scope
 - an exact-SHA release

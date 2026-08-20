@@ -160,11 +160,11 @@ test("operator mcp initialize requires auth and returns a session id", async () 
 
   assert.equal(initialize.status, 200);
   assert.equal(initializeBody.result.serverInfo.name, "quant-lab");
-  assert.equal(initializeBody.result.serverInfo.version, "0.4.0");
+  assert.equal(initializeBody.result.serverInfo.version, "0.5.0");
   assert.equal(initializeBody.result.serverInfo.executionKernelVersion, "quant-lab-execution-kernel-v1");
   assert.match(initializeBody.result.instructions, /deployment-scoped/);
-  assert.match(initializeBody.result.instructions, /direct typed capability/);
-  assert.match(initializeBody.result.instructions, /generic intent envelope is retired/);
+  assert.match(initializeBody.result.instructions, /stable five-tool gateway/);
+  assert.match(initializeBody.result.instructions, /dynamic server-side capability definitions/);
   assert.match(initializeBody.result.instructions, /get_quant_lab_startup_context/);
   assert.match(initializeBody.result.instructions, /canonical Git ECL/);
   assert.match(initialize.headers.get("mcp-session-id"), /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/);
@@ -186,11 +186,13 @@ test("operator mcp session invalidates across deployments and requires reinitial
   assert.deepEqual(toolsBody.result.tools.map((tool) => tool.name), [
     "get_quant_lab_startup_context",
     "get_quant_lab_status",
-    ...supportedIntents,
+    "get_quant_lab_capability_definition",
+    "execute_quant_lab_read_action",
+    "execute_quant_lab_mutation_action",
   ]);
 });
 
-test("operator mcp tools require valid session and expose every capability directly", async () => {
+test("operator mcp tools require valid session and expose only the stable gateway", async () => {
   const env = createEnv();
   const initialize = await initializeMcpSession(env);
   const sessionId = initialize.headers.get("mcp-session-id");
@@ -208,21 +210,30 @@ test("operator mcp tools require valid session and expose every capability direc
 
   const toolsBody = await mcp(env, sessionId, { jsonrpc: "2.0", id: 3, method: "tools/list" });
   const names = toolsBody.result.tools.map((tool) => tool.name);
-  assert.deepEqual(names, ["get_quant_lab_startup_context", "get_quant_lab_status", ...supportedIntents]);
-  assert.equal(names.includes("execute_quant_lab_intent"), false);
+  assert.deepEqual(names, [
+    "get_quant_lab_startup_context",
+    "get_quant_lab_status",
+    "get_quant_lab_capability_definition",
+    "execute_quant_lab_read_action",
+    "execute_quant_lab_mutation_action",
+  ]);
+  assert.equal(names.some((name) => supportedIntents.includes(name)), false);
   for (const tool of toolsBody.result.tools) {
     assert.equal(tool.inputSchema.additionalProperties, false);
     assert.ok(tool.outputSchema);
   }
-  for (const capability of capabilityDirectory) {
-    const tool = toolsBody.result.tools.find((candidate) => candidate.name === capability.intent);
-    assert.ok(tool, capability.intent);
-    assert.equal(tool.annotations.readOnlyHint, capability.operation_class === "read");
-    assert.equal(tool.annotations.destructiveHint, false);
-    assert.equal(tool.annotations.idempotentHint, true);
-    assert.equal(tool.inputSchema.properties.governing_authority_ack.const.includes("Startup Authority acknowledged"), true);
-    assert.ok(tool.inputSchema.required.includes("operation_id"));
-    assert.ok(tool.inputSchema.required.includes("canonical_continuation_sha"));
+  const readGateway = toolsBody.result.tools.find((tool) => tool.name === "execute_quant_lab_read_action");
+  const mutationGateway = toolsBody.result.tools.find((tool) => tool.name === "execute_quant_lab_mutation_action");
+  assert.equal(readGateway.annotations.readOnlyHint, true);
+  assert.equal(readGateway.annotations.destructiveHint, false);
+  assert.equal(mutationGateway.annotations.readOnlyHint, false);
+  assert.equal(mutationGateway.annotations.destructiveHint, true);
+  for (const gateway of [readGateway, mutationGateway]) {
+    assert.equal(gateway.inputSchema.properties.governing_authority_ack.const.includes("Startup Authority acknowledged"), true);
+    assert.ok(gateway.inputSchema.required.includes("operation_id"));
+    assert.ok(gateway.inputSchema.required.includes("canonical_continuation_sha"));
+    assert.ok(gateway.inputSchema.required.includes("capability"));
+    assert.ok(gateway.inputSchema.required.includes("arguments"));
   }
 });
 
@@ -257,8 +268,8 @@ test("operator intents fail closed when startup authority is skipped or ECL SHA 
     id: 21,
     method: "tools/call",
     params: {
-      name: "operator_status",
-      arguments: { operation_id: "op-skipped-startup" },
+      name: "execute_quant_lab_read_action",
+      arguments: { operation_id: "op-skipped-startup", capability: "operator_status", arguments: {} },
     },
   });
   assert.equal(skipped.error.message, "governing_authority_ack_required");
@@ -275,11 +286,13 @@ test("operator intents fail closed when startup authority is skipped or ECL SHA 
     id: 23,
     method: "tools/call",
     params: {
-      name: "operator_status",
+      name: "execute_quant_lab_read_action",
       arguments: {
         operation_id: "op-stale-ecl",
         governing_authority_ack: context.required_governing_authority_ack,
         canonical_continuation_sha: "stale-sha",
+        capability: "operator_status",
+        arguments: {},
       },
     },
   });
@@ -289,7 +302,7 @@ test("operator intents fail closed when startup authority is skipped or ECL SHA 
 test("operator mcp rejects unadvertised tools", async () => {
   const env = createEnv();
   const body = await callTool(env, "internal_admin_shell", {});
-  assert.equal(body.error.message, "public_direct_tool_required");
+  assert.equal(body.error.message, "stable_operator_gateway_required");
 });
 
 test("generic intent envelope is retired from the public MCP surface", async () => {
@@ -299,10 +312,10 @@ test("generic intent envelope is retired from the public MCP surface", async () 
     intent: "operator_status",
     inputs: {},
   });
-  assert.equal(generic.error.message, "public_direct_tool_required");
+  assert.equal(generic.error.message, "stable_operator_gateway_required");
 });
 
-test("direct operator_status succeeds with durable receipt", async () => {
+test("stable read gateway executes operator_status with durable receipt", async () => {
   const env = createEnv();
   const body = await executeIntent(env, "op-status", "operator_status", {});
   const content = body.result.structuredContent;
@@ -958,8 +971,27 @@ async function mcp(env, sessionId, payload) {
 async function callTool(env, name, args) {
   const initialize = await initializeMcpSession(env);
   const sessionId = initialize.headers.get("mcp-session-id");
+  let toolName = name;
   let preparedArgs = args;
   if (supportedIntents.includes(name)) {
+    const capability = capabilityDirectory.find((entry) => entry.intent === name);
+    const startup = await mcp(env, sessionId, {
+      jsonrpc: "2.0",
+      id: 19,
+      method: "tools/call",
+      params: { name: "get_quant_lab_startup_context", arguments: {} },
+    });
+    const context = startup.result.structuredContent;
+    const { operation_id, ...capabilityArguments } = args;
+    toolName = capability.operation_class === "read" ? "execute_quant_lab_read_action" : "execute_quant_lab_mutation_action";
+    preparedArgs = {
+      operation_id,
+      governing_authority_ack: context.required_governing_authority_ack,
+      canonical_continuation_sha: context.canonical_continuation.sha,
+      capability: name,
+      arguments: capabilityArguments,
+    };
+  } else if (name === "execute_quant_lab_read_action" || name === "execute_quant_lab_mutation_action") {
     const startup = await mcp(env, sessionId, {
       jsonrpc: "2.0",
       id: 19,
@@ -977,7 +1009,7 @@ async function callTool(env, name, args) {
     jsonrpc: "2.0",
     id: 20,
     method: "tools/call",
-    params: { name, arguments: preparedArgs },
+    params: { name: toolName, arguments: preparedArgs },
   });
 }
 

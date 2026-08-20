@@ -12,7 +12,7 @@ import {
 import { findDispatchedRun, handlers, validateHardeningTransition } from "../src/operator/handlers/controlPlane.js";
 import { buildActionClosure, classifyStructuredFailure, parseContinuationMetadata } from "../src/operator/executionKernel.js";
 import { operationLeaseMs } from "../src/operator/receipts.js";
-import { buildDirectCapabilityTool } from "../src/operator/toolRegistry.js";
+import { publicTools } from "../src/operator/toolRegistry.js";
 
 test("every supported intent exists in capability directory with lifecycle declaration and handler", () => {
   const declarationIds = new Set(lifecycleDeclarations.map((item) => item.id));
@@ -61,7 +61,7 @@ test("directional institutional research intents are discoverable and handler-ba
   assert.ok(validation.input_schema.properties.validation.enum.includes("production directional institutional research commission"));
 });
 
-test("institutional hypothesis tool permits template-specific parameter shapes", () => {
+test("institutional hypothesis schema stays strict internally while the public MCP surface stays stable", () => {
   const registration = capabilityDirectory.find((entry) => entry.intent === "register_institutional_hypothesis");
   const parameters = registration.input_schema.properties.hypothesis.properties.preregistration.properties.strategy.properties.parameters;
   assert.deepEqual(parameters.required, []);
@@ -69,14 +69,18 @@ test("institutional hypothesis tool permits template-specific parameter shapes",
   for (const name of ["fast", "slow", "lookback", "regime_lookback", "regime_period", "threshold_percent", "period", "multiplier", "lower", "upper", "exit_lower", "exit_upper", "deviations"]) {
     assert.ok(parameters.properties[name]);
   }
-
-  const publicTool = buildDirectCapabilityTool(registration, { type: "object" });
-  const publicParameters = publicTool.inputSchema.properties.hypothesis.properties.preregistration.properties.strategy.properties.parameters;
-  assert.deepEqual(publicParameters.required, []);
-  assert.deepEqual(publicParameters.properties, {});
-  assert.equal(publicParameters.additionalProperties, true);
-  assert.deepEqual(parameters.required, []);
-  assert.equal(parameters.additionalProperties, false);
+  const tools = publicTools({ type: "object" }, { type: "object" }, { type: "object" });
+  assert.deepEqual(tools.map((tool) => tool.name), [
+    "get_quant_lab_startup_context",
+    "get_quant_lab_status",
+    "get_quant_lab_capability_definition",
+    "execute_quant_lab_read_action",
+    "execute_quant_lab_mutation_action",
+  ]);
+  const publicSchema = JSON.stringify(tools);
+  assert.doesNotMatch(publicSchema, /register_institutional_hypothesis/);
+  assert.doesNotMatch(publicSchema, /donchian_regime_breakout/);
+  assert.doesNotMatch(publicSchema, /ohlc-donchian-regime-v1/);
 });
 
 test("capability lifecycle contains mandatory sequence", () => {
@@ -86,7 +90,7 @@ test("capability lifecycle contains mandatory sequence", () => {
     "directory_entry",
     "strict_schema",
     "canonical_handler",
-    "static_route",
+    "stable_gateway_route",
     "focused_regression",
     "minimum_validation_scope",
     "exact_sha_release",
