@@ -10,6 +10,7 @@ import {
   buildInstitutionalBacktestPolicy,
 } from "../src/institutionalResearchSpec.js";
 import { judgeInstitutionalResearchEvidence } from "../src/institutionalResearchJudge.js";
+import { INSTITUTIONAL_RESEARCH_POLICY } from "../src/institutionalResearchPortfolio.js";
 import { isInstitutionalForwardExecutionEligible } from "../src/institutionalResearchEvaluation.js";
 
 function typedSpec(overrides = {}) {
@@ -226,17 +227,16 @@ test("typed Stage 14 strategy executes only through proven next-candle walk-forw
   assert.equal(result[0].windows.every((row) => Number.isFinite(row.test_return_percent)), true);
 });
 
-test("Stage 14 canonical action sequences lifecycle transitions before dependent capabilities", async () => {
-  const ledger = await readFile(new URL("../docs/ENGINEERING_CONTINUATION_LEDGER.md", import.meta.url), "utf8");
-  const currentAction = ledger.split("## Current Action")[1]?.split("## Steady-State Operating Gate")[0] ?? "";
-  const admissionIndex = currentAction.indexOf("advance lifecycle from `proposed` to `admitted`");
-  const evaluationIndex = currentAction.indexOf("run the sealed 4,320-candle five-window evaluation");
-  const testingIndex = currentAction.indexOf("advance lifecycle from `admitted` to `testing`");
-  const judgeIndex = currentAction.indexOf("run that judge exactly once");
-  assert.ok(admissionIndex >= 0, "current action must require explicit proposed-to-admitted transition");
-  assert.ok(evaluationIndex > admissionIndex, "sealed evaluation must occur only after explicit admission");
-  assert.ok(testingIndex > evaluationIndex, "testing transition must occur only after sealed evaluation exists");
-  assert.ok(judgeIndex > testingIndex, "independent judge must run only after explicit testing transition");
+test("Stage 14 lifecycle ordering is source-enforced independent of current ECL prose", async () => {
+  assert.deepEqual(INSTITUTIONAL_RESEARCH_POLICY.transitions.proposed, ["admitted", "rejected", "retired"]);
+  assert.deepEqual(INSTITUTIONAL_RESEARCH_POLICY.transitions.admitted, ["testing", "rejected", "retired"]);
+  assert.deepEqual(INSTITUTIONAL_RESEARCH_POLICY.transitions.testing, ["rejected", "qualified", "retired"]);
+  assert.deepEqual(INSTITUTIONAL_RESEARCH_POLICY.transitions.rejected, []);
+
+  const source = await readFile(new URL("../src/institutionalResearchEvaluation.js", import.meta.url), "utf8");
+  assert.match(source, /\["admitted", "testing"\]\.includes\(hypothesis\.state\)/, "sealed evaluation must reject proposed hypotheses");
+  assert.match(source, /\["testing", "qualified", "rejected"\]\.includes\(hypothesis\.state\)/, "independent judge must reject admitted hypotheses");
+  assert.match(source, /institutional_judge_sealed_evaluation_missing/, "independent judge must require sealed evaluation evidence");
 });
 
 test("independent judge rejects weak sealed historical evidence", () => {
