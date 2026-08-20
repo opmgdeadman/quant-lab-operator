@@ -484,7 +484,7 @@ function signedForwardExposure(quantity) {
 async function readRegisteredHypothesis(env, hypothesisId) {
   const id = cleanId(hypothesisId);
   const row = await env.DB.prepare(
-    `SELECT id, preregistration_json, preregistration_hash FROM institutional_hypotheses WHERE id = ?`,
+    `SELECT id, research_function, lineage_parent_id, preregistration_json, preregistration_hash FROM institutional_hypotheses WHERE id = ?`,
   ).bind(id).first();
   if (!row) throw new Error("institutional_hypothesis_not_found");
   const event = await env.DB.prepare(
@@ -492,6 +492,8 @@ async function readRegisteredHypothesis(env, hypothesisId) {
   ).bind(id).first();
   return {
     id: row.id,
+    research_function: row.research_function,
+    lineage_parent_id: row.lineage_parent_id || null,
     preregistration: JSON.parse(row.preregistration_json),
     preregistration_hash: row.preregistration_hash,
     state: event?.to_state || "unknown",

@@ -366,6 +366,14 @@ test("typed Stage 14 strategy executes only through proven next-candle walk-forw
   assert.equal(result[0].windows.every((row) => Number.isFinite(row.test_return_percent)), true);
 });
 
+test("execution research D1 projection includes the fields required by the preregistered comparator", async () => {
+  const source = await readFile(new URL("../src/institutionalResearchEvaluation.js", import.meta.url), "utf8");
+  assert.match(source, /SELECT id, research_function, lineage_parent_id, preregistration_json, preregistration_hash FROM institutional_hypotheses/);
+  assert.match(source, /research_function: row\.research_function/);
+  assert.match(source, /lineage_parent_id: row\.lineage_parent_id \|\| null/);
+  assert.match(source, /research\.research_function !== "execution_research"/);
+});
+
 test("Stage 14 lifecycle ordering is source-enforced independent of current ECL prose", async () => {
   assert.deepEqual(INSTITUTIONAL_RESEARCH_POLICY.transitions.proposed, ["admitted", "rejected", "retired"]);
   assert.deepEqual(INSTITUTIONAL_RESEARCH_POLICY.transitions.admitted, ["testing", "rejected", "retired"]);
