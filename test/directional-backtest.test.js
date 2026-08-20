@@ -79,6 +79,22 @@ test("completes the full twelve-candidate institutional workload", () => {
   assert.equal(result.reduce((sum, candidate) => sum + candidate.windows.length, 0), 60);
 });
 
+test("v1 intentionally rebalances unchanged directional exposure and records economic partial reductions", () => {
+  const result = runDirectionalWindow({
+    window: buildWalkForwardWindows(candles())[0],
+    strategy: ema,
+    policy: DIRECTIONAL_RESEARCH_POLICY,
+  });
+  // directional-walk-forward-v1 targets 1.0x marked gross exposure each execution candle.
+  // On this monotonic fixture the EMA signal remains long, yet price/equity drift changes the
+  // target quantity. Those adjustments are actual simulated fills with fees/slippage, and
+  // same-sign quantity reductions are intentionally included in closed_trade_count. The metric
+  // therefore measures realized reduction/closure events, not independent round-trip trades.
+  assert.ok(result.fill_count > 400);
+  assert.ok(result.closed_trade_count > 400);
+  assert.ok(result.total_fees > 0);
+});
+
 test("liquidates open exposure at the end of the immutable test window", () => {
   const result = runDirectionalWindow({
     window: buildWalkForwardWindows(candles())[0],
