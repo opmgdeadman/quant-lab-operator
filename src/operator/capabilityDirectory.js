@@ -317,8 +317,8 @@ export const capabilityDirectory = [
           spec_version: { type: "integer", enum: [2] },
           dataset_id: { type: "string", enum: ["btc-usd-1h-completed-4320-v1"] },
           strategy: objectSchema({
-            template: { type: "string", enum: ["ema_trend", "donchian_breakout", "price_momentum", "regime_momentum", "volatility_breakout", "volatility_regime_breakout", "rsi_mean_reversion", "bollinger_mean_reversion"] },
-            feature_set_id: { type: "string", enum: ["close-ema-v1", "ohlc-donchian-v1", "close-momentum-v1", "close-regime-momentum-v1", "ohlc-true-range-v1", "ohlc-true-range-regime-v1", "close-rsi-v1", "close-bollinger-v1"] },
+            template: { type: "string", enum: ["ema_trend", "donchian_breakout", "donchian_regime_breakout", "price_momentum", "regime_momentum", "volatility_breakout", "volatility_regime_breakout", "rsi_mean_reversion", "bollinger_mean_reversion"] },
+            feature_set_id: { type: "string", enum: ["close-ema-v1", "ohlc-donchian-v1", "ohlc-donchian-regime-v1", "close-momentum-v1", "close-regime-momentum-v1", "ohlc-true-range-v1", "ohlc-true-range-regime-v1", "close-rsi-v1", "close-bollinger-v1"] },
             parameters: objectSchema({
               fast: { type: "integer", minimum: 2, maximum: 100 },
               slow: { type: "integer", minimum: 5, maximum: 300 },

@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { buildWalkForwardWindows } from "../src/directionalResearch.js";
-import { runDirectionalWalkForward } from "../src/directionalBacktest.js";
+import { compileDirectionalSignal, runDirectionalWalkForward } from "../src/directionalBacktest.js";
 import {
   INSTITUTIONAL_RESEARCH_SPEC_POLICY,
   validateInstitutionalResearchSpec,
@@ -89,6 +89,60 @@ test("typed Stage 14 spec rejects unknown templates, mismatched features, rescue
   assert.throws(() => validateInstitutionalResearchSpec(typedSpec({
     strategy: { template: "price_momentum", feature_set_id: "close-momentum-v1", parameters: { lookback: 24, threshold_percent: 99 } },
   })), /threshold_percent_out_of_bounds/);
+});
+
+function donchianRegimeBreakoutSpec() {
+  return typedSpec({
+    strategy: {
+      template: "donchian_regime_breakout",
+      feature_set_id: "ohlc-donchian-regime-v1",
+      parameters: { lookback: 72, regime_lookback: 168 },
+    },
+  });
+}
+
+test("donchian regime breakout preregistration is distinct and bounded", () => {
+  const validated = validateInstitutionalResearchSpec(donchianRegimeBreakoutSpec());
+  assert.equal(validated.strategy.template, "donchian_regime_breakout");
+  assert.equal(validated.strategy.parameters.lookback, 72);
+  assert.equal(validated.strategy.parameters.regime_lookback, 168);
+  assert.throws(() => validateInstitutionalResearchSpec(typedSpec({
+    strategy: {
+      template: "donchian_regime_breakout",
+      feature_set_id: "ohlc-donchian-regime-v1",
+      parameters: { lookback: 168, regime_lookback: 72 },
+    },
+  })), /donchian_regime_lookback_order_invalid/);
+});
+
+test("donchian regime breakout requires directional regime agreement", () => {
+  const buildRows = (mode) => Array.from({ length: 170 }, (_, index) => {
+    let close = mode === "aligned" ? 100 + index * 0.5 : 200 - index * 0.5;
+    if (mode === "mismatch" && index === 169) close = 150;
+    return {
+      closed_at: new Date(Date.parse("2026-01-01T00:00:00.000Z") + index * 3600000).toISOString(),
+      open: close,
+      high: close * 1.001,
+      low: close * 0.999,
+      close,
+      volume: 100,
+    };
+  });
+  const strategy = buildStrategyFromResearchSpec("typed-donchian-regime-test-001", donchianRegimeBreakoutSpec());
+  const alignedRows = buildRows("aligned");
+  const mismatchedRows = buildRows("mismatch");
+  assert.equal(compileDirectionalSignal(strategy, alignedRows)(alignedRows.length, 0), 1);
+  assert.equal(compileDirectionalSignal(strategy, mismatchedRows)(mismatchedRows.length, 0), 0);
+});
+
+test("donchian regime breakout executes through sealed next-candle walk-forward math", () => {
+  const policy = buildInstitutionalBacktestPolicy();
+  const windows = buildWalkForwardWindows(syntheticCandles(), policy);
+  const strategy = buildStrategyFromResearchSpec("typed-donchian-regime-walk-forward-001", donchianRegimeBreakoutSpec());
+  const result = runDirectionalWalkForward({ windows, strategies: [strategy], policy });
+  assert.equal(result.length, 1);
+  assert.equal(result[0].windows.every((row) => row.execution_model === "next_completed_candle_open"), true);
+  assert.equal(result[0].windows.every((row) => row.evidence_integrity_passed === true), true);
 });
 
 function regimeMomentumSpec() {

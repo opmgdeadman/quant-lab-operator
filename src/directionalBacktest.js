@@ -80,6 +80,28 @@ export function compileDirectionalSignal(strategy, candles) {
     };
   }
 
+  if (family === "donchian_regime_breakout") {
+    const lookback = integer(parameters.lookback, "lookback");
+    const regimeLookback = integer(parameters.regime_lookback, "regime_lookback");
+    return (executionIndex, currentExposure = 0) => {
+      const current = clamp(currentExposure);
+      if (executionIndex < regimeLookback + 1) return current;
+      const signalIndex = executionIndex - 1;
+      const latest = rows[signalIndex];
+      const regimeReturn = (closes[signalIndex] / closes[signalIndex - regimeLookback]) - 1;
+      if ((current > 0 && regimeReturn <= 0) || (current < 0 && regimeReturn >= 0)) return 0;
+      let upper = -Infinity;
+      let lower = Infinity;
+      for (let index = executionIndex - lookback - 1; index < executionIndex - 1; index += 1) {
+        upper = Math.max(upper, rows[index].high);
+        lower = Math.min(lower, rows[index].low);
+      }
+      if (latest.close > upper && regimeReturn > 0) return 1;
+      if (latest.close < lower && regimeReturn < 0) return -1;
+      return current;
+    };
+  }
+
   if (family === "price_momentum") {
     const lookback = integer(parameters.lookback, "lookback");
     const threshold = finite(parameters.threshold_percent, "threshold_percent") / 100;

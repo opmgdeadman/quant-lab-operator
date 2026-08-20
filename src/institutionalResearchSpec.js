@@ -55,6 +55,17 @@ export const INSTITUTIONAL_STRATEGY_TEMPLATES = deepFreeze({
     feature_set_id: "ohlc-donchian-v1",
     parameters: { lookback: integerRule(5, 240) },
   },
+  donchian_regime_breakout: {
+    family: "donchian_regime_breakout",
+    feature_set_id: "ohlc-donchian-regime-v1",
+    parameters: {
+      lookback: integerRule(5, 240),
+      regime_lookback: integerRule(24, 240),
+    },
+    cross_validate(parameters) {
+      if (parameters.lookback >= parameters.regime_lookback) throw new Error("institutional_spec_donchian_regime_lookback_order_invalid");
+    },
+  },
   price_momentum: {
     family: "price_momentum",
     feature_set_id: "close-momentum-v1",
