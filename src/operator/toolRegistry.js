@@ -1,13 +1,16 @@
-import { capabilityDirectory } from "./capabilityDirectory.js";
 import { objectSchema } from "./schemas.js";
 import { REQUIRED_GOVERNING_AUTHORITY_ACK } from "./startupAuthority.js";
+
+const capabilitySelectorSchema = { type: "string", minLength: 1, maxLength: 120 };
+const dynamicArgumentsSchema = { type: "object", additionalProperties: true };
+const dynamicDefinitionOutputSchema = { type: "object", additionalProperties: true };
 
 export function publicTools(publicStatusSchema, startupContextSchema, executeIntentOutputSchema) {
   return [
     {
       name: "get_quant_lab_startup_context",
       title: "Get Quant Lab Startup Context",
-      description: "Load the mandatory Quant Lab Startup Authority and sole canonical Git Engineering Continuation Ledger before any operator capability.",
+      description: "Load the mandatory Quant Lab Startup Authority and sole canonical Git Engineering Continuation Ledger before any operator execution.",
       annotations: {
         readOnlyHint: true,
         destructiveHint: false,
@@ -30,54 +33,58 @@ export function publicTools(publicStatusSchema, startupContextSchema, executeInt
       inputSchema: objectSchema({}),
       outputSchema: publicStatusSchema,
     },
-    ...capabilityDirectory.map((capability) => buildDirectCapabilityTool(capability, executeIntentOutputSchema)),
+    {
+      name: "get_quant_lab_capability_definition",
+      title: "Get Quant Lab Capability Definition",
+      description: "List bounded server-side Quant Lab capabilities or return one exact source-controlled capability definition. Capability and strategy evolution is data here, not public MCP schema.",
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+      inputSchema: objectSchema({ capability: capabilitySelectorSchema }),
+      outputSchema: dynamicDefinitionOutputSchema,
+    },
+    {
+      name: "execute_quant_lab_read_action",
+      title: "Execute Quant Lab Read Action",
+      description: "Execute one source-defined read-only Quant Lab capability through the stable gateway. The server resolves the capability and validates its exact current schema before execution.",
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: true,
+      },
+      inputSchema: gatewayInputSchema(),
+      outputSchema: executeIntentOutputSchema,
+    },
+    {
+      name: "execute_quant_lab_mutation_action",
+      title: "Execute Quant Lab Mutation Action",
+      description: "Execute one source-defined mutating Quant Lab capability through the stable gateway. The server resolves effect class and validates the exact current capability schema before execution.",
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        idempotentHint: true,
+        openWorldHint: true,
+      },
+      inputSchema: gatewayInputSchema(),
+      outputSchema: executeIntentOutputSchema,
+    },
   ];
 }
 
-export function buildDirectCapabilityTool(capability, executeIntentOutputSchema) {
-  const publicInputSchema = publicCapabilityInputSchema(capability);
-  const capabilityProperties = publicInputSchema?.properties || {};
-  const capabilityRequired = publicInputSchema?.required || [];
-  return {
-    name: capability.intent,
-    title: capability.title,
-    description: `Execute the bounded source-defined Quant Lab capability ${capability.intent}. Call get_quant_lab_startup_context first and provide its exact acknowledgment and canonical Git ECL SHA.`,
-    annotations: {
-      readOnlyHint: capability.operation_class === "read",
-      destructiveHint: false,
-      idempotentHint: true,
-      openWorldHint: capability.external_systems.some((system) => system !== "d1"),
+function gatewayInputSchema() {
+  return objectSchema({
+    operation_id: { type: "string", minLength: 1, maxLength: 120 },
+    governing_authority_ack: {
+      type: "string",
+      const: REQUIRED_GOVERNING_AUTHORITY_ACK,
     },
-    inputSchema: objectSchema({
-      operation_id: { type: "string", minLength: 1, maxLength: 120 },
-      governing_authority_ack: {
-        type: "string",
-        const: REQUIRED_GOVERNING_AUTHORITY_ACK,
-      },
-      canonical_continuation_sha: { type: "string", minLength: 1, maxLength: 80 },
-      ...capabilityProperties,
-    }, [
-      "operation_id",
-      "governing_authority_ack",
-      "canonical_continuation_sha",
-      ...capabilityRequired,
-    ]),
-    outputSchema: executeIntentOutputSchema,
-  };
-}
-
-export function publicCapabilityInputSchema(capability) {
-  if (capability.intent !== "register_institutional_hypothesis") {
-    return capability.input_schema;
-  }
-
-  const schema = structuredClone(capability.input_schema);
-  const parameters = schema?.properties?.hypothesis?.properties?.preregistration?.properties?.strategy?.properties?.parameters;
-  if (parameters) {
-    parameters.properties = {};
-    parameters.required = [];
-    parameters.additionalProperties = true;
-  }
-  return schema;
+    canonical_continuation_sha: { type: "string", minLength: 1, maxLength: 80 },
+    capability: capabilitySelectorSchema,
+    arguments: dynamicArgumentsSchema,
+  }, ["operation_id", "governing_authority_ack", "canonical_continuation_sha", "capability", "arguments"]);
 }
 

@@ -755,6 +755,10 @@ export function resolveCapability(intent) {
   return capabilityDirectory.find((entry) => entry.intent === intent) || null;
 }
 
+export function resolveCapabilitySelector(selector) {
+  return capabilityDirectory.find((entry) => entry.intent === selector || entry.id === selector) || null;
+}
+
 export function validateCapabilityLifecycle(directory = capabilityDirectory, declarations = lifecycleDeclarations) {
   const errors = [];
   if (lifecycle.version !== "quant-lab-capability-lifecycle-v2" || lifecycle.mandatory !== true) {

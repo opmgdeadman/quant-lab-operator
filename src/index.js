@@ -15,7 +15,7 @@ import { runScheduledInstitutionalResearchForwardEvidence } from "./institutiona
 import { renderProfessionalConsole } from "./professionalConsole.js";
 import { BRAND_ASSETS as CANONICAL_BRAND_ASSETS, BRAND_MANIFEST } from "./brandAssetsCanonical.js";
 import { executeQuantLabIntent, executionKernelInfo } from "./operator/executionKernel.js";
-import { capabilityDirectory, resolveCapability } from "./operator/capabilityDirectory.js";
+import { capabilityDirectory, resolveCapabilitySelector } from "./operator/capabilityDirectory.js";
 import { loadQuantStartupContext } from "./operator/startupAuthority.js";
 import { publicTools as operatorPublicTools } from "./operator/toolRegistry.js";
 
@@ -27,7 +27,7 @@ const OAUTH_TOKEN_PATH = "/api/operator/oauth/token";
 const OPERATOR_ACCESS_TOKEN_TTL_SECONDS = 24 * 60 * 60;
 const OPERATOR_REFRESH_TOKEN_TTL_SECONDS = 365 * 24 * 60 * 60;
 const MCP_SESSION_TTL_SECONDS = 30 * 24 * 60 * 60;
-const MCP_SERVER_VERSION = "0.4.0";
+const MCP_SERVER_VERSION = "0.5.0";
 const BRAND_ASSETS = Object.freeze({
   ...CANONICAL_BRAND_ASSETS,
   "/og-image.png": CANONICAL_BRAND_ASSETS["/android-chrome-512x512.png"],
@@ -218,7 +218,7 @@ async function mcpResponseFor(message, request, env) {
             deploymentSha: env.DEPLOYMENT_SHA || "unknown",
             executionKernelVersion: executionKernelInfo.version,
           },
-          instructions: "Authenticated Quant Operator MCP. Sessions are deployment-scoped and must reinitialize after a Worker, Execution Kernel, or public schema change. Call the advertised direct typed capability; the generic intent envelope is retired. Before any operator capability, call get_quant_lab_startup_context, read the full Startup Authority and sole canonical Git ECL, then send the exact required acknowledgment and current ECL SHA.",
+          instructions: "Authenticated Quant Operator MCP. Sessions are deployment-scoped and must reinitialize after a Worker, Execution Kernel, or public schema change. The public surface is a stable five-tool gateway: load startup authority, inspect dynamic server-side capability definitions, then execute through the read-only or mutation gateway matching the capability effect class. Internal capability and strategy evolution must not change tools/list. Before any operator execution, call get_quant_lab_startup_context, read the full Startup Authority and sole canonical Git ECL, then send the exact required acknowledgment and current ECL SHA.",
         },
       },
     };
@@ -270,7 +270,7 @@ async function mcpResponseFor(message, request, env) {
     const name = message.params?.name;
     const args = message.params?.arguments || {};
     if (!operatorPublicTools(publicStatusSchema(), startupContextSchema(), executeIntentOutputSchema()).some((tool) => tool.name === name)) {
-      return { body: mcpErrorObject(id, -32602, "public_direct_tool_required") };
+      return { body: mcpErrorObject(id, -32602, "stable_operator_gateway_required") };
     }
     let structuredContent;
     try {
@@ -337,24 +337,33 @@ async function callPublicTool(name, args, env) {
   if (name === "get_quant_lab_status") {
     return publicStatusPayload(env);
   }
-  const capability = resolveCapability(name);
-  if (!capability) {
-    throw new ToolInputError("public_direct_tool_required");
+  if (name === "get_quant_lab_capability_definition") {
+    return quantCapabilityDefinition(args.capability);
   }
-  const {
-    operation_id,
-    governing_authority_ack,
-    canonical_continuation_sha,
-    ...capabilityInputs
-  } = args;
+  if (name !== "execute_quant_lab_read_action" && name !== "execute_quant_lab_mutation_action") {
+    throw new ToolInputError("stable_operator_gateway_required");
+  }
+
+  const capability = resolveCapabilitySelector(args.capability);
+  if (!capability) {
+    throw new ToolInputError("unknown_capability");
+  }
+  const requiredClass = name === "execute_quant_lab_read_action" ? "read" : "mutation";
+  if (capability.operation_class !== requiredClass) {
+    throw new ToolInputError(`capability_effect_mismatch:${requiredClass}_gateway`);
+  }
+  if (!args.arguments || typeof args.arguments !== "object" || Array.isArray(args.arguments)) {
+    throw new ToolInputError("invalid_capability_arguments");
+  }
+
   const startupContext = await loadQuantStartupContext(env);
   return executeQuantLabIntent({
-    operation_id,
+    operation_id: args.operation_id,
     intent: capability.intent,
     inputs: {
-      ...capabilityInputs,
-      governing_authority_ack,
-      canonical_continuation_sha,
+      ...args.arguments,
+      governing_authority_ack: args.governing_authority_ack,
+      canonical_continuation_sha: args.canonical_continuation_sha,
     },
   }, {
     env,
@@ -362,6 +371,49 @@ async function callPublicTool(name, args, env) {
     startupContext,
     marketDataIngestion: runHourlyCandleIngestion,
   });
+}
+
+function quantCapabilityDefinition(selector) {
+  if (selector !== undefined && (typeof selector !== "string" || selector.length < 1 || selector.length > 120)) {
+    throw new ToolInputError("invalid_capability_selector");
+  }
+  if (selector === undefined) {
+    return {
+      ok: true,
+      public_tool_count: 5,
+      public_schema_stable: true,
+      capability_count: capabilityDirectory.length,
+      capabilities: capabilityDirectory.map((capability) => ({
+        id: capability.id,
+        intent: capability.intent,
+        title: capability.title,
+        operation_class: capability.operation_class,
+      })),
+    };
+  }
+  const capability = resolveCapabilitySelector(selector);
+  if (!capability) {
+    throw new ToolInputError("unknown_capability");
+  }
+  return {
+    ok: true,
+    public_tool_count: 5,
+    public_schema_stable: true,
+    capability_count: capabilityDirectory.length,
+    capability: {
+      id: capability.id,
+      intent: capability.intent,
+      title: capability.title,
+      operation_class: capability.operation_class,
+      input_schema: capability.input_schema,
+      output_schema: capability.output_schema,
+      risk_gates: capability.risk_gates,
+      external_systems: capability.external_systems,
+      allowed_paths: capability.allowed_paths || [],
+      allowed_actions: capability.allowed_actions || [],
+      max_response_bytes: capability.max_response_bytes,
+    },
+  };
 }
 
 async function findCandleByClosedAt(env, closedAt) {
