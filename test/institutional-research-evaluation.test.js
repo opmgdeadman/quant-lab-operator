@@ -139,13 +139,17 @@ test("typed Stage 14 strategy executes only through proven next-candle walk-forw
   assert.equal(result[0].windows.every((row) => Number.isFinite(row.test_return_percent)), true);
 });
 
-test("Stage 14 canonical action admits hypotheses before sealed evaluation", async () => {
+test("Stage 14 canonical action sequences lifecycle transitions before dependent capabilities", async () => {
   const ledger = await readFile(new URL("../docs/ENGINEERING_CONTINUATION_LEDGER.md", import.meta.url), "utf8");
   const currentAction = ledger.split("## Current Action")[1]?.split("## Steady-State Operating Gate")[0] ?? "";
   const admissionIndex = currentAction.indexOf("advance lifecycle from `proposed` to `admitted`");
   const evaluationIndex = currentAction.indexOf("run the sealed 4,320-candle five-window evaluation");
+  const testingIndex = currentAction.indexOf("advance lifecycle from `admitted` to `testing`");
+  const judgeIndex = currentAction.indexOf("run that judge exactly once");
   assert.ok(admissionIndex >= 0, "current action must require explicit proposed-to-admitted transition");
   assert.ok(evaluationIndex > admissionIndex, "sealed evaluation must occur only after explicit admission");
+  assert.ok(testingIndex > evaluationIndex, "testing transition must occur only after sealed evaluation exists");
+  assert.ok(judgeIndex > testingIndex, "independent judge must run only after explicit testing transition");
 });
 
 test("independent judge rejects weak sealed historical evidence", () => {
