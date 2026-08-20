@@ -217,6 +217,74 @@ test("donchian compression breakout executes through sealed next-candle walk-for
   assert.equal(result[0].windows.every((row) => row.evidence_integrity_passed === true), true);
 });
 
+function dmiAdxTrendSpec() {
+  return typedSpec({
+    strategy: {
+      template: "dmi_adx_trend",
+      feature_set_id: "ohlc-dmi-adx-v1",
+      parameters: { period: 14, adx_threshold: 25 },
+    },
+  });
+}
+
+function directionalMovementRows(mode, count = 80) {
+  const start = Date.parse("2026-01-01T00:00:00.000Z");
+  return Array.from({ length: count }, (_, index) => {
+    const center = mode === "up" ? 100 + index * 2 : mode === "down" ? 300 - index * 2 : 100;
+    return {
+      closed_at: new Date(start + index * 3600000).toISOString(),
+      open: center,
+      high: center + 1,
+      low: center - 1,
+      close: center,
+      volume: 100,
+    };
+  });
+}
+
+test("DMI ADX preregistration is exact and bounded", () => {
+  const validated = validateInstitutionalResearchSpec(dmiAdxTrendSpec());
+  assert.equal(validated.strategy.template, "dmi_adx_trend");
+  assert.deepEqual(validated.strategy.parameters, { period: 14, adx_threshold: 25 });
+  assert.throws(() => validateInstitutionalResearchSpec(typedSpec({
+    strategy: {
+      template: "dmi_adx_trend",
+      feature_set_id: "ohlc-dmi-adx-v1",
+      parameters: { period: 14, adx_threshold: 5 },
+    },
+  })), /adx_threshold_out_of_bounds/);
+});
+
+test("DMI ADX respects Wilder warmup, directional imbalance, weak trend, and no look-ahead", () => {
+  const strategy = buildStrategyFromResearchSpec("typed-dmi-adx-test-001", dmiAdxTrendSpec());
+  const warmup = directionalMovementRows("up", 20);
+  assert.equal(compileDirectionalSignal(strategy, warmup)(warmup.length, 0), 0);
+
+  const up = directionalMovementRows("up", 81);
+  const down = directionalMovementRows("down", 81);
+  const flat = directionalMovementRows("flat", 81);
+  assert.equal(compileDirectionalSignal(strategy, up)(up.length, 0), 1);
+  assert.equal(compileDirectionalSignal(strategy, down)(down.length, 0), -1);
+  assert.equal(compileDirectionalSignal(strategy, flat)(flat.length, 0), 0);
+
+  const executionIndex = 80;
+  const baselineSignal = compileDirectionalSignal(strategy, up)(executionIndex, 0);
+  const futureMutated = up.map((row, index) => index === executionIndex
+    ? { ...row, high: row.high * 10, low: row.low / 10, close: row.close / 2 }
+    : row);
+  assert.equal(compileDirectionalSignal(strategy, futureMutated)(executionIndex, 0), baselineSignal);
+});
+
+test("DMI ADX executes only through sealed next-candle walk-forward math", () => {
+  const policy = buildInstitutionalBacktestPolicy();
+  const windows = buildWalkForwardWindows(syntheticCandles(), policy);
+  const strategy = buildStrategyFromResearchSpec("typed-dmi-adx-walk-forward-001", dmiAdxTrendSpec());
+  const result = runDirectionalWalkForward({ windows, strategies: [strategy], policy });
+  assert.equal(result.length, 1);
+  assert.equal(result[0].windows.every((row) => row.execution_model === "next_completed_candle_open"), true);
+  assert.equal(result[0].windows.every((row) => row.evidence_integrity_passed === true), true);
+});
+
 function regimeMomentumSpec() {
   return typedSpec({
     strategy: {

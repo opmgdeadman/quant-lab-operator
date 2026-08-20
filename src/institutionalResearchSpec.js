@@ -80,6 +80,14 @@ export const INSTITUTIONAL_STRATEGY_TEMPLATES = deepFreeze({
       }
     },
   },
+  dmi_adx_trend: {
+    family: "dmi_adx_trend",
+    feature_set_id: "ohlc-dmi-adx-v1",
+    parameters: {
+      period: integerRule(5, 60),
+      adx_threshold: numberRule(10, 60),
+    },
+  },
   price_momentum: {
     family: "price_momentum",
     feature_set_id: "close-momentum-v1",

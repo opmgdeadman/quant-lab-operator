@@ -52,6 +52,17 @@ test("mutations list idempotency tests and path capabilities have allowlists", (
   }
 });
 
+test("DMI ADX trend evolves internal registration without expanding public tools", () => {
+  const registration = capabilityDirectory.find((entry) => entry.id === "institutional_research.hypothesis_register");
+  const strategySchema = registration?.input_schema?.properties?.hypothesis?.properties?.preregistration?.properties?.strategy;
+  assert.ok(strategySchema?.properties?.template?.enum?.includes("dmi_adx_trend"));
+  assert.ok(strategySchema?.properties?.feature_set_id?.enum?.includes("ohlc-dmi-adx-v1"));
+  assert.ok(strategySchema?.properties?.parameters?.properties?.adx_threshold);
+  const tools = publicTools({ type: "object" }, { type: "object" }, { type: "object" });
+  assert.equal(tools.length, 5);
+  assert.doesNotMatch(JSON.stringify(tools), /dmi_adx_trend/);
+});
+
 test("donchian compression breakout evolves internal registration without expanding public tools", () => {
   const registration = capabilityDirectory.find((entry) => entry.id === "institutional_research.hypothesis_register");
   const strategySchema = registration?.input_schema?.properties?.hypothesis?.properties?.preregistration?.properties?.strategy;
@@ -88,7 +99,7 @@ test("institutional hypothesis schema stays strict internally while the public M
   const parameters = registration.input_schema.properties.hypothesis.properties.preregistration.properties.strategy.properties.parameters;
   assert.deepEqual(parameters.required, []);
   assert.equal(parameters.additionalProperties, false);
-  for (const name of ["fast", "slow", "lookback", "regime_lookback", "regime_period", "threshold_percent", "period", "multiplier", "lower", "upper", "exit_lower", "exit_upper", "deviations"]) {
+  for (const name of ["fast", "slow", "lookback", "regime_lookback", "regime_period", "threshold_percent", "period", "adx_threshold", "multiplier", "lower", "upper", "exit_lower", "exit_upper", "deviations"]) {
     assert.ok(parameters.properties[name]);
   }
   const tools = publicTools({ type: "object" }, { type: "object" }, { type: "object" });

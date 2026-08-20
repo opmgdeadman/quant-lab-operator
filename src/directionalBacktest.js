@@ -125,6 +125,20 @@ export function compileDirectionalSignal(strategy, candles) {
     };
   }
 
+  if (family === "dmi_adx_trend") {
+    const period = integer(parameters.period, "period");
+    const threshold = finite(parameters.adx_threshold, "adx_threshold");
+    const directional = dmiAdxSeries(rows, period);
+    return (executionIndex) => {
+      const signalIndex = executionIndex - 1;
+      const state = directional[signalIndex];
+      if (!state || state.adx < threshold) return 0;
+      if (state.plus_di > state.minus_di) return 1;
+      if (state.minus_di > state.plus_di) return -1;
+      return 0;
+    };
+  }
+
   if (family === "price_momentum") {
     const lookback = integer(parameters.lookback, "lookback");
     const threshold = finite(parameters.threshold_percent, "threshold_percent") / 100;
@@ -330,6 +344,63 @@ function simulate(candles, testStart, policy, costMultiplier, evaluateSignal) {
     total_fees: round(totalFees),
     total_carry: round(totalCarry),
   };
+}
+
+function dmiAdxSeries(rows, period) {
+  const output = Array(rows.length).fill(null);
+  if (rows.length < period * 2) return output;
+  const trueRanges = Array(rows.length).fill(0);
+  const plusDm = Array(rows.length).fill(0);
+  const minusDm = Array(rows.length).fill(0);
+  for (let index = 1; index < rows.length; index += 1) {
+    const current = rows[index];
+    const previous = rows[index - 1];
+    const upMove = current.high - previous.high;
+    const downMove = previous.low - current.low;
+    plusDm[index] = upMove > downMove && upMove > 0 ? upMove : 0;
+    minusDm[index] = downMove > upMove && downMove > 0 ? downMove : 0;
+    trueRanges[index] = Math.max(
+      current.high - current.low,
+      Math.abs(current.high - previous.close),
+      Math.abs(current.low - previous.close),
+    );
+  }
+
+  let smoothedTr = 0;
+  let smoothedPlus = 0;
+  let smoothedMinus = 0;
+  for (let index = 1; index <= period; index += 1) {
+    smoothedTr += trueRanges[index];
+    smoothedPlus += plusDm[index];
+    smoothedMinus += minusDm[index];
+  }
+  const dx = Array(rows.length).fill(null);
+  const plusDi = Array(rows.length).fill(null);
+  const minusDi = Array(rows.length).fill(null);
+  const assignDirectional = (index) => {
+    const positive = smoothedTr > 0 ? (100 * smoothedPlus) / smoothedTr : 0;
+    const negative = smoothedTr > 0 ? (100 * smoothedMinus) / smoothedTr : 0;
+    plusDi[index] = positive;
+    minusDi[index] = negative;
+    const denominator = positive + negative;
+    dx[index] = denominator > 0 ? (100 * Math.abs(positive - negative)) / denominator : 0;
+  };
+  assignDirectional(period);
+  for (let index = period + 1; index < rows.length; index += 1) {
+    smoothedTr = smoothedTr - (smoothedTr / period) + trueRanges[index];
+    smoothedPlus = smoothedPlus - (smoothedPlus / period) + plusDm[index];
+    smoothedMinus = smoothedMinus - (smoothedMinus / period) + minusDm[index];
+    assignDirectional(index);
+  }
+
+  const firstAdxIndex = period * 2 - 1;
+  let adx = mean(dx.slice(period, firstAdxIndex + 1));
+  output[firstAdxIndex] = { adx, plus_di: plusDi[firstAdxIndex], minus_di: minusDi[firstAdxIndex] };
+  for (let index = firstAdxIndex + 1; index < rows.length; index += 1) {
+    adx = ((adx * (period - 1)) + dx[index]) / period;
+    output[index] = { adx, plus_di: plusDi[index], minus_di: minusDi[index] };
+  }
+  return output;
 }
 
 function averageTrueRangeBeforeSignal(rows, executionIndex, period) {
