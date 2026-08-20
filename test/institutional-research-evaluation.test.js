@@ -146,6 +146,77 @@ test("donchian regime breakout executes through sealed next-candle walk-forward 
   assert.equal(result[0].windows.every((row) => row.evidence_integrity_passed === true), true);
 });
 
+function donchianCompressionBreakoutSpec() {
+  return typedSpec({
+    strategy: {
+      template: "donchian_compression_breakout",
+      feature_set_id: "ohlc-donchian-compression-v1",
+      parameters: { lookback: 72, compression_period: 24, baseline_period: 168 },
+    },
+  });
+}
+
+test("donchian compression breakout preregistration is exact and ordered", () => {
+  const validated = validateInstitutionalResearchSpec(donchianCompressionBreakoutSpec());
+  assert.equal(validated.strategy.template, "donchian_compression_breakout");
+  assert.deepEqual(validated.strategy.parameters, { lookback: 72, compression_period: 24, baseline_period: 168 });
+  assert.throws(() => validateInstitutionalResearchSpec(typedSpec({
+    strategy: {
+      template: "donchian_compression_breakout",
+      feature_set_id: "ohlc-donchian-compression-v1",
+      parameters: { lookback: 72, compression_period: 72, baseline_period: 168 },
+    },
+  })), /donchian_compression_period_order_invalid/);
+  assert.throws(() => validateInstitutionalResearchSpec(typedSpec({
+    strategy: {
+      template: "donchian_compression_breakout",
+      feature_set_id: "ohlc-donchian-compression-v1",
+      parameters: { lookback: 168, compression_period: 24, baseline_period: 168 },
+    },
+  })), /donchian_compression_period_order_invalid/);
+});
+
+test("donchian compression breakout requires pre-break compression and excludes the signal candle", () => {
+  const start = Date.parse("2026-01-01T00:00:00.000Z");
+  const compressed = Array.from({ length: 170 }, (_, index) => {
+    const close = index === 169 ? 111 : 100;
+    const older = index < 145;
+    return {
+      closed_at: new Date(start + index * 3600000).toISOString(),
+      open: close,
+      high: index === 169 ? 200 : older ? 110 : 100.1,
+      low: index === 169 ? 50 : older ? 90 : 99.9,
+      close,
+      volume: 100,
+    };
+  });
+  const expanded = Array.from({ length: 170 }, (_, index) => {
+    const close = index === 169 ? 121 : 100;
+    const recent = index >= 145 && index <= 168;
+    return {
+      closed_at: new Date(start + index * 3600000).toISOString(),
+      open: close,
+      high: index === 169 ? 200 : recent ? 120 : 101,
+      low: index === 169 ? 50 : recent ? 80 : 99,
+      close,
+      volume: 100,
+    };
+  });
+  const strategy = buildStrategyFromResearchSpec("typed-donchian-compression-test-001", donchianCompressionBreakoutSpec());
+  assert.equal(compileDirectionalSignal(strategy, compressed)(compressed.length, 0), 1);
+  assert.equal(compileDirectionalSignal(strategy, expanded)(expanded.length, 0), 0);
+});
+
+test("donchian compression breakout executes through sealed next-candle walk-forward math", () => {
+  const policy = buildInstitutionalBacktestPolicy();
+  const windows = buildWalkForwardWindows(syntheticCandles(), policy);
+  const strategy = buildStrategyFromResearchSpec("typed-donchian-compression-walk-forward-001", donchianCompressionBreakoutSpec());
+  const result = runDirectionalWalkForward({ windows, strategies: [strategy], policy });
+  assert.equal(result.length, 1);
+  assert.equal(result[0].windows.every((row) => row.execution_model === "next_completed_candle_open"), true);
+  assert.equal(result[0].windows.every((row) => row.evidence_integrity_passed === true), true);
+});
+
 function regimeMomentumSpec() {
   return typedSpec({
     strategy: {

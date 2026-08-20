@@ -102,6 +102,29 @@ export function compileDirectionalSignal(strategy, candles) {
     };
   }
 
+  if (family === "donchian_compression_breakout") {
+    const lookback = integer(parameters.lookback, "lookback");
+    const compressionPeriod = integer(parameters.compression_period, "compression_period");
+    const baselinePeriod = integer(parameters.baseline_period, "baseline_period");
+    return (executionIndex, currentExposure = 0) => {
+      const current = clamp(currentExposure);
+      if (executionIndex < baselinePeriod + 2) return current;
+      const compressionRange = averageTrueRangeBeforeSignal(rows, executionIndex, compressionPeriod);
+      const baselineRange = averageTrueRangeBeforeSignal(rows, executionIndex, baselinePeriod);
+      if (!(compressionRange < baselineRange)) return current;
+      const latest = rows[executionIndex - 1];
+      let upper = -Infinity;
+      let lower = Infinity;
+      for (let index = executionIndex - lookback - 1; index < executionIndex - 1; index += 1) {
+        upper = Math.max(upper, rows[index].high);
+        lower = Math.min(lower, rows[index].low);
+      }
+      if (latest.close > upper) return 1;
+      if (latest.close < lower) return -1;
+      return current;
+    };
+  }
+
   if (family === "price_momentum") {
     const lookback = integer(parameters.lookback, "lookback");
     const threshold = finite(parameters.threshold_percent, "threshold_percent") / 100;
@@ -307,6 +330,20 @@ function simulate(candles, testStart, policy, costMultiplier, evaluateSignal) {
     total_fees: round(totalFees),
     total_carry: round(totalCarry),
   };
+}
+
+function averageTrueRangeBeforeSignal(rows, executionIndex, period) {
+  let total = 0;
+  for (let index = executionIndex - period - 1; index <= executionIndex - 2; index += 1) {
+    const row = rows[index];
+    const priorClose = rows[index - 1].close;
+    total += Math.max(
+      row.high - row.low,
+      Math.abs(row.high - priorClose),
+      Math.abs(row.low - priorClose),
+    );
+  }
+  return total / period;
 }
 
 function emaSeries(values, period) {

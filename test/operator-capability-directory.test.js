@@ -52,6 +52,18 @@ test("mutations list idempotency tests and path capabilities have allowlists", (
   }
 });
 
+test("donchian compression breakout evolves internal registration without expanding public tools", () => {
+  const registration = capabilityDirectory.find((entry) => entry.id === "institutional_research.hypothesis_register");
+  const strategySchema = registration?.input_schema?.properties?.hypothesis?.properties?.preregistration?.properties?.strategy;
+  assert.ok(strategySchema?.properties?.template?.enum?.includes("donchian_compression_breakout"));
+  assert.ok(strategySchema?.properties?.feature_set_id?.enum?.includes("ohlc-donchian-compression-v1"));
+  assert.ok(strategySchema?.properties?.parameters?.properties?.compression_period);
+  assert.ok(strategySchema?.properties?.parameters?.properties?.baseline_period);
+  const tools = publicTools({ type: "object" }, { type: "object" }, { type: "object" });
+  assert.equal(tools.length, 5);
+  assert.doesNotMatch(JSON.stringify(tools), /donchian_compression_breakout/);
+});
+
 test("market volume audit is an internal stable-gateway capability", () => {
   const audit = capabilityDirectory.find((entry) => entry.intent === "get_market_data_volume_audit");
   assert.equal(audit?.id, "market_data.volume_audit");

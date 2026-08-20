@@ -66,6 +66,20 @@ export const INSTITUTIONAL_STRATEGY_TEMPLATES = deepFreeze({
       if (parameters.lookback >= parameters.regime_lookback) throw new Error("institutional_spec_donchian_regime_lookback_order_invalid");
     },
   },
+  donchian_compression_breakout: {
+    family: "donchian_compression_breakout",
+    feature_set_id: "ohlc-donchian-compression-v1",
+    parameters: {
+      lookback: integerRule(5, 240),
+      compression_period: integerRule(2, 120),
+      baseline_period: integerRule(24, 240),
+    },
+    cross_validate(parameters) {
+      if (!(parameters.compression_period < parameters.lookback && parameters.lookback < parameters.baseline_period)) {
+        throw new Error("institutional_spec_donchian_compression_period_order_invalid");
+      }
+    },
+  },
   price_momentum: {
     family: "price_momentum",
     feature_set_id: "close-momentum-v1",
