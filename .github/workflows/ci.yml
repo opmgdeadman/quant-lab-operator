@@ -96,27 +96,57 @@ jobs:
       - name: Run Recovery Worker tests
         if: ${{ always() }}
         run: node --test test/recovery-worker.test.js
-      - name: Run research and execution Worker tests
+      - name: Run baseline bench tests
         if: ${{ always() }}
-        run: >-
-          node --test
-          test/baseline-bench.test.js
-          test/champion-selection.test.js
-          test/directional-backtest.test.js
-          test/directional-institutional-research.test.js
-          test/directional-main.test.js
-          test/directional-research.test.js
-          test/directional-shadow.test.js
-          test/forward-paper.test.js
-          test/historical-bootstrap.test.js
-          test/hostile-judge.test.js
-          test/institutional-research-portfolio.test.js
-          test/institutional-research-evaluation.test.js
-          test/live-qualification.test.js
-          test/market-data.test.js
-          test/paper-ledger.test.js
-          test/rolling-research.test.js
-          test/strategy-factory.test.js
+        run: node --test test/baseline-bench.test.js
+      - name: Run champion selection tests
+        if: ${{ always() }}
+        run: node --test test/champion-selection.test.js
+      - name: Run directional backtest tests
+        if: ${{ always() }}
+        run: node --test test/directional-backtest.test.js
+      - name: Run directional institutional research tests
+        if: ${{ always() }}
+        run: node --test test/directional-institutional-research.test.js
+      - name: Run directional main tests
+        if: ${{ always() }}
+        run: node --test test/directional-main.test.js
+      - name: Run directional research tests
+        if: ${{ always() }}
+        run: node --test test/directional-research.test.js
+      - name: Run directional shadow tests
+        if: ${{ always() }}
+        run: node --test test/directional-shadow.test.js
+      - name: Run forward paper tests
+        if: ${{ always() }}
+        run: node --test test/forward-paper.test.js
+      - name: Run historical bootstrap tests
+        if: ${{ always() }}
+        run: node --test test/historical-bootstrap.test.js
+      - name: Run hostile judge tests
+        if: ${{ always() }}
+        run: node --test test/hostile-judge.test.js
+      - name: Run institutional research portfolio tests
+        if: ${{ always() }}
+        run: node --test test/institutional-research-portfolio.test.js
+      - name: Run institutional research evaluation tests
+        if: ${{ always() }}
+        run: node --test test/institutional-research-evaluation.test.js
+      - name: Run live qualification tests
+        if: ${{ always() }}
+        run: node --test test/live-qualification.test.js
+      - name: Run market data tests
+        if: ${{ always() }}
+        run: node --test test/market-data.test.js
+      - name: Run paper ledger tests
+        if: ${{ always() }}
+        run: node --test test/paper-ledger.test.js
+      - name: Run rolling research tests
+        if: ${{ always() }}
+        run: node --test test/rolling-research.test.js
+      - name: Run strategy factory tests
+        if: ${{ always() }}
+        run: node --test test/strategy-factory.test.js
       - name: Run quant core tests
         if: ${{ always() }}
         run: python -m pytest
