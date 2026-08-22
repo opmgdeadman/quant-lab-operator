@@ -8,8 +8,40 @@ import {
   runFailureIntelligenceCertification,
 } from "../../standards/fleet-failure-intelligence-enforcement-v1.js";
 
+const testStores = new WeakMap();
+
 function storage(env) {
+  if (env?.ENVIRONMENT === "test") {
+    let current = testStores.get(env);
+    if (!current) {
+      current = createMemoryFailureIntelligenceStorage();
+      testStores.set(env, current);
+    }
+    return current;
+  }
   return createD1FailureIntelligenceStorage(env.DB);
+}
+
+function createMemoryFailureIntelligenceStorage() {
+  const preventions = new Map();
+  const attempts = [];
+  return {
+    async ensureSchema() {},
+    async createPrevention(row) { preventions.set(row.prevention_id, { ...row }); },
+    async getPrevention(preventionId) { return preventions.get(preventionId) ?? null; },
+    async listActivePreventions() { return [...preventions.values()].filter((row) => row.status === "ACTIVE"); },
+    async appendAttempt(row) { attempts.push({ ...row }); },
+    async listAttempts(preventionId) { return attempts.filter((row) => row.prevention_id === preventionId); },
+    retireByPrefix(prefix) {
+      const now = new Date().toISOString();
+      for (const row of preventions.values()) {
+        if (row.prevention_id.startsWith(prefix) && row.status === "ACTIVE") {
+          row.status = "RETIRED";
+          row.updated_at = now;
+        }
+      }
+    },
+  };
 }
 
 function runtimeContext(toolName, args) {
@@ -103,6 +135,10 @@ export async function runQuantFailureIntelligenceCertification(env, runId) {
 }
 
 async function retireCertificationFixtures(env, runId) {
+  if (env?.ENVIRONMENT === "test") {
+    storage(env).retireByPrefix(`cert:${runId}:`);
+    return;
+  }
   const now = new Date().toISOString();
   await env.DB.prepare("UPDATE failure_intelligence_preventions SET status = 'RETIRED', updated_at = ? WHERE prevention_id LIKE ? AND status = 'ACTIVE'")
     .bind(now, `cert:${runId}:%`).run();
