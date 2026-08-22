@@ -459,6 +459,7 @@ export function applySignedRebalance({
   executionPrice,
   markPrice,
   hoursElapsed = 1,
+  holdSameDirection = false,
 }) {
   const p = normalizePortfolio(portfolio);
   const target = clampExposure(targetExposure);
@@ -471,6 +472,36 @@ export function applySignedRebalance({
   const carry = shortNotional * (SHORT_CARRY_BPS_PER_DAY / 10000) * (hours / 24);
   let cash = p.cash_balance - carry;
   const equityBeforeTrade = Math.max(0, cash + existingUnrealizedAtOpen);
+  const sameDirectionHold = Boolean(holdSameDirection)
+    && Math.sign(p.position_quantity) !== 0
+    && Math.sign(target) === Math.sign(p.position_quantity);
+  if (sameDirectionHold) {
+    const unrealized = p.position_quantity * (mark - p.average_entry);
+    const equity = Math.max(0, cash + unrealized);
+    const peakEquity = Math.max(p.peak_equity, equity);
+    const drawdown = peakEquity > 0 ? ((peakEquity - equity) / peakEquity) * 100 : 0;
+    const gross = equity > EPSILON ? Math.abs(p.position_quantity * mark) / equity : 0;
+    return {
+      status: "held",
+      cash_balance: cash,
+      position_quantity: p.position_quantity,
+      average_entry: p.average_entry,
+      realized_pnl_delta: 0,
+      realized_pnl: p.realized_pnl,
+      unrealized_pnl: unrealized,
+      fee: 0,
+      carry,
+      total_fees: p.total_fees,
+      total_carry: p.total_carry + carry,
+      equity,
+      peak_equity: peakEquity,
+      max_drawdown_percent: Math.max(p.max_drawdown_percent, drawdown),
+      entry_gross_exposure_multiple: 0,
+      gross_exposure_multiple: gross,
+      quantity_delta: 0,
+      execution_price: open,
+    };
+  }
   const approximateDesired = target * Math.min(MAX_GROSS_EXPOSURE, Math.abs(target)) * equityBeforeTrade / open;
   const approximateDelta = approximateDesired - p.position_quantity;
   const fillDirection = Math.sign(approximateDelta);

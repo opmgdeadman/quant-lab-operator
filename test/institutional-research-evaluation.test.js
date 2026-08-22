@@ -423,6 +423,15 @@ test("independent judge rejects caller-supplied performance-metric artifacts", (
   }), /caller_metrics_flag_invalid/);
 });
 
+test("execution-research forward validation is isolated from v1 rebalancing and the alpha judge", async () => {
+  const source = await readFile(new URL("../src/institutionalResearchEvaluation.js", import.meta.url), "utf8");
+  assert.match(source, /runInstitutionalExecutionResearchEvaluation/);
+  assert.match(source, /broad_improvement_passed/);
+  assert.match(source, /holdSameDirection: spec\.walk_forward_policy_id === "directional-position-hold-v2"/);
+  assert.match(source, /institutional_execution_research_requires_execution_judge/);
+  assert.match(source, /benchmark_distinct_traded_regimes/);
+});
+
 test("Stage 14 forward evidence begins only after testing and on the next completed candle", () => {
   assert.equal(isInstitutionalForwardExecutionEligible({ testingStartedAt: "2026-08-19T20:27:47.457Z", signalClosedAt: "2026-08-19T20:00:00.000Z", executionClosedAt: "2026-08-19T21:00:00.000Z" }), false);
   assert.equal(isInstitutionalForwardExecutionEligible({ testingStartedAt: "2026-08-19T20:27:47.457Z", signalClosedAt: "2026-08-19T21:00:00.000Z", executionClosedAt: "2026-08-19T22:00:00.000Z" }), true);
