@@ -17,9 +17,6 @@ export async function runInstitutionalHypothesisEvaluation(env, { hypothesisId, 
   if (!["admitted", "testing"].includes(hypothesis.state)) throw new Error("institutional_evaluation_hypothesis_not_admitted");
   const existing = await readEvaluationByHypothesis(env, hypothesis.id);
   if (existing) return { ok: true, paper_only: true, live_capital_enabled: false, evaluation: existing, replayed: true };
-  if (hypothesis.research_function === "execution_research") {
-    return runInstitutionalExecutionResearchEvaluation(env, { hypothesis, now });
-  }
 
   const spec = validateInstitutionalResearchSpec(hypothesis.preregistration);
   const policy = buildInstitutionalBacktestPolicy(spec.walk_forward_policy_id);
@@ -105,95 +102,6 @@ export async function runInstitutionalHypothesisEvaluation(env, { hypothesisId, 
   return { ok: true, paper_only: true, live_capital_enabled: false, evaluation, replayed: false };
 }
 
-async function runInstitutionalExecutionResearchEvaluation(env, { hypothesis, now }) {
-  const comparison = await runInstitutionalExecutionPolicyComparison(env);
-  if (comparison.preregistered_question.execution_research_hypothesis_id !== hypothesis.id) {
-    throw new Error("institutional_execution_research_identity_mismatch");
-  }
-  if (!comparison.broad_improvement_passed) throw new Error("institutional_execution_research_broad_improvement_failed");
-  const spec = validateInstitutionalResearchSpec(hypothesis.preregistration);
-  const policy = buildInstitutionalBacktestPolicy(spec.walk_forward_policy_id);
-  const rows = comparison.windows.map((row) => row.v2);
-  const baseReturns = rows.map((row) => Number(row.base_return_percent));
-  const doubledReturns = rows.map((row) => Number(row.doubled_cost_return_percent));
-  const tripledReturns = rows.map((row) => Number(row.tripled_cost_return_percent));
-  const artifact = {
-    hypothesis_id: hypothesis.id,
-    research_function: "execution_research",
-    preregistration_hash: hypothesis.preregistration_hash,
-    dataset_id: spec.dataset_id,
-    strategy_template: spec.strategy.template,
-    feature_set_id: spec.strategy.feature_set_id,
-    execution_policy_id: spec.walk_forward_policy_id,
-    benchmark_hypothesis_id: comparison.preregistered_question.benchmark_hypothesis_id,
-    benchmark_policy_id: comparison.preregistered_question.v1_policy_id,
-    as_of_closed_at: comparison.benchmark_as_of_closed_at,
-    candle_start_closed_at: comparison.windows[0].start_closed_at,
-    candle_end_closed_at: comparison.windows.at(-1).end_closed_at,
-    candle_count: policy.required_candles,
-    window_count: comparison.window_count,
-    total_closed_trades: sum(rows.map((row) => row.closed_trade_count)),
-    positive_test_windows: baseReturns.filter((value) => value > 0).length,
-    median_test_return_percent: median(baseReturns),
-    worst_test_drawdown_percent: Math.max(...rows.map((row) => Number(row.max_drawdown_percent))),
-    doubled_cost_median_return_percent: median(doubledReturns),
-    tripled_cost_median_return_percent: median(tripledReturns),
-    distinct_traded_regimes: comparison.benchmark_distinct_traded_regimes,
-    evidence_integrity_passed: comparison.window_count === 5 && comparison.preregistered_question.existing_v1_evidence_mutated === false,
-    execution_model: "next_completed_candle_open",
-    caller_supplied_performance_metrics: false,
-    paired_broad_improvement_passed: true,
-    paired_success_interpretation: comparison.preregistered_question.success_interpretation,
-    windows: comparison.windows.map((row) => ({
-      window_id: row.window_id,
-      start_closed_at: row.start_closed_at,
-      end_closed_at: row.end_closed_at,
-      test_return_percent: row.v2.base_return_percent,
-      doubled_cost_return_percent: row.v2.doubled_cost_return_percent,
-      tripled_cost_return_percent: row.v2.tripled_cost_return_percent,
-      test_drawdown_percent: row.v2.max_drawdown_percent,
-      closed_trade_count: row.v2.closed_trade_count,
-      fill_count: row.v2.fill_count,
-      turnover_notional: row.v2.turnover_notional,
-      total_fees: row.v2.total_fees,
-      total_slippage: row.v2.total_slippage,
-      total_carry: row.v2.total_carry,
-      paired_delta: row.delta,
-      evidence_integrity_passed: true,
-      execution_model: "next_completed_candle_open",
-    })),
-  };
-  const artifactHash = await hashObject(artifact);
-  const createdAt = iso(now, "created_at");
-  const evaluation = {
-    id: `${hypothesis.id}:evaluation:v1`,
-    hypothesis_id: hypothesis.id,
-    preregistration_hash: hypothesis.preregistration_hash,
-    as_of_closed_at: comparison.benchmark_as_of_closed_at,
-    candle_start_closed_at: artifact.candle_start_closed_at,
-    candle_end_closed_at: artifact.candle_end_closed_at,
-    artifact,
-    artifact_hash: artifactHash,
-    created_at: createdAt,
-  };
-  try {
-    await env.DB.prepare(
-      `INSERT INTO institutional_research_evaluations
-       (id, hypothesis_id, preregistration_hash, as_of_closed_at, candle_start_closed_at, candle_end_closed_at, artifact_json, artifact_hash, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    ).bind(
-      evaluation.id, evaluation.hypothesis_id, evaluation.preregistration_hash, evaluation.as_of_closed_at,
-      evaluation.candle_start_closed_at, evaluation.candle_end_closed_at, JSON.stringify(evaluation.artifact),
-      evaluation.artifact_hash, evaluation.created_at,
-    ).run();
-  } catch (error) {
-    const raced = await readEvaluationByHypothesis(env, hypothesis.id);
-    if (raced?.artifact_hash === artifactHash) return { ok: true, paper_only: true, live_capital_enabled: false, evaluation: raced, replayed: true };
-    throw error;
-  }
-  return { ok: true, paper_only: true, live_capital_enabled: false, evaluation, replayed: false };
-}
-
 export async function runInstitutionalExecutionPolicyComparison(env) {
   requireDatabase(env);
   const benchmarkId = "btc-donchian-72-breakout-v1";
@@ -240,7 +148,6 @@ export async function runInstitutionalExecutionPolicyComparison(env) {
       existing_v1_evidence_mutated: false,
     },
     benchmark_as_of_closed_at: benchmarkEvaluation.as_of_closed_at,
-    benchmark_distinct_traded_regimes: Number(benchmarkEvaluation.artifact.distinct_traded_regimes || 0),
     window_count: paired.length,
     improved_base_windows: improvedBase,
     improved_doubled_cost_windows: improvedDoubled,
@@ -260,7 +167,6 @@ export async function runInstitutionalExecutionPolicyComparison(env) {
 export async function runInstitutionalIndependentJudge(env, { hypothesisId, now = new Date() } = {}) {
   requireDatabase(env);
   const hypothesis = await readRegisteredHypothesis(env, hypothesisId);
-  if (hypothesis.research_function === "execution_research") throw new Error("institutional_execution_research_requires_execution_judge");
   if (!["testing", "qualified", "rejected"].includes(hypothesis.state)) throw new Error("institutional_judge_hypothesis_not_testing");
   const evaluation = await readEvaluationByHypothesis(env, hypothesis.id);
   if (!evaluation) throw new Error("institutional_judge_sealed_evaluation_missing");
@@ -381,7 +287,6 @@ async function runInstitutionalForwardCycle(env, hypothesis, runAt) {
     executionPrice: executionCandle.open,
     markPrice: executionCandle.close,
     hoursElapsed: 1,
-    holdSameDirection: spec.walk_forward_policy_id === "directional-position-hold-v2",
   });
   const nextExposure = signedForwardExposure(transition.position_quantity);
   const closedTradeCount = portfolio.closed_trade_count + (priorExposure !== 0 && nextExposure !== priorExposure ? 1 : 0);
