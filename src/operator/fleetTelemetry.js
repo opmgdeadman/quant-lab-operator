@@ -37,6 +37,47 @@ export async function flushFleetTelemetryWrites() {
   await Promise.allSettled([...pendingWrites]);
 }
 
+export async function runQuantTimingTelemetryCertification(runtimeEnv, runId) {
+  if (!runtimeEnv?.TELEMETRY_DB) throw new Error("telemetry_db_binding_missing");
+  if (typeof runId !== "string" || !runId.trim() || runId.trim().length > 120) throw new Error("invalid_timing_cert_run_id");
+  const traceId = `quant-lab-timing-cert:${runId.trim()}`.slice(0, 128);
+  const first = await traceQuantTool(runtimeEnv, "fleet_timing_cert_a", traceId, { certification_run_id: runId.trim() }, async () => ({ ok: true, probe: "a" }));
+  const second = await traceQuantTool(runtimeEnv, "fleet_timing_cert_b", traceId, { certification_run_id: runId.trim() }, async () => ({ ok: true, probe: "b" }));
+  await flushFleetTelemetryWrites();
+
+  const trace = await runtimeEnv.TELEMETRY_DB.prepare("SELECT trace_id, call_count, total_tool_ms, failure_count, retain_class, expires_at FROM telemetry_traces WHERE trace_id = ?")
+    .bind(traceId).first();
+  const spanRows = await runtimeEnv.TELEMETRY_DB.prepare("SELECT span_id, trace_id, mcp_name, tool_name, duration_ms, outcome, request_bytes, response_bytes, error_class, error_message FROM telemetry_spans WHERE trace_id = ? ORDER BY started_at, span_id")
+    .bind(traceId).all();
+  const spans = Array.isArray(spanRows?.results) ? spanRows.results : [];
+  const matching = spans.filter((row) => row.trace_id === traceId && row.mcp_name === "quant-lab" && ["fleet_timing_cert_a", "fleet_timing_cert_b"].includes(row.tool_name));
+  const receiptA = first?._telemetry;
+  const receiptB = second?._telemetry;
+  const pass = receiptA?.trace_id === traceId
+    && receiptB?.trace_id === traceId
+    && receiptA?.span_id
+    && receiptB?.span_id
+    && receiptA.span_id !== receiptB.span_id
+    && Number(trace?.call_count ?? 0) >= 2
+    && Number(trace?.failure_count ?? 0) === 0
+    && matching.length >= 2
+    && matching.every((row) => row.outcome === "SUCCESS" && Number.isFinite(Number(row.duration_ms)) && Number(row.request_bytes) >= 0 && Number(row.response_bytes) >= 0);
+
+  return {
+    ok: Boolean(pass),
+    standard: "fleet-timing-telemetry-standard-v1",
+    run_id: runId.trim(),
+    trace_id: traceId,
+    receipts: [receiptA, receiptB],
+    persisted_trace: trace ?? null,
+    persisted_span_count: matching.length,
+    persisted_spans: matching,
+    raw_arguments_stored: false,
+    raw_results_stored: false,
+    result: pass ? "CERTIFICATION_PASS" : "CERTIFICATION_FAIL",
+  };
+}
+
 function scheduleTelemetry(db, event) {
   const task = persistTelemetry(db, event).catch((error) => {
     console.error("quant_lab_telemetry_write_failed", toErrorMessage(error).slice(0, 300));

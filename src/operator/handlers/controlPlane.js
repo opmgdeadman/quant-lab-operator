@@ -19,6 +19,7 @@ import { getMarketVolumeAudit } from "../../marketData.js";
 import { renderProfessionalConsole } from "../../professionalConsole.js";
 import { syncQuantResumeCheckpoint } from "../fleetResume.js";
 import { runQuantFailureIntelligenceCertification } from "../fleetFailureIntelligence.js";
+import { runQuantTimingTelemetryCertification } from "../fleetTelemetry.js";
 
 export const handlers = {
   get_engineering_access_state,
@@ -56,6 +57,7 @@ export const handlers = {
   get_hardening_status,
   advance_hardening_incident,
   run_failure_intelligence_certification,
+  run_timing_telemetry_certification,
   checkpoint_quant_lab_resume,
   read_continuation,
   inspect_repository,
@@ -639,6 +641,16 @@ function serializeHardeningIncident(row) {
 
 async function run_failure_intelligence_certification(inputs, context) {
   const certification = await runQuantFailureIntelligenceCertification(context.env, inputs.run_id);
+  return {
+    ...certification,
+    paper_only: true,
+    live_capital_enabled: false,
+    canonical_git_authority_unchanged: true,
+  };
+}
+
+async function run_timing_telemetry_certification(inputs, context) {
+  const certification = await runQuantTimingTelemetryCertification(context.env, inputs.run_id);
   return {
     ...certification,
     paper_only: true,
