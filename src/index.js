@@ -18,6 +18,8 @@ import { executeQuantLabIntent, executionKernelInfo } from "./operator/execution
 import { capabilityDirectory, resolveCapabilitySelector } from "./operator/capabilityDirectory.js";
 import { loadQuantStartupContext } from "./operator/startupAuthority.js";
 import { publicTools as operatorPublicTools } from "./operator/toolRegistry.js";
+import { setFleetTelemetryContext, traceQuantTool } from "./operator/fleetTelemetry.js";
+import { enforceQuantToolCall, recordQuantToolSuccess } from "./operator/fleetFailureIntelligence.js";
 
 const SYSTEM_NAME = "Quant Lab";
 const MCP_PATH = "/api/operator/mcp";
@@ -88,7 +90,8 @@ export async function handleRequest(request, env) {
 }
 
 export default {
-  fetch(request, env) {
+  fetch(request, env, ctx) {
+    setFleetTelemetryContext(ctx);
     return handleRequest(request, env);
   },
   scheduled(controller, env, ctx) {
@@ -331,6 +334,21 @@ async function mcpResponseFor(message, request, env) {
 }
 
 async function callPublicTool(name, args, env) {
+  const suppliedTraceId = typeof args?.trace_id === "string" ? args.trace_id : undefined;
+  const businessArgs = { ...(args || {}) };
+  delete businessArgs.trace_id;
+  return traceQuantTool(env, name, suppliedTraceId, businessArgs, async () => {
+    const gate = await enforceQuantToolCall(env, name, businessArgs);
+    if (!gate.allowed) {
+      throw new ToolInputError(`failure_intelligence_veto:${gate.decision}`);
+    }
+    const result = await callPublicToolBusiness(name, businessArgs, env);
+    await recordQuantToolSuccess(env, name, businessArgs, gate);
+    return result;
+  });
+}
+
+async function callPublicToolBusiness(name, args, env) {
   if (name === "get_quant_lab_startup_context") {
     return loadQuantStartupContext(env);
   }

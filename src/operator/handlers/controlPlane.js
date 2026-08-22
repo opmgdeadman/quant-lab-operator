@@ -17,6 +17,8 @@ import { getRollingResearchSummary, runProductionRollingResearch } from "../../r
 import { getHistoricalBootstrapSummary, runProductionHistoricalBootstrap } from "../../historicalBootstrap.js";
 import { getMarketVolumeAudit } from "../../marketData.js";
 import { renderProfessionalConsole } from "../../professionalConsole.js";
+import { syncQuantResumeCheckpoint } from "../fleetResume.js";
+import { runQuantFailureIntelligenceCertification } from "../fleetFailureIntelligence.js";
 
 export const handlers = {
   get_engineering_access_state,
@@ -53,6 +55,8 @@ export const handlers = {
   run_historical_bootstrap,
   get_hardening_status,
   advance_hardening_incident,
+  run_failure_intelligence_certification,
+  checkpoint_quant_lab_resume,
   read_continuation,
   inspect_repository,
   list_repo_files,
@@ -630,6 +634,26 @@ function serializeHardeningIncident(row) {
     created_at: row.created_at,
     updated_at: row.updated_at,
     closed_at: row.closed_at || null,
+  };
+}
+
+async function run_failure_intelligence_certification(inputs, context) {
+  const certification = await runQuantFailureIntelligenceCertification(context.env, inputs.run_id);
+  return {
+    ...certification,
+    paper_only: true,
+    live_capital_enabled: false,
+    canonical_git_authority_unchanged: true,
+  };
+}
+
+async function checkpoint_quant_lab_resume(inputs, context) {
+  const checkpoint = await syncQuantResumeCheckpoint(context.env, inputs);
+  return {
+    ok: checkpoint?.ok === true,
+    ...checkpoint,
+    paper_only: true,
+    live_capital_enabled: false,
   };
 }
 
