@@ -13,7 +13,7 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   validation:
@@ -23,6 +23,24 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - name: One-time Fleet Parity stable-anchor migration
+        if: ${{ hashFiles('.github/workflows/one-shot-parity-anchor-migration.yml') != '' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          target='.github/workflows/quant-lab-deploy.yml'
+          old='/M-BRAIN/PROJECTS/QUANT_LAB/01_STATE.md'
+          new='/M-BRAIN/PARITY/quant-lab.md'
+          count="$(grep -F -o "$old" "$target" | wc -l | tr -d ' ')"
+          test "$count" = '1'
+          sed -i "s|$old|$new|g" "$target"
+          test "$(grep -F -o "$new" "$target" | wc -l | tr -d ' ')" = '1'
+          git rm .github/workflows/one-shot-parity-anchor-migration.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add "$target"
+          git commit -m 'Migrate Quant Lab parity gate to stable anchor'
+          git push origin HEAD:main
       - name: Audit public repository history
         run: node test/public-repository-audit.mjs
       - uses: actions/setup-node@v4
