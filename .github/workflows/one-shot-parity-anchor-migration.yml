@@ -33,3 +33,5 @@ jobs:
           git add "$target"
           git commit -m 'Migrate Quant Lab parity gate to stable anchor'
           git push origin HEAD:main
+
+# trigger revision 2
