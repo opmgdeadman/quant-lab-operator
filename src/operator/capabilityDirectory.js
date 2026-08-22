@@ -562,7 +562,7 @@ export const capabilityDirectory = [
     output_schema: objectSchema({ ok: { type: "boolean" } }, ["ok"]),
     external_systems: ["d1"],
     risk_gates: ["auth_required", "session_required", "idempotency_required", "bounded_synthetic_certification", "production_novel_loss_execution_forbidden", "certification_fixtures_retired"],
-    tests: ["eight-scenario failure intelligence harness blocks known recurrence and executes corrected route only"],
+    tests: ["certification operation_id replay is idempotent; eight-scenario failure intelligence harness blocks known recurrence and executes corrected route only"],
   }),
   capability({
     id: "continuation.resume_checkpoint",
@@ -582,7 +582,7 @@ export const capabilityDirectory = [
     output_schema: objectSchema({ ok: { type: "boolean" } }, ["ok"]),
     external_systems: ["m_brain_quant_resume_ingress"],
     risk_gates: ["auth_required", "session_required", "idempotency_required", "exact_resume_path", "no_caller_selected_path", "no_automatic_writes", "canonical_git_authority_unchanged", "paper_only", "no_live_capital"],
-    tests: ["resume checkpoint writes only the fixed Quant capsule and identical checkpoint is a no-op"],
+    tests: ["resume checkpoint operation_id replay is idempotent; it writes only the fixed Quant capsule and an identical checkpoint is a no-op"],
   }),
   capability({
     id: "operating.continuation_read",
