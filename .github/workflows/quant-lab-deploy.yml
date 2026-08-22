@@ -274,6 +274,68 @@ jobs:
       - name: Validate Worker configuration
         if: steps.validation_evidence.outputs.reuse != 'true'
         run: npm run check
+      - name: Compute exact material parity fingerprint
+        id: material_parity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s parity/material-manifest-v1.txt
+          LC_ALL=C sort -c parity/material-manifest-v1.txt
+          if [ -n "$(LC_ALL=C sort parity/material-manifest-v1.txt | uniq -d)" ]; then
+            echo "duplicate material parity path"
+            exit 41
+          fi
+          : > /tmp/quant-material-identities.txt
+          while IFS= read -r path; do
+            [ -n "$path" ] || continue
+            git cat-file -e "HEAD:${path}"
+            blob="$(git rev-parse "HEAD:${path}")"
+            printf '%s=%s\n' "$path" "$blob" >> /tmp/quant-material-identities.txt
+          done < parity/material-manifest-v1.txt
+          LC_ALL=C sort -o /tmp/quant-material-identities.txt /tmp/quant-material-identities.txt
+          sha256sum /tmp/quant-material-identities.txt | awk '{print $1}' > /tmp/quant-material-fingerprint
+          fingerprint="$(cat /tmp/quant-material-fingerprint)"
+          echo "fingerprint=${fingerprint}" >> "${GITHUB_OUTPUT}"
+          echo "Quant Lab material fingerprint: ${fingerprint}"
+
+      - name: Require current M-BRAIN parity
+        id: brain_parity
+        shell: bash
+        env:
+          BROKER_URL: https://m-brain-parity-broker.briangriffin355.workers.dev
+          DOMAIN: quant-lab
+          CANONICAL_PATH: /M-BRAIN/PROJECTS/QUANT_LAB/01_STATE.md
+        run: |
+          set -euo pipefail
+          LIVE_FINGERPRINT="$(cat /tmp/quant-material-fingerprint)"
+          body="$(mktemp)"
+          code="$(curl -sS -o "$body" -w '%{http_code}' -X POST "$BROKER_URL/issue" -H 'content-type: application/json' --data "$(jq -nc --arg domain "$DOMAIN" --arg path "$CANONICAL_PATH" --arg fp "$LIVE_FINGERPRINT" '{domain:$domain,canonical_path:$path,live_fingerprint:$fp}')")"
+          if [ "$code" != "200" ]; then
+            echo "PARITY_BLOCKED"
+            cat "$body"
+            exit 42
+          fi
+          RECEIPT="$(jq -r '.receipt' "$body")" DOMAIN="$DOMAIN" CANONICAL_PATH="$CANONICAL_PATH" LIVE_FINGERPRINT="$LIVE_FINGERPRINT" node --input-type=module <<'NODE'
+          import { createPublicKey, verify } from 'node:crypto';
+          const publicKeyPem = `-----BEGIN PUBLIC KEY-----
+          MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEyx0NTCLqHmzGYakkuwDkH5Xd+ccw
+          hJdPbgdPzSlmVrD8uGgTIYYFotcMVUo6nBFHGyYp3ZxMUmS/3jJGGyXVxQ==
+          -----END PUBLIC KEY-----`.replace(/^          /gm, '');
+          const [header64, payload64, signature64] = process.env.RECEIPT.split('.');
+          if (!header64 || !payload64 || !signature64) throw new Error('brain_parity_receipt_malformed');
+          const decode = (value) => JSON.parse(Buffer.from(value, 'base64url').toString('utf8'));
+          const header = decode(header64);
+          const payload = decode(payload64);
+          const signature = Buffer.from(signature64, 'base64url');
+          const valid = verify('sha256', Buffer.from(`${header64}.${payload64}`), { key: createPublicKey(publicKeyPem), dsaEncoding: 'ieee-p1363' }, signature);
+          if (!valid) throw new Error('brain_parity_receipt_signature_invalid');
+          if (header.alg !== 'ES256' || header.kid !== 'mbrain-parity-p256-v1') throw new Error('brain_parity_receipt_signing_identity_invalid');
+          if (payload.iss !== 'm-brain-parity-broker' || payload.aud !== 'brain-parity-close') throw new Error('brain_parity_receipt_authority_invalid');
+          if (!payload.exp || payload.exp <= Math.floor(Date.now() / 1000)) throw new Error('brain_parity_receipt_expired');
+          if (payload.domain !== process.env.DOMAIN || payload.canonical_path !== process.env.CANONICAL_PATH || payload.live_fingerprint !== process.env.LIVE_FINGERPRINT) throw new Error('brain_parity_receipt_identity_mismatch');
+          console.log('brain_parity_verified');
+          NODE
+
       - name: Apply D1 migrations
         run: npx wrangler d1 migrations apply quant_lab_operator --remote
         env:
