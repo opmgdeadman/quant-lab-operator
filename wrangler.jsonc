@@ -28,6 +28,17 @@
       "database_name": "quant_lab_operator",
       "database_id": "d9ac1f46-8251-4184-ad35-b87be4755917",
       "migrations_dir": "migrations"
+    },
+    {
+      "binding": "TELEMETRY_DB",
+      "database_name": "mcp-controller-audit",
+      "database_id": "0922b49d-6ad8-4b8e-9c30-078c7927ef95"
+    }
+  ],
+  "services": [
+    {
+      "binding": "RESUME_SYNC_SERVICE",
+      "service": "m-brain-quant-resume-ingress"
     }
   ]
 }
