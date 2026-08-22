@@ -2,8 +2,15 @@ import { objectSchema } from "./schemas.js";
 import { REQUIRED_GOVERNING_AUTHORITY_ACK } from "./startupAuthority.js";
 
 const capabilitySelectorSchema = { type: "string", minLength: 1, maxLength: 120 };
+const traceIdSchema = { type: "string", minLength: 1, maxLength: 128 };
 const dynamicArgumentsSchema = { type: "object", additionalProperties: true };
 const dynamicDefinitionOutputSchema = { type: "object", additionalProperties: true };
+const telemetryReceiptSchema = objectSchema({
+  trace_id: { type: "string", minLength: 1, maxLength: 128 },
+  span_id: { type: "string", minLength: 1, maxLength: 128 },
+  duration_ms: { type: "number", minimum: 0 },
+  capture_mode: { type: "string", enum: ["async"] },
+});
 
 export function publicTools(publicStatusSchema, startupContextSchema, executeIntentOutputSchema) {
   return [
@@ -17,8 +24,8 @@ export function publicTools(publicStatusSchema, startupContextSchema, executeInt
         idempotentHint: true,
         openWorldHint: true,
       },
-      inputSchema: objectSchema({}),
-      outputSchema: startupContextSchema,
+      inputSchema: objectSchema({ trace_id: traceIdSchema }, []),
+      outputSchema: withTelemetry(startupContextSchema),
     },
     {
       name: "get_quant_lab_status",
@@ -30,8 +37,8 @@ export function publicTools(publicStatusSchema, startupContextSchema, executeInt
         idempotentHint: true,
         openWorldHint: true,
       },
-      inputSchema: objectSchema({}),
-      outputSchema: publicStatusSchema,
+      inputSchema: objectSchema({ trace_id: traceIdSchema }, []),
+      outputSchema: withTelemetry(publicStatusSchema),
     },
     {
       name: "get_quant_lab_capability_definition",
@@ -43,8 +50,8 @@ export function publicTools(publicStatusSchema, startupContextSchema, executeInt
         idempotentHint: true,
         openWorldHint: false,
       },
-      inputSchema: objectSchema({ capability: capabilitySelectorSchema }),
-      outputSchema: dynamicDefinitionOutputSchema,
+      inputSchema: objectSchema({ capability: capabilitySelectorSchema, trace_id: traceIdSchema }, ["capability"]),
+      outputSchema: withTelemetry(dynamicDefinitionOutputSchema),
     },
     {
       name: "execute_quant_lab_read_action",
@@ -57,7 +64,7 @@ export function publicTools(publicStatusSchema, startupContextSchema, executeInt
         openWorldHint: true,
       },
       inputSchema: gatewayInputSchema(),
-      outputSchema: executeIntentOutputSchema,
+      outputSchema: withTelemetry(executeIntentOutputSchema),
     },
     {
       name: "execute_quant_lab_mutation_action",
@@ -70,13 +77,14 @@ export function publicTools(publicStatusSchema, startupContextSchema, executeInt
         openWorldHint: true,
       },
       inputSchema: gatewayInputSchema(),
-      outputSchema: executeIntentOutputSchema,
+      outputSchema: withTelemetry(executeIntentOutputSchema),
     },
   ];
 }
 
 function gatewayInputSchema() {
   return objectSchema({
+    trace_id: traceIdSchema,
     operation_id: { type: "string", minLength: 1, maxLength: 120 },
     governing_authority_ack: {
       type: "string",
@@ -88,3 +96,13 @@ function gatewayInputSchema() {
   }, ["operation_id", "governing_authority_ack", "canonical_continuation_sha", "capability", "arguments"]);
 }
 
+function withTelemetry(schema) {
+  return {
+    ...schema,
+    properties: {
+      ...(schema?.properties || {}),
+      _telemetry: telemetryReceiptSchema,
+    },
+    required: [...new Set([...(schema?.required || []), "_telemetry"])],
+  };
+}
