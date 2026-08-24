@@ -198,11 +198,22 @@ jobs:
         run: |
           npm ci
           npm test
+      - name: Persist exact material fingerprint
+        run: |
+          set -euo pipefail
+          : > /tmp/quant-material-identities.txt
+          while IFS= read -r path; do
+            [ -n "$path" ] || continue
+            blob="$(git rev-parse "HEAD:${path}")"
+            printf '%s=%s\n' "$path" "$blob" >> /tmp/quant-material-identities.txt
+          done < parity/material-manifest-v1.txt
+          LC_ALL=C sort -o /tmp/quant-material-identities.txt /tmp/quant-material-identities.txt
+          sha256sum /tmp/quant-material-identities.txt | awk '{print $1}' > parity/current-fingerprint.txt
       - name: Commit package-managed timing artifacts
         run: |
           git config user.name "quant-lab-operator"
           git config user.email "quant-lab-operator@users.noreply.github.com"
-          git add standards/fleet-timing-telemetry-v1.mjs standards/fleet-timing-telemetry-config-v1.mjs standards/timing-telemetry-v1/retrofit.json
+          git add standards/fleet-timing-telemetry-v1.mjs standards/fleet-timing-telemetry-config-v1.mjs standards/timing-telemetry-v1/retrofit.json parity/current-fingerprint.txt
           if git diff --cached --quiet; then
             echo "Package timing retrofit already installed."
           else
