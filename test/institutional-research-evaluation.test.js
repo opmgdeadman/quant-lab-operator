@@ -115,8 +115,8 @@ test("range position preregistration, exact boundaries, parity, zero-range, and 
   assert.throws(() => validateInstitutionalResearchSpec(typedSpec({ strategy: { template: "range_position_state", feature_set_id: "ohlc-range-position-v1", parameters: { period: 48, lower: 80, upper: 20 } } })), /range_position_order_invalid|lower_out_of_bounds/);
 
   const strategy = rangePositionStrategy();
-  for (const [latest, expected] of [[80, 1], [20, -1], [50, 0]]) {
-    const rows = rangePositionRows([50, 50, 50, latest], [0, 0, 0, 0], [100, 100, 100, 100]);
+  for (const [latest, expected] of [[81, 1], [21, -1], [51, 0]]) {
+    const rows = rangePositionRows([51, 51, 51, latest], [1, 1, 1, 1], [101, 101, 101, 101]);
     assert.equal(compileDirectionalSignal(strategy, rows)(4, 0), expected);
     assert.equal(directionalSignal(strategy, rows, 0).target_exposure, expected);
   }
@@ -125,7 +125,7 @@ test("range position preregistration, exact boundaries, parity, zero-range, and 
   assert.equal(compileDirectionalSignal(strategy, flat)(4, 0), 0);
   assert.equal(directionalSignal(strategy, flat, 0).target_exposure, 0);
 
-  const history = rangePositionRows([50, 50, 50, 80, 1], [0, 0, 0, 0, 0], [100, 100, 100, 100, 100]);
+  const history = rangePositionRows([51, 51, 51, 81, 2], [1, 1, 1, 1, 1], [101, 101, 101, 101, 101]);
   const compiled = compileDirectionalSignal(strategy, history);
   assert.equal(compiled(4, 0), 1);
   history[4] = { ...history[4], low: 0.01, high: 999999, close: 999999 };
