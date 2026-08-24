@@ -288,6 +288,27 @@ export function compileDirectionalSignal(strategy, candles) {
     };
   }
 
+  if (family === "inside_bar_breakout") {
+    const maxRatio = finite(parameters.max_inside_range_ratio, "max_inside_range_ratio");
+    return (executionIndex, currentExposure = 0) => {
+      const current = clamp(currentExposure);
+      if (executionIndex < 4) return current;
+      const mother = rows[executionIndex - 4];
+      const inside = rows[executionIndex - 3];
+      const breakout = rows[executionIndex - 2];
+      const motherRange = mother.high - mother.low;
+      if (motherRange <= EPSILON) return 0;
+      const insideRange = inside.high - inside.low;
+      const isInside = inside.high <= mother.high + EPSILON
+        && inside.low >= mother.low - EPSILON
+        && insideRange / motherRange <= maxRatio + EPSILON;
+      if (!isInside) return 0;
+      if (breakout.close > mother.high) return 1;
+      if (breakout.close < mother.low) return -1;
+      return 0;
+    };
+  }
+
   if (family === "donchian_breakout") {
     const lookback = integer(parameters.lookback, "lookback");
     return (executionIndex, currentExposure = 0) => {

@@ -111,6 +111,13 @@ export const INSTITUTIONAL_STRATEGY_TEMPLATES = deepFreeze({
       mean_return_threshold_bps: numberRule(0.1, 100),
     },
   },
+  inside_bar_breakout: {
+    family: "inside_bar_breakout",
+    feature_set_id: "ohlc-inside-bar-v1",
+    parameters: {
+      max_inside_range_ratio: numberRule(0.25, 1),
+    },
+  },
   donchian_breakout: {
     family: "donchian_breakout",
     feature_set_id: "ohlc-donchian-v1",

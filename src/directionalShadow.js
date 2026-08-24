@@ -510,6 +510,23 @@ export function directionalSignal(spec, candles, currentExposure = 0) {
     if (meanReturnBps <= -thresholdBps) return signal(-TARGET_EXPOSURE, "hour_of_week_negative_drift");
     return signal(0, "hour_of_week_neutral_flat");
   }
+  if (spec.family === "inside_bar_breakout") {
+    const maxRatio = finite(spec.parameters.max_inside_range_ratio, "max_inside_range_ratio");
+    if (rows.length < 3) return signal(current, "inside_bar_insufficient_history");
+    const mother = rows.at(-3);
+    const inside = rows.at(-2);
+    const breakout = rows.at(-1);
+    const motherRange = mother.high - mother.low;
+    if (motherRange <= EPSILON) return signal(0, "inside_bar_zero_range_mother_flat");
+    const insideRange = inside.high - inside.low;
+    const isInside = inside.high <= mother.high + EPSILON
+      && inside.low >= mother.low - EPSILON
+      && insideRange / motherRange <= maxRatio + EPSILON;
+    if (!isInside) return signal(0, "inside_bar_pattern_invalid_flat");
+    if (breakout.close > mother.high) return signal(TARGET_EXPOSURE, "inside_bar_breakout_long");
+    if (breakout.close < mother.low) return signal(-TARGET_EXPOSURE, "inside_bar_breakout_short");
+    return signal(0, "inside_bar_no_break_flat");
+  }
   if (spec.family === "donchian_breakout") {
     const lookback = integer(spec.parameters.lookback, "lookback");
     if (rows.length < lookback + 1) return signal(current, "donchian_insufficient_history");
