@@ -207,6 +207,14 @@ export const INSTITUTIONAL_STRATEGY_TEMPLATES = deepFreeze({
       if (parameters.lookback >= parameters.regime_lookback) throw new Error("institutional_spec_regime_momentum_lookback_order_invalid");
     },
   },
+  volatility_shock_reversal: {
+    family: "volatility_shock_reversal",
+    feature_set_id: "ohlc-true-range-shock-reversal-v1",
+    parameters: {
+      period: integerRule(12, 120),
+      multiplier: numberRule(1.25, 5),
+    },
+  },
   volatility_breakout: {
     family: "volatility_breakout",
     feature_set_id: "ohlc-true-range-v1",

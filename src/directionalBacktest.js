@@ -446,6 +446,33 @@ export function compileDirectionalSignal(strategy, candles) {
     };
   }
 
+  if (family === "volatility_shock_reversal") {
+    const period = integer(parameters.period, "period");
+    const multiplier = finite(parameters.multiplier, "multiplier");
+    return (executionIndex, currentExposure = 0) => {
+      const current = clamp(currentExposure);
+      if (executionIndex < period + 2) return current;
+      const start = executionIndex - period - 2;
+      const trueRanges = [];
+      for (let index = start + 1; index < executionIndex; index += 1) {
+        const row = rows[index];
+        const previousClose = rows[index - 1].close;
+        const tr = Math.max(row.high - row.low, Math.abs(row.high - previousClose), Math.abs(row.low - previousClose));
+        if (!Number.isFinite(tr) || tr < 0) return 0;
+        trueRanges.push(tr);
+      }
+      const latestTrueRange = trueRanges.at(-1);
+      const prior = trueRanges.slice(0, -1);
+      const priorMeanTrueRange = prior.reduce((sum, value) => sum + value, 0) / prior.length;
+      if (!Number.isFinite(priorMeanTrueRange) || priorMeanTrueRange <= EPSILON) return 0;
+      if (latestTrueRange + EPSILON < priorMeanTrueRange * multiplier) return 0;
+      const latest = rows[executionIndex - 1];
+      const bodyDirection = Math.sign(latest.close - latest.open);
+      if (bodyDirection === 0) return 0;
+      return bodyDirection > 0 ? -1 : 1;
+    };
+  }
+
   if (family === "body_streak_reversal") {
     const streakLength = integer(parameters.streak_length, "streak_length");
     const minBodyFraction = finite(parameters.min_body_fraction, "min_body_fraction");

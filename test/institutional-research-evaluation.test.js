@@ -823,6 +823,72 @@ test("volatility regime breakout executes through sealed next-candle walk-forwar
   assert.equal(result[0].windows.every((row) => row.evidence_integrity_passed === true), true);
 });
 
+function volatilityShockReversalSpec() {
+  return typedSpec({
+    strategy: {
+      template: "volatility_shock_reversal",
+      feature_set_id: "ohlc-true-range-shock-reversal-v1",
+      parameters: { period: 24, multiplier: 2 },
+    },
+  });
+}
+
+function volatilityShockRows({ direction = "bullish", ratio = 2, zeroBody = false } = {}) {
+  const start = Date.parse("2026-01-01T00:00:00.000Z");
+  const rows = [];
+  for (let index = 0; index < 26; index += 1) {
+    const open = 100;
+    if (index === 25) {
+      const halfRange = ratio;
+      rows.push({
+        closed_at: new Date(start + index * 3600000).toISOString(),
+        open,
+        high: 100 + halfRange,
+        low: 100 - halfRange,
+        close: zeroBody ? 100 : direction === "bullish" ? 101 : 99,
+        volume: 100,
+      });
+    } else {
+      rows.push({ closed_at: new Date(start + index * 3600000).toISOString(), open, high: 101, low: 99, close: 100, volume: 100 });
+    }
+  }
+  return rows;
+}
+
+test("volatility shock reversal preregistration is exact and bounded", () => {
+  const validated = validateInstitutionalResearchSpec(volatilityShockReversalSpec());
+  assert.deepEqual(validated.strategy.parameters, { period: 24, multiplier: 2 });
+  assert.throws(() => validateInstitutionalResearchSpec(typedSpec({ strategy: { template: "volatility_shock_reversal", feature_set_id: "ohlc-true-range-shock-reversal-v1", parameters: { period: 8, multiplier: 2 } } })), /period_out_of_bounds/);
+  assert.throws(() => validateInstitutionalResearchSpec(typedSpec({ strategy: { template: "volatility_shock_reversal", feature_set_id: "ohlc-true-range-shock-reversal-v1", parameters: { period: 24, multiplier: 1 } } })), /multiplier_out_of_bounds/);
+});
+
+test("volatility shock reversal fades bullish and bearish exact-boundary shocks and keeps zero-body flat", () => {
+  const strategy = buildStrategyFromResearchSpec("typed-volatility-shock-001", volatilityShockReversalSpec());
+  const bullish = volatilityShockRows({ direction: "bullish", ratio: 2 });
+  const bearish = volatilityShockRows({ direction: "bearish", ratio: 2 });
+  const zeroBody = volatilityShockRows({ zeroBody: true, ratio: 2 });
+  assert.equal(directionalSignal(strategy, bullish.slice(0, 26), 0).target_exposure, -1);
+  assert.equal(directionalSignal(strategy, bearish.slice(0, 26), 0).target_exposure, 1);
+  assert.equal(directionalSignal(strategy, zeroBody.slice(0, 26), 0).target_exposure, 0);
+  assert.equal(compileDirectionalSignal(strategy, bullish)(26, 0), -1);
+  assert.equal(compileDirectionalSignal(strategy, bearish)(26, 0), 1);
+});
+
+test("volatility shock reversal stays flat below threshold and excludes execution candle", () => {
+  const strategy = buildStrategyFromResearchSpec("typed-volatility-shock-no-lookahead-001", volatilityShockReversalSpec());
+  const below = volatilityShockRows({ direction: "bullish", ratio: 1.5 });
+  assert.equal(compileDirectionalSignal(strategy, below)(26, 0), 0);
+  const rows = [...volatilityShockRows({ direction: "bullish", ratio: 2 }), { closed_at: "2026-01-02T02:00:00.000Z", open: 1000, high: 5000, low: 1, close: 2, volume: 100 }];
+  const baseline = compileDirectionalSignal(strategy, rows)(26, 0);
+  const mutated = rows.map((row, index) => index === 26 ? { ...row, open: 50, high: 60, low: 40, close: 55 } : row);
+  assert.equal(compileDirectionalSignal(strategy, mutated)(26, 0), baseline);
+  const policy = buildInstitutionalBacktestPolicy();
+  const windows = buildWalkForwardWindows(syntheticCandles(), policy);
+  const result = runDirectionalWalkForward({ windows, strategies: [strategy], policy });
+  assert.equal(result[0].windows.every((row) => row.execution_model === "next_completed_candle_open"), true);
+  assert.equal(result[0].windows.every((row) => row.evidence_integrity_passed === true), true);
+});
+
 test("typed Stage 14 strategy executes only through proven next-candle walk-forward math", () => {
   const spec = typedSpec();
   const policy = buildInstitutionalBacktestPolicy();

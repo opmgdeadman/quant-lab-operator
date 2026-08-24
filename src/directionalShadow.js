@@ -623,6 +623,30 @@ export function directionalSignal(spec, candles, currentExposure = 0) {
     if (regimeReturn > 0 && momentumReturn > threshold) return signal(TARGET_EXPOSURE, "regime_momentum_up_up_long");
     return signal(0, regimeReturn <= 0 ? "regime_momentum_non_up_regime_flat" : "regime_momentum_weak_momentum_flat");
   }
+  if (spec.family === "volatility_shock_reversal") {
+    const period = integer(spec.parameters.period, "period");
+    const multiplier = finite(spec.parameters.multiplier, "multiplier");
+    if (rows.length < period + 2) return signal(current, "volatility_shock_reversal_insufficient_history");
+    const window = rows.slice(-(period + 2));
+    const trueRanges = [];
+    for (let index = 1; index < window.length; index += 1) {
+      const row = window[index];
+      const previousClose = window[index - 1].close;
+      const tr = Math.max(row.high - row.low, Math.abs(row.high - previousClose), Math.abs(row.low - previousClose));
+      if (!Number.isFinite(tr) || tr < 0) return signal(0, "volatility_shock_reversal_invalid_range_flat");
+      trueRanges.push(tr);
+    }
+    const latestTrueRange = trueRanges.at(-1);
+    const priorMeanTrueRange = mean(trueRanges.slice(0, -1));
+    if (!Number.isFinite(priorMeanTrueRange) || priorMeanTrueRange <= EPSILON) return signal(0, "volatility_shock_reversal_zero_baseline_flat");
+    if (latestTrueRange + EPSILON < priorMeanTrueRange * multiplier) return signal(0, "volatility_shock_reversal_below_threshold_flat");
+    const latest = window.at(-1);
+    const bodyDirection = Math.sign(latest.close - latest.open);
+    if (bodyDirection === 0) return signal(0, "volatility_shock_reversal_zero_body_flat");
+    return bodyDirection > 0
+      ? signal(-TARGET_EXPOSURE, "volatility_shock_reversal_bullish_shock_short")
+      : signal(TARGET_EXPOSURE, "volatility_shock_reversal_bearish_shock_long");
+  }
   if (spec.family === "volatility_breakout") {
     const period = integer(spec.parameters.period, "period");
     const multiplier = finite(spec.parameters.multiplier, "multiplier");
