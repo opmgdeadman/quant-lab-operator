@@ -146,7 +146,7 @@ function rollingMedianReversionSpec() {
 
 function medianFixture(signalClose) {
   const start = Date.parse("2026-01-01T00:00:00.000Z");
-  const closes = Array.from({ length: 48 }, (_, index) => index < 24 ? 98 : 102);
+  const closes = Array(48).fill(100);
   closes[47] = signalClose;
   return closes.map((close, index) => ({ closed_at: new Date(start + index * 3600000).toISOString(), open: close, high: close + 1, low: close - 1, close, volume: 100 }));
 }
