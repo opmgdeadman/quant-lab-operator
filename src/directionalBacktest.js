@@ -153,6 +153,35 @@ export function compileDirectionalSignal(strategy, candles) {
     };
   }
 
+  if (family === "wick_rejection_reversal") {
+    const period = integer(parameters.period, "period");
+    const threshold = finite(parameters.wick_ratio_threshold, "wick_ratio_threshold");
+    return (executionIndex, currentExposure = 0) => {
+      const current = clamp(currentExposure);
+      if (executionIndex < period) return current;
+      let lowerRejection = 0;
+      let upperRejection = 0;
+      for (let index = executionIndex - period; index < executionIndex; index += 1) {
+        const row = rows[index];
+        const body = Math.abs(row.close - row.open);
+        const upperWick = Math.max(0, row.high - Math.max(row.open, row.close));
+        const lowerWick = Math.max(0, Math.min(row.open, row.close) - row.low);
+        if (body <= EPSILON) {
+          if (upperWick <= EPSILON && lowerWick <= EPSILON) continue;
+          const scale = Math.max(upperWick, lowerWick, EPSILON);
+          upperRejection += upperWick / scale;
+          lowerRejection += lowerWick / scale;
+        } else {
+          upperRejection += upperWick / body;
+          lowerRejection += lowerWick / body;
+        }
+      }
+      if (lowerRejection > upperRejection * threshold) return 1;
+      if (upperRejection > lowerRejection * threshold) return -1;
+      return 0;
+    };
+  }
+
   if (family === "donchian_breakout") {
     const lookback = integer(parameters.lookback, "lookback");
     return (executionIndex, currentExposure = 0) => {
