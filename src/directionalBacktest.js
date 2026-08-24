@@ -452,6 +452,26 @@ export function compileDirectionalSignal(strategy, candles) {
     };
   }
 
+  if (family === "return_acceleration_state") {
+    const period = integer(parameters.period, "period");
+    const threshold = finite(parameters.acceleration_threshold_percent, "acceleration_threshold_percent");
+    return (executionIndex, currentExposure = 0) => {
+      const current = clamp(currentExposure);
+      if (executionIndex < 2 * period + 1) return current;
+      const signalIndex = executionIndex - 1;
+      const midpoint = rows[signalIndex - period].close;
+      const priorStart = rows[signalIndex - 2 * period].close;
+      const latest = rows[signalIndex].close;
+      if (midpoint <= 0 || priorStart <= 0 || latest <= 0) return 0;
+      const previousReturnPercent = ((midpoint / priorStart) - 1) * 100;
+      const recentReturnPercent = ((latest / midpoint) - 1) * 100;
+      const acceleration = recentReturnPercent - previousReturnPercent;
+      if (recentReturnPercent > EPSILON && acceleration + EPSILON >= threshold) return 1;
+      if (recentReturnPercent < -EPSILON && acceleration - EPSILON <= -threshold) return -1;
+      return 0;
+    };
+  }
+
   if (family === "close_quantile_reversion") {
     const period = integer(parameters.period, "period");
     const lowerQuantile = finite(parameters.lower_quantile, "lower_quantile");

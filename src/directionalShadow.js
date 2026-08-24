@@ -591,6 +591,22 @@ export function directionalSignal(spec, candles, currentExposure = 0) {
     if (efficiency + EPSILON < threshold || Math.abs(displacement) <= EPSILON) return signal(0, "efficiency_ratio_below_threshold_flat");
     return displacement > 0 ? signal(TARGET_EXPOSURE, "efficiency_ratio_trend_long") : signal(-TARGET_EXPOSURE, "efficiency_ratio_trend_short");
   }
+  if (spec.family === "return_acceleration_state") {
+    const period = integer(spec.parameters.period, "period");
+    const threshold = finite(spec.parameters.acceleration_threshold_percent, "acceleration_threshold_percent");
+    if (rows.length < 2 * period + 1) return signal(current, "return_acceleration_insufficient_history");
+    const signalIndex = rows.length - 1;
+    const midpoint = rows[signalIndex - period].close;
+    const priorStart = rows[signalIndex - 2 * period].close;
+    const latest = rows[signalIndex].close;
+    if (midpoint <= 0 || priorStart <= 0 || latest <= 0) return signal(0, "return_acceleration_nonpositive_close_flat");
+    const previousReturnPercent = ((midpoint / priorStart) - 1) * 100;
+    const recentReturnPercent = ((latest / midpoint) - 1) * 100;
+    const acceleration = recentReturnPercent - previousReturnPercent;
+    if (recentReturnPercent > EPSILON && acceleration + EPSILON >= threshold) return signal(TARGET_EXPOSURE, "return_acceleration_up_long");
+    if (recentReturnPercent < -EPSILON && acceleration - EPSILON <= -threshold) return signal(-TARGET_EXPOSURE, "return_acceleration_down_short");
+    return signal(0, "return_acceleration_flat");
+  }
   if (spec.family === "close_quantile_reversion") {
     const period = integer(spec.parameters.period, "period");
     const lowerQuantile = finite(spec.parameters.lower_quantile, "lower_quantile");

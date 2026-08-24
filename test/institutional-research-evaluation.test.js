@@ -140,6 +140,36 @@ test("efficiency ratio gate 4 exact threshold and no look-ahead", () => {
   assert.equal(compileDirectionalSignal(strategy, mutated)(5, 0), baseline);
 });
 
+function returnAccelerationSpec(parameters = { period: 12, acceleration_threshold_percent: 1.0 }) {
+  return typedSpec({ strategy: { template: "return_acceleration_state", feature_set_id: "close-return-acceleration-v1", parameters } });
+}
+
+test("return acceleration spec is frozen and bounded", () => {
+  const validated = validateInstitutionalResearchSpec(returnAccelerationSpec());
+  assert.deepEqual(validated.strategy.parameters, { period: 12, acceleration_threshold_percent: 1.0 });
+  assert.throws(() => validateInstitutionalResearchSpec(returnAccelerationSpec({ period: 3, acceleration_threshold_percent: 1.0 })), /period_out_of_bounds/);
+});
+
+test("return acceleration historical and forward paths agree at long short flat and exact threshold", () => {
+  const strategy = buildStrategyFromResearchSpec("typed-return-acceleration-001", returnAccelerationSpec());
+  const build = (a, b, c) => quantileRows([...Array(12).fill(a), ...Array(12).fill(b), c]);
+  for (const [rows, expected] of [[build(100, 101, 103), 1], [build(100, 99, 97), -1], [build(100, 101, 101.5), 0]]) {
+    assert.equal(compileDirectionalSignal(strategy, rows)(25, 0), expected);
+    assert.equal(directionalSignal(strategy, rows.slice(0, 25), 0).target_exposure, expected);
+  }
+});
+
+test("return acceleration excludes execution candle and requires full two-window history", () => {
+  const strategy = buildStrategyFromResearchSpec("typed-return-acceleration-no-lookahead-001", returnAccelerationSpec());
+  const rows = quantileRows([...Array(12).fill(100), ...Array(12).fill(101), 103, 999]);
+  assert.equal(compileDirectionalSignal(strategy, rows)(24, -1), -1);
+  const baseline = compileDirectionalSignal(strategy, rows)(25, 0);
+  assert.equal(baseline, 1);
+  const mutated = rows.map((row, index) => index === 25 ? { ...row, open: 1, high: 2, low: 0.5, close: 1 } : row);
+  assert.equal(compileDirectionalSignal(strategy, mutated)(25, 0), baseline);
+  assert.equal(directionalSignal(strategy, rows.slice(0, 25), 0).target_exposure, baseline);
+});
+
 function closeQuantileReversionSpec(parameters = { period: 72, lower_quantile: 0.10, upper_quantile: 0.90 }) {
   return typedSpec({ strategy: { template: "close_quantile_reversion", feature_set_id: "close-quantile-rank-v1", parameters } });
 }

@@ -149,6 +149,14 @@ export const INSTITUTIONAL_STRATEGY_TEMPLATES = deepFreeze({
       threshold_percent: numberRule(0.25, 10),
     },
   },
+  return_acceleration_state: {
+    family: "return_acceleration_state",
+    feature_set_id: "close-return-acceleration-v1",
+    parameters: {
+      period: integerRule(4, 120),
+      acceleration_threshold_percent: numberRule(0.05, 10),
+    },
+  },
   close_quantile_reversion: {
     family: "close_quantile_reversion",
     feature_set_id: "close-quantile-rank-v1",
