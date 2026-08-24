@@ -68,6 +68,18 @@ test("compiled signal evaluation preserves canonical directional semantics", () 
   }
 });
 
+test("close quantile reversion is reachable in the sealed compiler and matches forward semantics", () => {
+  const strategy = { id: "close-quantile", family: "close_quantile_reversion", parameters: { period: 10, lower_quantile: 0.1, upper_quantile: 0.9 } };
+  const rows = candles(20);
+  const lowerRows = rows.map((row, index) => ({ ...row, close: index === 9 ? 90 : 100 + index, open: index === 9 ? 90 : 100 + index, high: (index === 9 ? 90 : 100 + index) + 1, low: (index === 9 ? 90 : 100 + index) - 1 }));
+  const upperRows = rows.map((row, index) => ({ ...row, close: index === 9 ? 120 : 100 + index, open: index === 9 ? 120 : 100 + index, high: (index === 9 ? 120 : 100 + index) + 1, low: (index === 9 ? 120 : 100 + index) - 1 }));
+  const compiledLower = compileDirectionalSignal(strategy, lowerRows);
+  const compiledUpper = compileDirectionalSignal(strategy, upperRows);
+  assert.equal(compiledLower(10, 0), directionalSignal(strategy, lowerRows.slice(0, 10), 0).target_exposure);
+  assert.equal(compiledUpper(10, 0), directionalSignal(strategy, upperRows.slice(0, 10), 0).target_exposure);
+  assert.doesNotThrow(() => runDirectionalWalkForward({ windows: buildWalkForwardWindows(candles()), strategies: [strategy], policy: DIRECTIONAL_RESEARCH_POLICY }));
+});
+
 test("inside-bar breakout preserves historical-forward parity and fails closed on malformed patterns", () => {
   const strategy = { id: "inside-bar", family: "inside_bar_breakout", parameters: { max_inside_range_ratio: 0.75 } };
   const base = Date.parse("2026-01-01T00:00:00.000Z");

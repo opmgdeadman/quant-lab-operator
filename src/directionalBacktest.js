@@ -452,6 +452,30 @@ export function compileDirectionalSignal(strategy, candles) {
     };
   }
 
+  if (family === "close_quantile_reversion") {
+    const period = integer(parameters.period, "period");
+    const lowerQuantile = finite(parameters.lower_quantile, "lower_quantile");
+    const upperQuantile = finite(parameters.upper_quantile, "upper_quantile");
+    if (!(lowerQuantile > 0 && lowerQuantile < upperQuantile && upperQuantile < 1)) throw new Error("close_quantile_threshold_order_invalid");
+    return (executionIndex, currentExposure = 0) => {
+      const current = clamp(currentExposure);
+      if (executionIndex < period) return current;
+      const window = rows.slice(executionIndex - period, executionIndex).map((row) => finite(row.close, "close"));
+      if (window.some((value) => value <= 0)) return 0;
+      const latestClose = window.at(-1);
+      let below = 0;
+      let equal = 0;
+      for (const value of window) {
+        if (value < latestClose - EPSILON) below += 1;
+        else if (Math.abs(value - latestClose) <= EPSILON) equal += 1;
+      }
+      const midrank = (below + 0.5 * equal) / period;
+      if (midrank <= lowerQuantile + EPSILON) return 1;
+      if (midrank >= upperQuantile - EPSILON) return -1;
+      return 0;
+    };
+  }
+
   if (family === "rolling_median_reversion") {
     const period = integer(parameters.period, "period");
     const thresholdPercent = finite(parameters.threshold_percent, "threshold_percent");
