@@ -369,6 +369,18 @@ export function directionalSignal(spec, candles, currentExposure = 0) {
       ? signal(TARGET_EXPOSURE, "ema_trend_long")
       : signal(-TARGET_EXPOSURE, "ema_trend_short");
   }
+  if (spec.family === "ema_pullback_trend") {
+    const fast = integer(spec.parameters.fast, "fast");
+    const slow = integer(spec.parameters.slow, "slow");
+    const threshold = finite(spec.parameters.threshold_percent, "threshold_percent") / 100;
+    if (closes.length < slow) return signal(current, "ema_pullback_insufficient_history");
+    const fastEma = ema(closes, fast);
+    const slowEma = ema(closes, slow);
+    const latestClose = closes.at(-1);
+    if (fastEma > slowEma && latestClose <= fastEma * (1 - threshold)) return signal(TARGET_EXPOSURE, "ema_pullback_uptrend_long");
+    if (fastEma < slowEma && latestClose >= fastEma * (1 + threshold)) return signal(-TARGET_EXPOSURE, "ema_pullback_downtrend_short");
+    return signal(0, "ema_pullback_no_entry_flat");
+  }
   if (spec.family === "donchian_breakout") {
     const lookback = integer(spec.parameters.lookback, "lookback");
     if (rows.length < lookback + 1) return signal(current, "donchian_insufficient_history");

@@ -92,6 +92,26 @@ test("typed Stage 14 spec rejects unknown templates, mismatched features, rescue
   })), /threshold_percent_out_of_bounds/);
 });
 
+test("EMA pullback trend preregistration is bounded and distinct from continuous EMA exposure", () => {
+  const spec = typedSpec({
+    strategy: {
+      template: "ema_pullback_trend",
+      feature_set_id: "close-ema-pullback-v1",
+      parameters: { fast: 24, slow: 96, threshold_percent: 1 },
+    },
+  });
+  const validated = validateInstitutionalResearchSpec(spec);
+  assert.equal(validated.strategy.template, "ema_pullback_trend");
+  assert.equal(validated.strategy.parameters.threshold_percent, 1);
+  assert.throws(() => validateInstitutionalResearchSpec(typedSpec({
+    strategy: {
+      template: "ema_pullback_trend",
+      feature_set_id: "close-ema-pullback-v1",
+      parameters: { fast: 96, slow: 24, threshold_percent: 1 },
+    },
+  })), /ema_pullback_fast_must_be_below_slow/);
+});
+
 function donchianRegimeBreakoutSpec() {
   return typedSpec({
     strategy: {

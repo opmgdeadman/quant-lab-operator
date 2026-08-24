@@ -51,6 +51,18 @@ export const INSTITUTIONAL_STRATEGY_TEMPLATES = deepFreeze({
       if (parameters.fast >= parameters.slow) throw new Error("institutional_spec_ema_fast_must_be_below_slow");
     },
   },
+  ema_pullback_trend: {
+    family: "ema_pullback_trend",
+    feature_set_id: "close-ema-pullback-v1",
+    parameters: {
+      fast: integerRule(2, 100),
+      slow: integerRule(5, 300),
+      threshold_percent: numberRule(0.05, 10),
+    },
+    cross_validate(parameters) {
+      if (parameters.fast >= parameters.slow) throw new Error("institutional_spec_ema_pullback_fast_must_be_below_slow");
+    },
+  },
   donchian_breakout: {
     family: "donchian_breakout",
     feature_set_id: "ohlc-donchian-v1",
