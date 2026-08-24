@@ -95,6 +95,14 @@ export const INSTITUTIONAL_STRATEGY_TEMPLATES = deepFreeze({
       persistence_threshold: numberRule(0.51, 0.95),
     },
   },
+  return_skew_state: {
+    family: "return_skew_state",
+    feature_set_id: "close-return-skew-v1",
+    parameters: {
+      period: integerRule(12, 240),
+      skew_threshold: numberRule(0.05, 5),
+    },
+  },
   donchian_breakout: {
     family: "donchian_breakout",
     feature_set_id: "ohlc-donchian-v1",

@@ -469,6 +469,23 @@ export function directionalSignal(spec, candles, currentExposure = 0) {
     if (persistence <= 1 - threshold) return signal(-latestSign, "return_sign_transition_alternation");
     return signal(0, "return_sign_transition_neutral_flat");
   }
+  if (spec.family === "return_skew_state") {
+    const period = integer(spec.parameters.period, "period");
+    const threshold = finite(spec.parameters.skew_threshold, "skew_threshold");
+    if (rows.length < period + 1) return signal(current, "return_skew_insufficient_history");
+    const windowCloses = rows.slice(-(period + 1)).map((row) => row.close);
+    const returns = [];
+    for (let index = 1; index < windowCloses.length; index += 1) returns.push((windowCloses[index] / windowCloses[index - 1]) - 1);
+    const mean = returns.reduce((sum, value) => sum + value, 0) / returns.length;
+    const variance = returns.reduce((sum, value) => sum + (value - mean) ** 2, 0) / returns.length;
+    if (variance <= EPSILON) return signal(0, "return_skew_zero_variance_flat");
+    const sigma = Math.sqrt(variance);
+    const thirdMoment = returns.reduce((sum, value) => sum + (value - mean) ** 3, 0) / returns.length;
+    const skew = thirdMoment / (sigma ** 3);
+    if (skew >= threshold) return signal(TARGET_EXPOSURE, "return_skew_positive");
+    if (skew <= -threshold) return signal(-TARGET_EXPOSURE, "return_skew_negative");
+    return signal(0, "return_skew_neutral_flat");
+  }
   if (spec.family === "donchian_breakout") {
     const lookback = integer(spec.parameters.lookback, "lookback");
     if (rows.length < lookback + 1) return signal(current, "donchian_insufficient_history");

@@ -239,6 +239,27 @@ export function compileDirectionalSignal(strategy, candles) {
     };
   }
 
+  if (family === "return_skew_state") {
+    const period = integer(parameters.period, "period");
+    const threshold = finite(parameters.skew_threshold, "skew_threshold");
+    return (executionIndex, currentExposure = 0) => {
+      const current = clamp(currentExposure);
+      if (executionIndex < period + 1) return current;
+      const windowCloses = rows.slice(executionIndex - period - 1, executionIndex).map((row) => row.close);
+      const returns = [];
+      for (let index = 1; index < windowCloses.length; index += 1) returns.push((windowCloses[index] / windowCloses[index - 1]) - 1);
+      const mean = returns.reduce((sum, value) => sum + value, 0) / returns.length;
+      const variance = returns.reduce((sum, value) => sum + (value - mean) ** 2, 0) / returns.length;
+      if (variance <= EPSILON) return 0;
+      const sigma = Math.sqrt(variance);
+      const thirdMoment = returns.reduce((sum, value) => sum + (value - mean) ** 3, 0) / returns.length;
+      const skew = thirdMoment / (sigma ** 3);
+      if (skew >= threshold) return 1;
+      if (skew <= -threshold) return -1;
+      return 0;
+    };
+  }
+
   if (family === "donchian_breakout") {
     const lookback = integer(parameters.lookback, "lookback");
     return (executionIndex, currentExposure = 0) => {

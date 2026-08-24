@@ -330,6 +330,32 @@ test("return sign transition state distinguishes persistence from alternation an
   assert.equal(compileDirectionalSignal(strategy, withZeros)(withZeros.length, 0), 1);
 });
 
+function returnSkewStateSpec() {
+  return typedSpec({ strategy: { template: "return_skew_state", feature_set_id: "close-return-skew-v1", parameters: { period: 72, skew_threshold: 0.50 } } });
+}
+
+test("return skew state preregistration is frozen and bounded", () => {
+  const validated = validateInstitutionalResearchSpec(returnSkewStateSpec());
+  assert.deepEqual(validated.strategy.parameters, { period: 72, skew_threshold: 0.50 });
+  assert.throws(() => validateInstitutionalResearchSpec(typedSpec({ strategy: { template: "return_skew_state", feature_set_id: "close-return-skew-v1", parameters: { period: 72, skew_threshold: 0 } } })), /skew_threshold_out_of_bounds/);
+});
+
+test("return skew state is no-look-ahead, zero-variance safe, and sealed-walk-forward compatible", () => {
+  const rows = syntheticCandles(180);
+  const strategy = buildStrategyFromResearchSpec("typed-return-skew-001", returnSkewStateSpec());
+  const executionIndex = 150;
+  const baseline = compileDirectionalSignal(strategy, rows)(executionIndex, 0);
+  const mutated = rows.map((row, index) => index === executionIndex ? { ...row, close: row.close * 25 } : row);
+  assert.equal(compileDirectionalSignal(strategy, mutated)(executionIndex, 0), baseline);
+  const flatRows = Array.from({ length: 80 }, (_, index) => ({ closed_at: new Date(Date.parse("2026-01-01T00:00:00.000Z") + index * 3600000).toISOString(), open: 100, high: 100, low: 100, close: 100, volume: 100 }));
+  assert.equal(compileDirectionalSignal(strategy, flatRows)(flatRows.length, 1), 0);
+  const policy = buildInstitutionalBacktestPolicy();
+  const windows = buildWalkForwardWindows(syntheticCandles(), policy);
+  const result = runDirectionalWalkForward({ windows, strategies: [strategy], policy });
+  assert.equal(result[0].windows.length, 5);
+  assert.equal(result[0].windows.every((row) => row.evidence_integrity_passed === true), true);
+});
+
 function donchianRegimeBreakoutSpec() {
   return typedSpec({
     strategy: {
