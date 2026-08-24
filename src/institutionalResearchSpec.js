@@ -87,6 +87,14 @@ export const INSTITUTIONAL_STRATEGY_TEMPLATES = deepFreeze({
       autocorr_threshold: numberRule(0.01, 0.95),
     },
   },
+  return_sign_transition_state: {
+    family: "return_sign_transition_state",
+    feature_set_id: "close-return-sign-transition-v1",
+    parameters: {
+      period: integerRule(12, 240),
+      persistence_threshold: numberRule(0.51, 0.95),
+    },
+  },
   donchian_breakout: {
     family: "donchian_breakout",
     feature_set_id: "ohlc-donchian-v1",

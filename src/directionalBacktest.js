@@ -214,6 +214,31 @@ export function compileDirectionalSignal(strategy, candles) {
     };
   }
 
+  if (family === "return_sign_transition_state") {
+    const period = integer(parameters.period, "period");
+    const threshold = finite(parameters.persistence_threshold, "persistence_threshold");
+    return (executionIndex, currentExposure = 0) => {
+      const current = clamp(currentExposure);
+      if (executionIndex < period + 1) return current;
+      const windowCloses = rows.slice(executionIndex - period - 1, executionIndex).map((row) => row.close);
+      const signs = [];
+      for (let index = 1; index < windowCloses.length; index += 1) {
+        const value = (windowCloses[index] / windowCloses[index - 1]) - 1;
+        if (Math.abs(value) > EPSILON) signs.push(value > 0 ? 1 : -1);
+      }
+      if (signs.length < 2) return 0;
+      let persistentTransitions = 0;
+      for (let index = 1; index < signs.length; index += 1) {
+        if (signs[index] === signs[index - 1]) persistentTransitions += 1;
+      }
+      const persistence = persistentTransitions / (signs.length - 1);
+      const latestSign = signs.at(-1) > 0 ? 1 : -1;
+      if (persistence >= threshold) return latestSign;
+      if (persistence <= 1 - threshold) return -latestSign;
+      return 0;
+    };
+  }
+
   if (family === "donchian_breakout") {
     const lookback = integer(parameters.lookback, "lookback");
     return (executionIndex, currentExposure = 0) => {

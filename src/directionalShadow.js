@@ -448,6 +448,27 @@ export function directionalSignal(spec, candles, currentExposure = 0) {
     if (autocorrelation > 0) return signal(latestSign, "return_autocorrelation_continuation");
     return signal(-latestSign, "return_autocorrelation_reversal");
   }
+  if (spec.family === "return_sign_transition_state") {
+    const period = integer(spec.parameters.period, "period");
+    const threshold = finite(spec.parameters.persistence_threshold, "persistence_threshold");
+    if (rows.length < period + 1) return signal(current, "return_sign_transition_insufficient_history");
+    const windowCloses = rows.slice(-(period + 1)).map((row) => row.close);
+    const signs = [];
+    for (let index = 1; index < windowCloses.length; index += 1) {
+      const value = (windowCloses[index] / windowCloses[index - 1]) - 1;
+      if (Math.abs(value) > EPSILON) signs.push(value > 0 ? 1 : -1);
+    }
+    if (signs.length < 2) return signal(0, "return_sign_transition_insufficient_nonzero_flat");
+    let persistentTransitions = 0;
+    for (let index = 1; index < signs.length; index += 1) {
+      if (signs[index] === signs[index - 1]) persistentTransitions += 1;
+    }
+    const persistence = persistentTransitions / (signs.length - 1);
+    const latestSign = signs.at(-1) > 0 ? TARGET_EXPOSURE : -TARGET_EXPOSURE;
+    if (persistence >= threshold) return signal(latestSign, "return_sign_transition_persistence");
+    if (persistence <= 1 - threshold) return signal(-latestSign, "return_sign_transition_alternation");
+    return signal(0, "return_sign_transition_neutral_flat");
+  }
   if (spec.family === "donchian_breakout") {
     const lookback = integer(spec.parameters.lookback, "lookback");
     if (rows.length < lookback + 1) return signal(current, "donchian_insufficient_history");

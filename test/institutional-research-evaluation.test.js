@@ -285,6 +285,51 @@ test("return autocorrelation state is no-look-ahead and sealed-walk-forward comp
   assert.equal(result[0].windows.every((row) => row.evidence_integrity_passed === true), true);
 });
 
+function returnSignTransitionStateSpec() {
+  return typedSpec({ strategy: { template: "return_sign_transition_state", feature_set_id: "close-return-sign-transition-v1", parameters: { period: 48, persistence_threshold: 0.60 } } });
+}
+
+test("return sign transition state preregistration is frozen and bounded", () => {
+  const validated = validateInstitutionalResearchSpec(returnSignTransitionStateSpec());
+  assert.deepEqual(validated.strategy.parameters, { period: 48, persistence_threshold: 0.60 });
+  assert.throws(() => validateInstitutionalResearchSpec(typedSpec({ strategy: { template: "return_sign_transition_state", feature_set_id: "close-return-sign-transition-v1", parameters: { period: 48, persistence_threshold: 0.5 } } })), /persistence_threshold_out_of_bounds/);
+});
+
+test("return sign transition state is no-look-ahead and sealed-walk-forward compatible", () => {
+  const rows = syntheticCandles(180);
+  const strategy = buildStrategyFromResearchSpec("typed-return-sign-transition-001", returnSignTransitionStateSpec());
+  const executionIndex = 150;
+  const baseline = compileDirectionalSignal(strategy, rows)(executionIndex, 0);
+  const mutated = rows.map((row, index) => index === executionIndex ? { ...row, close: row.close * 25 } : row);
+  assert.equal(compileDirectionalSignal(strategy, mutated)(executionIndex, 0), baseline);
+  const policy = buildInstitutionalBacktestPolicy();
+  const windows = buildWalkForwardWindows(syntheticCandles(), policy);
+  const result = runDirectionalWalkForward({ windows, strategies: [strategy], policy });
+  assert.equal(result[0].windows.length, 5);
+  assert.equal(result[0].windows.every((row) => row.evidence_integrity_passed === true), true);
+});
+
+test("return sign transition state distinguishes persistence from alternation and ignores zero returns", () => {
+  const start = Date.parse("2026-01-01T00:00:00.000Z");
+  const buildRows = (signs) => {
+    let close = 100;
+    const rows = [{ closed_at: new Date(start).toISOString(), open: close, high: close, low: close, close, volume: 100 }];
+    signs.forEach((sign, index) => {
+      const next = sign === 0 ? close : close * (sign > 0 ? 1.01 : 0.99);
+      rows.push({ closed_at: new Date(start + (index + 1) * 3600000).toISOString(), open: close, high: Math.max(close, next), low: Math.min(close, next), close: next, volume: 100 });
+      close = next;
+    });
+    return rows;
+  };
+  const strategy = buildStrategyFromResearchSpec("typed-return-sign-transition-paths-001", returnSignTransitionStateSpec());
+  const persistent = buildRows(Array(48).fill(1));
+  const alternating = buildRows(Array.from({ length: 48 }, (_, index) => index % 2 === 0 ? 1 : -1));
+  const withZeros = buildRows(Array.from({ length: 48 }, (_, index) => index % 5 === 0 ? 0 : 1));
+  assert.equal(compileDirectionalSignal(strategy, persistent)(persistent.length, 0), 1);
+  assert.equal(compileDirectionalSignal(strategy, alternating)(alternating.length, 0), 1);
+  assert.equal(compileDirectionalSignal(strategy, withZeros)(withZeros.length, 0), 1);
+});
+
 function donchianRegimeBreakoutSpec() {
   return typedSpec({
     strategy: {
