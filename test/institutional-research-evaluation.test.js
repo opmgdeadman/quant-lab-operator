@@ -11,7 +11,7 @@ import {
 } from "../src/institutionalResearchSpec.js";
 import { judgeInstitutionalResearchEvidence } from "../src/institutionalResearchJudge.js";
 import { INSTITUTIONAL_RESEARCH_POLICY } from "../src/institutionalResearchPortfolio.js";
-import { isInstitutionalForwardExecutionEligible } from "../src/institutionalResearchEvaluation.js";
+import { institutionalForwardElapsedHours, isInstitutionalForwardExecutionEligible } from "../src/institutionalResearchEvaluation.js";
 import { directionalSignal } from "../src/directionalShadow.js";
 
 function typedSpec(overrides = {}) {
@@ -1007,6 +1007,13 @@ test("Stage 14 forward evidence begins only after testing and on the next comple
   assert.equal(isInstitutionalForwardExecutionEligible({ testingStartedAt: "2026-08-19T20:27:47.457Z", signalClosedAt: "2026-08-19T20:00:00.000Z", executionClosedAt: "2026-08-19T21:00:00.000Z" }), false);
   assert.equal(isInstitutionalForwardExecutionEligible({ testingStartedAt: "2026-08-19T20:27:47.457Z", signalClosedAt: "2026-08-19T21:00:00.000Z", executionClosedAt: "2026-08-19T22:00:00.000Z" }), true);
   assert.equal(isInstitutionalForwardExecutionEligible({ testingStartedAt: "2026-08-19T20:27:47.457Z", signalClosedAt: "2026-08-19T21:00:00.000Z", executionClosedAt: "2026-08-19T21:00:00.000Z" }), false);
+});
+
+test("Stage 14 forward evidence resumes prospectively after an operational gap without backfilling missed cycles", () => {
+  assert.equal(institutionalForwardElapsedHours("2026-08-20T01:00:00.000Z", "2026-08-20T02:00:00.000Z"), 1);
+  assert.equal(institutionalForwardElapsedHours("2026-08-20T01:00:00.000Z", "2026-08-24T18:00:00.000Z"), 113);
+  assert.throws(() => institutionalForwardElapsedHours("2026-08-20T02:00:00.000Z", "2026-08-20T02:00:00.000Z"), /institutional_forward_elapsed_hours_invalid/);
+  assert.throws(() => institutionalForwardElapsedHours("2026-08-20T01:30:00.000Z", "2026-08-20T02:00:00.000Z"), /institutional_forward_elapsed_hours_invalid/);
 });
 
 test("0020 adds only a mutable forward projection while evidence remains immutable", async () => {

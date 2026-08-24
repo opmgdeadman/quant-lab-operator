@@ -213,6 +213,14 @@ export function isInstitutionalForwardExecutionEligible({ testingStartedAt, sign
   return signal > testing && execution - signal === ONE_HOUR_MS;
 }
 
+export function institutionalForwardElapsedHours(lastMarkedAt, executionClosedAt) {
+  const lastMarked = Date.parse(iso(lastMarkedAt, "last_marked_at"));
+  const execution = Date.parse(iso(executionClosedAt, "execution_closed_at"));
+  const elapsedHours = (execution - lastMarked) / ONE_HOUR_MS;
+  if (!Number.isInteger(elapsedHours) || elapsedHours < 1) throw new Error("institutional_forward_elapsed_hours_invalid");
+  return elapsedHours;
+}
+
 export async function runScheduledInstitutionalResearchForwardEvidence(env, { now = new Date() } = {}) {
   requireDatabase(env);
   const runAt = iso(now, "forward_run_at");
@@ -268,15 +276,7 @@ async function runInstitutionalForwardCycle(env, hypothesis, runAt) {
   const portfolio = await readForwardPortfolio(env, hypothesis.id);
   if (!portfolio) throw new Error("institutional_forward_portfolio_missing");
   if (portfolio.testing_started_at !== hypothesis.testing_started_at) throw new Error("institutional_forward_testing_boundary_conflict");
-  if (portfolio.last_marked_at !== signalCandle.closed_at) {
-    return {
-      hypothesis_id: hypothesis.id,
-      state: "blocked_forward_gap",
-      evidence_written: false,
-      expected_signal_closed_at: portfolio.last_marked_at,
-      actual_signal_closed_at: signalCandle.closed_at,
-    };
-  }
+  const elapsedHours = institutionalForwardElapsedHours(portfolio.last_marked_at, executionCandle.closed_at);
 
   const strategy = { id: hypothesis.id, family: spec.strategy.template, market: MARKET, interval: INTERVAL, parameters: spec.strategy.parameters };
   const priorExposure = signedForwardExposure(portfolio.position_quantity);
@@ -286,7 +286,7 @@ async function runInstitutionalForwardCycle(env, hypothesis, runAt) {
     targetExposure: signal.target_exposure,
     executionPrice: executionCandle.open,
     markPrice: executionCandle.close,
-    hoursElapsed: 1,
+    hoursElapsed: elapsedHours,
   });
   const nextExposure = signedForwardExposure(transition.position_quantity);
   const closedTradeCount = portfolio.closed_trade_count + (priorExposure !== 0 && nextExposure !== priorExposure ? 1 : 0);
