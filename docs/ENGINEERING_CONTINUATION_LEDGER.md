@@ -197,13 +197,13 @@ Permanent boundaries:
 
 ## Current Action
 
-Return Stage 14 to materially distinct alpha research after the rejected `directional-position-hold-v2` execution study.
+Complete the Stage 14 `ema_pullback_trend` research transition, then run its first frozen hypothesis.
 
-1. inspect current Stage 14 rejection memory, testing hypotheses, open research capacity, and current production/data health before admitting anything new;
-2. select one economically grounded mechanism that is materially distinct from the already tested EMA trend, RSI mean reversion, regime momentum, volatility-regime breakout, Donchian regime/compression variants, DMI/ADX trend, and rejected position-hold execution variant; do not rescue a rejected idea by retuning it;
-3. preregister the new hypothesis unchanged with its economic mechanism, expected failure modes, exact typed strategy specification, frozen dataset, walk-forward policy, cost model, judge, and evidence-integrity policy before results are observed;
-4. advance it through admitted -> sealed 4,320-candle five-window evaluation -> testing -> independent judge, preserving hostile validation and unchanged gates;
-5. allocate a forward evidence slot only if every historical gate passes; otherwise record terminal rejection and use the evidence to choose a genuinely new mechanism;
+1. close the current parity/deployment boundary for exact material fingerprint `57517e00ae7f0bfe0c04738d161fc2b36e17701752c57b83ce3ef8ed5d1cf630`; M-BRAIN parity anchor v4 is written and exact-head CI for `d04032a0d8c2556f3ed4ceb3aa99424989598a95` passed, but the parity broker is still returning `PARITY_BLOCKED`, so do not bypass it;
+2. once the broker issues the signed parity receipt, deploy the exact current head and verify Main + Recovery + production/repository alignment before research admission;
+3. preregister `stage14-ema-pullback-24-96-100bp-v1` unchanged using strategy `ema_pullback_trend`, feature set `close-ema-pullback-v1`, and frozen parameters `{fast:24, slow:96, threshold_percent:1}`. Economic mechanism: medium-horizon trend persistence with selective entry only after a 1% counter-trend displacement from the fast EMA; expected failure modes include trend acceleration without pullback, choppy false trends, pullbacks becoming reversals, and sparse entry opportunity;
+4. freeze the same completed-candle-only 4,320-candle five-window walk-forward dataset, 10 bps fee + 5 bps slippage model, independent judge, and evidence-integrity policy before observing results;
+5. advance proposed -> admitted -> sealed evaluation -> testing -> independent judge with no rescue tuning. Allocate forward evidence only if every gate passes; otherwise record terminal rejection and return to a genuinely new mechanism;
 6. keep `btc-donchian-72-breakout-v1` untouched forward evidence accruing in parallel when data health permits. Stage 13 remains the sole production promotion authority, paper-main may remain all cash, and live capital remains disabled without evidence eligibility and explicit owner approval.
 
 ## Steady-State Operating Gate
