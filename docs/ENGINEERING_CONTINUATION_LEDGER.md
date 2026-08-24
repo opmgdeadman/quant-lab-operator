@@ -197,16 +197,14 @@ Permanent boundaries:
 
 ## Current Action
 
-Run a bounded Stage 14 execution-research study before admitting another alpha hypothesis, using the historically surviving `btc-donchian-72-breakout-v1` only as a fixed benchmark and never rewriting its v1 evidence:
+Return Stage 14 to materially distinct alpha research after the rejected `directional-position-hold-v2` execution study.
 
-1. preserve all existing hypothesis verdicts, forward rows, Stage 13 authority, and `directional-walk-forward-v1` artifacts unchanged. This is execution research, not a rescue rerun, and no existing rejected hypothesis becomes eligible for reinterpretation;
-2. define a separate immutable experimental execution policy `directional-position-hold-v2` that keeps the same signed quantity while the strategy target remains unchanged, so there is no same-direction rebalance fill merely to restore 1.0x gross exposure. Entry, exit, reversal, next-completed-candle timing, 1.0x entry-gross ceiling, sealed-window liquidation, base fees/slippage/short carry, and all no-look-ahead rules remain identical to v1;
-3. build a deterministic paired comparator over the same five sealed 4,320-candle walk-forward windows for the already-preregistered 72-hour Donchian signal only. Report per-policy fills, realized reduction/closure events, turnover notional, fees, slippage, carry, return, drawdown, doubled/tripled-cost returns, and window-level deltas. Do not change signal parameters, select windows, or use the comparator to alter the existing Donchian verdict;
-4. preregister the execution-research question and its success interpretation before computing paired results: the objective is to estimate execution drag and operational tradeoffs, not to choose whichever policy makes the backtest prettier. A v2 improvement is scientifically useful only if it is broad across windows and cost stresses rather than concentrated in one period;
-5. add regressions proving unchanged target causes zero recurring fills under v2, entry/exit/reversal accounting remains correct, v1 outputs are byte-for-byte unchanged, and both policies use identical signal timestamps and next-candle prices. Keep the public MCP surface exactly five tools; internal execution-research capabilities may evolve without connector refresh;
-6. run exact-head consolidated CI. If runtime source or D1 schema changes, deploy Main and independent Recovery on the same exact SHA, reinitialize the deployment-scoped session, and verify repository/production alignment. Do not mutate the active Donchian forward portfolio or collector;
-7. use the paired evidence to decide the next institutional action: if execution drag is materially avoidable, version a separate paper-only execution-research path for forward validation; if not, close the question and return Stage 14 to materially distinct alpha research. Neither outcome changes live-capital authority;
-8. allow `btc-donchian-72-breakout-v1` forward evidence to continue accruing untouched in parallel. Stage 13 remains the sole production promotion authority and live capital remains disabled.
+1. inspect current Stage 14 rejection memory, testing hypotheses, open research capacity, and current production/data health before admitting anything new;
+2. select one economically grounded mechanism that is materially distinct from the already tested EMA trend, RSI mean reversion, regime momentum, volatility-regime breakout, Donchian regime/compression variants, DMI/ADX trend, and rejected position-hold execution variant; do not rescue a rejected idea by retuning it;
+3. preregister the new hypothesis unchanged with its economic mechanism, expected failure modes, exact typed strategy specification, frozen dataset, walk-forward policy, cost model, judge, and evidence-integrity policy before results are observed;
+4. advance it through admitted -> sealed 4,320-candle five-window evaluation -> testing -> independent judge, preserving hostile validation and unchanged gates;
+5. allocate a forward evidence slot only if every historical gate passes; otherwise record terminal rejection and use the evidence to choose a genuinely new mechanism;
+6. keep `btc-donchian-72-breakout-v1` untouched forward evidence accruing in parallel when data health permits. Stage 13 remains the sole production promotion authority, paper-main may remain all cash, and live capital remains disabled without evidence eligibility and explicit owner approval.
 
 ## Steady-State Operating Gate
 
