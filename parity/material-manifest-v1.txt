@@ -21,6 +21,7 @@ migrations/0018_institutional_research_portfolio.sql
 migrations/0019_institutional_research_evaluation.sql
 migrations/0020_institutional_research_forward_portfolio.sql
 migrations/0021_institutional_research_price_action_family.sql
+migrations/0022_institutional_research_seasonality_family.sql
 package-lock.json
 package.json
 parity/material-manifest-v1.txt
