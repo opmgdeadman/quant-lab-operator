@@ -90,15 +90,6 @@ jobs:
       - name: Run operator capability tests
         if: ${{ always() }}
         run: node --test test/operator-capability-directory.test.js
-      - name: Diagnostic operator directory core
-        if: ${{ always() }}
-        run: node --test --test-name-pattern="every supported intent|every handler|mutations list" test/operator-capability-directory.test.js
-      - name: Diagnostic operator strategy contracts
-        if: ${{ always() }}
-        run: node --test --test-name-pattern="position-hold|DMI ADX|donchian compression|market volume|directional institutional|institutional hypothesis schema" test/operator-capability-directory.test.js
-      - name: Diagnostic operator workflow contract
-        if: ${{ always() }}
-        run: node --test --test-name-pattern="workflows use one validation runner" test/operator-capability-directory.test.js
       - name: Run operator client-safety tests
         if: ${{ always() }}
         run: node --test test/operator-client-safety.test.js
@@ -164,7 +155,7 @@ jobs:
         run: npm run check
 
   fleet_timing_package_retrofit:
-    if: ${{ github.event_name == 'workflow_dispatch' }}
+    if: ${{ github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
