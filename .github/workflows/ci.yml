@@ -13,7 +13,7 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   validation:
@@ -157,16 +157,13 @@ jobs:
   fleet_timing_package_retrofit:
     if: ${{ github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout Quant Lab
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Checkout MCP Controller standards package
-        uses: actions/checkout@v4
-        with:
-          repository: opmgdeadman/mcp-controller
-          path: .controller
       - name: Build Quant Lab timing retrofit config
         run: |
           cat > /tmp/quant-lab-timing.json <<'JSON'
