@@ -140,6 +140,69 @@ test("efficiency ratio gate 4 exact threshold and no look-ahead", () => {
   assert.equal(compileDirectionalSignal(strategy, mutated)(5, 0), baseline);
 });
 
+function closeQuantileReversionSpec(parameters = { period: 72, lower_quantile: 0.10, upper_quantile: 0.90 }) {
+  return typedSpec({ strategy: { template: "close_quantile_reversion", feature_set_id: "close-quantile-rank-v1", parameters } });
+}
+
+function quantileRows(closes) {
+  const start = Date.parse("2026-01-01T00:00:00.000Z");
+  return closes.map((close, index) => ({ closed_at: new Date(start + index * 3600000).toISOString(), open: close, high: close + 1, low: Math.max(0.01, close - 1), close, volume: 100 }));
+}
+
+test("close quantile reversion preregistration is exact, ordered, and bounded", () => {
+  const validated = validateInstitutionalResearchSpec(closeQuantileReversionSpec());
+  assert.deepEqual(validated.strategy.parameters, { period: 72, lower_quantile: 0.10, upper_quantile: 0.90 });
+  assert.throws(() => validateInstitutionalResearchSpec(closeQuantileReversionSpec({ period: 72, lower_quantile: 0.90, upper_quantile: 0.10 })), /lower_quantile_out_of_bounds|upper_quantile_out_of_bounds|close_quantile_order_invalid/);
+  assert.throws(() => validateInstitutionalResearchSpec(closeQuantileReversionSpec({ period: 11, lower_quantile: 0.10, upper_quantile: 0.90 })), /period_out_of_bounds/);
+});
+
+test("close quantile reversion has symmetric tails, deterministic ties, and historical-forward parity", () => {
+  const strategy = buildStrategyFromResearchSpec("typed-close-quantile-001", closeQuantileReversionSpec());
+  const upper = quantileRows([...Array.from({ length: 71 }, (_, index) => index + 1), 1000]);
+  const lower = quantileRows([...Array.from({ length: 71 }, (_, index) => index + 2), 1]);
+  const tied = quantileRows(Array(72).fill(100));
+  for (const [rows, expected] of [[upper, -1], [lower, 1], [tied, 0]]) {
+    assert.equal(compileDirectionalSignal(strategy, rows)(72, 0), expected);
+    assert.equal(directionalSignal(strategy, rows, 0).target_exposure, expected);
+  }
+});
+
+test("close quantile reversion includes exact attainable rank boundaries", () => {
+  const lowerRank = 7.5 / 72;
+  const upperRank = 64.5 / 72;
+  const strategy = buildStrategyFromResearchSpec("typed-close-quantile-boundary-001", closeQuantileReversionSpec({ period: 72, lower_quantile: lowerRank, upper_quantile: upperRank }));
+  const lowerCloses = [...Array.from({ length: 7 }, (_, index) => index + 1), ...Array.from({ length: 64 }, (_, index) => index + 9), 8];
+  const upperCloses = [...Array.from({ length: 64 }, (_, index) => index + 1), ...Array.from({ length: 7 }, (_, index) => index + 66), 65];
+  assert.equal(compileDirectionalSignal(strategy, quantileRows(lowerCloses))(72, 0), 1);
+  assert.equal(directionalSignal(strategy, quantileRows(lowerCloses), 0).target_exposure, 1);
+  assert.equal(compileDirectionalSignal(strategy, quantileRows(upperCloses))(72, 0), -1);
+  assert.equal(directionalSignal(strategy, quantileRows(upperCloses), 0).target_exposure, -1);
+});
+
+test("close quantile reversion preserves minimum-history state and excludes execution candle", () => {
+  const strategy = buildStrategyFromResearchSpec("typed-close-quantile-no-lookahead-001", closeQuantileReversionSpec());
+  const signalRows = quantileRows([...Array.from({ length: 71 }, (_, index) => index + 1), 1000]);
+  assert.equal(compileDirectionalSignal(strategy, signalRows.slice(0, 71))(71, 1), 1);
+  const execution = { ...signalRows.at(-1), closed_at: new Date(Date.parse(signalRows.at(-1).closed_at) + 3600000).toISOString(), open: 5000, high: 6000, low: 4000, close: 5500 };
+  const rows = [...signalRows, execution];
+  const baseline = compileDirectionalSignal(strategy, rows)(72, 0);
+  assert.equal(baseline, -1);
+  const mutated = rows.map((row, index) => index === 72 ? { ...row, open: 1, high: 2, low: 0.5, close: 1 } : row);
+  assert.equal(compileDirectionalSignal(strategy, mutated)(72, 0), baseline);
+  assert.equal(directionalSignal(strategy, signalRows, 0).target_exposure, baseline);
+});
+
+test("close quantile reversion executes only through sealed next-completed-candle walk-forward math", () => {
+  const policy = buildInstitutionalBacktestPolicy();
+  const windows = buildWalkForwardWindows(syntheticCandles(), policy);
+  const strategy = buildStrategyFromResearchSpec("typed-close-quantile-walk-forward-001", closeQuantileReversionSpec());
+  const result = runDirectionalWalkForward({ windows, strategies: [strategy], policy });
+  assert.equal(result.length, 1);
+  assert.equal(result[0].windows.length, 5);
+  assert.equal(result[0].windows.every((row) => row.execution_model === "next_completed_candle_open"), true);
+  assert.equal(result[0].windows.every((row) => row.evidence_integrity_passed === true), true);
+});
+
 function rollingMedianReversionSpec() {
   return typedSpec({ strategy: { template: "rolling_median_reversion", feature_set_id: "close-rolling-median-deviation-v1", parameters: { period: 48, threshold_percent: 2.0 } } });
 }
