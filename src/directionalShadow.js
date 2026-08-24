@@ -494,9 +494,14 @@ export function directionalSignal(spec, candles, currentExposure = 0) {
     const signalDate = new Date(rows[signalIndex].closed_at);
     const targetSlot = signalDate.getUTCDay() * 24 + signalDate.getUTCHours();
     const samples = [];
-    for (let index = signalIndex - 1; index >= 1 && samples.length < lookbackWeeks; index -= 1) {
+    const hoursPerWeek = 7 * 24;
+    for (let week = 1; week <= lookbackWeeks; week += 1) {
+      const index = signalIndex - week * hoursPerWeek;
+      if (index < 1) break;
       const date = new Date(rows[index].closed_at);
-      if (date.getUTCDay() * 24 + date.getUTCHours() !== targetSlot) continue;
+      if (date.getUTCDay() * 24 + date.getUTCHours() !== targetSlot) {
+        throw new Error("hour_of_week_contiguous_slot_alignment_invalid");
+      }
       samples.push((rows[index].close / rows[index - 1].close) - 1);
     }
     if (samples.length < lookbackWeeks) return signal(0, "hour_of_week_insufficient_same_slot_history");

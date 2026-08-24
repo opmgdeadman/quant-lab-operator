@@ -366,13 +366,17 @@ test("hour-of-week drift preregistration is frozen and bounded", () => {
   assert.throws(() => validateInstitutionalResearchSpec(typedSpec({ strategy: { template: "hour_of_week_drift", feature_set_id: "time-hour-of-week-drift-v1", parameters: { lookback_weeks: 3, mean_return_threshold_bps: 5 } } })), /lookback_weeks_out_of_bounds/);
 });
 
-test("hour-of-week drift is no-look-ahead and sealed-walk-forward compatible", () => {
+test("hour-of-week drift is no-look-ahead, exact-week indexed, and sealed-walk-forward compatible", () => {
   const rows = syntheticCandles(2400);
   const strategy = buildStrategyFromResearchSpec("typed-hour-week-drift-001", hourOfWeekDriftSpec());
   const executionIndex = 2200;
   const baseline = compileDirectionalSignal(strategy, rows)(executionIndex, 0);
   const mutated = rows.map((row, index) => index === executionIndex ? { ...row, close: row.close * 25 } : row);
   assert.equal(compileDirectionalSignal(strategy, mutated)(executionIndex, 0), baseline);
+  const misaligned = rows.map((row, index) => index === executionIndex - 168
+    ? { ...row, closed_at: new Date(Date.parse(row.closed_at) + 3600000).toISOString() }
+    : row);
+  assert.throws(() => compileDirectionalSignal(strategy, misaligned)(executionIndex, 0), /hour_of_week_contiguous_slot_alignment_invalid/);
   const policy = buildInstitutionalBacktestPolicy();
   const windows = buildWalkForwardWindows(syntheticCandles(), policy);
   const result = runDirectionalWalkForward({ windows, strategies: [strategy], policy });
