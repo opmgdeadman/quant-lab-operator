@@ -20,6 +20,7 @@ test("path traversal and unallowlisted files reject", () => {
   assert.doesNotThrow(() => assertAllowedRepoPath("recovery-worker/src/index.js"));
   assert.doesNotThrow(() => assertAllowedRepoPath("recovery-worker/wrangler.jsonc"));
   assert.doesNotThrow(() => assertAllowedRepoPath(".github/workflows/quant-lab-recovery-deploy.yml"));
+  assert.doesNotThrow(() => assertAllowedRepoPath("docs/ENGINEERING_CONTINUATION_LEDGER.md"));
   assert.throws(() => assertAllowedRepoPath("../.env"), /forbidden_path/);
   assert.throws(() => assertAllowedRepoPath(".env"), /forbidden_path/);
   assert.throws(() => assertAllowedRepoPath("runtime/state.sqlite"), /forbidden_path/);

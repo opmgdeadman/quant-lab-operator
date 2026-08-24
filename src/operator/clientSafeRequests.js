@@ -18,6 +18,7 @@ export const allowedRepoPaths = [
   "docs/LENSICALLY_STYLE_MCP_ARCHITECTURE.md",
   "docs/MCP_OPERATOR_CONTROL_PLANE_HANDOFF.md",
   "docs/MCP_OPERATOR_TOOL_SURFACE_HANDOFF.md",
+  "docs/ENGINEERING_CONTINUATION_LEDGER.md",
   "src/index.js",
   "src/professionalConsole.js",
   "src/professionalConsoleStyles.js",
