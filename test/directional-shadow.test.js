@@ -107,9 +107,9 @@ test("volatility regime breakout trades only during true-range expansion", () =>
 
 test("close quantile reversion uses deterministic midrank tails and handles ties", () => {
   const spec = { family: "close_quantile_reversion", parameters: { period: 10, lower_quantile: 0.1, upper_quantile: 0.9 } };
-  const lower = directionalSignal(spec, candles([9, 8, 7, 6, 5, 4, 3, 2, 1, 0.5]), 0);
-  const upper = directionalSignal(spec, candles([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]), 0);
-  const tied = directionalSignal(spec, candles([1, 2, 3, 4, 5, 5, 5, 6, 7, 5]), 0);
+  const lower = directionalSignal(spec, candles([12, 11, 10, 9, 8, 7, 6, 5, 4, 3]), 0);
+  const upper = directionalSignal(spec, candles([3, 4, 5, 6, 7, 8, 9, 10, 11, 12]), 0);
+  const tied = directionalSignal(spec, candles([3, 4, 5, 6, 7, 7, 7, 8, 9, 7]), 0);
   assert.equal(lower.target_exposure, 1);
   assert.equal(lower.reason_code, "close_quantile_lower_tail_long");
   assert.equal(upper.target_exposure, -1);
