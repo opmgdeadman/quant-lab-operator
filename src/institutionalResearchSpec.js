@@ -197,6 +197,14 @@ export const INSTITUTIONAL_STRATEGY_TEMPLATES = deepFreeze({
       threshold_percent: numberRule(0.25, 10),
     },
   },
+  rolling_drawdown_reversion: {
+    family: "rolling_drawdown_reversion",
+    feature_set_id: "close-rolling-drawdown-v1",
+    parameters: {
+      period: integerRule(12, 240),
+      threshold_percent: numberRule(0.25, 25),
+    },
+  },
   body_streak_reversal: {
     family: "body_streak_reversal",
     feature_set_id: "ohlc-body-streak-reversal-v1",

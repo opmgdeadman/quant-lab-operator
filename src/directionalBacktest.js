@@ -195,6 +195,21 @@ export function compileDirectionalSignal(strategy, candles) {
     };
   }
 
+  if (family === "rolling_drawdown_reversion") {
+    const period = integer(parameters.period, "period");
+    const threshold = finite(parameters.threshold_percent, "threshold_percent") / 100;
+    return (executionIndex, currentExposure = 0) => {
+      const current = clamp(currentExposure);
+      if (executionIndex < period) return current;
+      let peak = -Infinity;
+      for (let index = executionIndex - period; index < executionIndex; index += 1) peak = Math.max(peak, rows[index].close);
+      if (!Number.isFinite(peak) || peak <= EPSILON) return 0;
+      const latest = rows[executionIndex - 1].close;
+      const drawdown = (peak - latest) / peak;
+      return drawdown + EPSILON >= threshold ? 1 : 0;
+    };
+  }
+
   if (family === "wick_rejection_reversal") {
     const period = integer(parameters.period, "period");
     const threshold = finite(parameters.wick_ratio_threshold, "wick_ratio_threshold");

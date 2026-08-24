@@ -425,6 +425,18 @@ export function directionalSignal(spec, candles, currentExposure = 0) {
     if (z - EPSILON <= -threshold) return signal(TARGET_EXPOSURE, "return_zscore_low_long");
     return signal(0, "return_zscore_interior_flat");
   }
+  if (spec.family === "rolling_drawdown_reversion") {
+    const period = integer(spec.parameters.period, "period");
+    const threshold = finite(spec.parameters.threshold_percent, "threshold_percent") / 100;
+    if (rows.length < period) return signal(current, "rolling_drawdown_insufficient_history");
+    const window = rows.slice(-period);
+    const peak = Math.max(...window.map((row) => row.close));
+    if (!Number.isFinite(peak) || peak <= EPSILON) return signal(0, "rolling_drawdown_invalid_peak_flat");
+    const latest = window.at(-1).close;
+    const drawdown = (peak - latest) / peak;
+    if (drawdown + EPSILON >= threshold) return signal(TARGET_EXPOSURE, "rolling_drawdown_capitulation_long");
+    return signal(0, "rolling_drawdown_interior_flat");
+  }
   if (spec.family === "wick_rejection_reversal") {
     const period = integer(spec.parameters.period, "period");
     const threshold = finite(spec.parameters.wick_ratio_threshold, "wick_ratio_threshold");

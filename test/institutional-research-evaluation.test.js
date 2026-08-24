@@ -74,6 +74,31 @@ function historicalArtifact(overrides = {}) {
   };
 }
 
+test("rolling drawdown reversion preregistration, boundary, long-only parity, and no-look-ahead", () => {
+  const spec = typedSpec({ strategy: { template: "rolling_drawdown_reversion", feature_set_id: "close-rolling-drawdown-v1", parameters: { period: 72, threshold_percent: 5 } } });
+  const valid = validateInstitutionalResearchSpec(spec);
+  assert.deepEqual(valid.strategy.parameters, { period: 72, threshold_percent: 5 });
+
+  const strategy = { id: "drawdown-test", family: "rolling_drawdown_reversion", market: "BTC-USD", interval: "1h", parameters: { period: 4, threshold_percent: 5 } };
+  const rows = [100, 100, 100, 95, 94].map((close, index) => ({ market: "BTC-USD", interval: "1h", closed_at: new Date(Date.parse("2026-01-01T00:00:00.000Z") + index * 3600000).toISOString(), open: close, high: close, low: close, close, volume: 1 }));
+  const compile = compileDirectionalSignal(strategy, rows);
+  assert.equal(compile(4, 0), 1);
+  assert.equal(directionalSignal(strategy, rows.slice(0, 4), 0).target_exposure, 1);
+  assert.equal(compile(3, -1), -1);
+  assert.equal(directionalSignal(strategy, rows.slice(0, 3), -1).target_exposure, -1);
+  assert.equal(compile(5, 0), 1);
+  assert.equal(directionalSignal(strategy, rows, 0).target_exposure, 1);
+  const futureChanged = rows.map((row) => ({ ...row }));
+  futureChanged[4].close = 1000;
+  futureChanged[4].open = 1000;
+  futureChanged[4].high = 1000;
+  futureChanged[4].low = 1000;
+  assert.equal(compileDirectionalSignal(strategy, futureChanged)(4, 0), 1);
+  const interior = [100, 100, 100, 96].map((close, index) => ({ market: "BTC-USD", interval: "1h", closed_at: new Date(Date.parse("2026-02-01T00:00:00.000Z") + index * 3600000).toISOString(), open: close, high: close, low: close, close, volume: 1 }));
+  assert.equal(compileDirectionalSignal(strategy, interior)(4, 0), 0);
+  assert.equal(directionalSignal(strategy, interior, 0).target_exposure, 0);
+});
+
 test("typed Stage 14 spec rejects unknown templates, mismatched features, rescue fields, and bounds", () => {
   const valid = validateInstitutionalResearchSpec(typedSpec());
   assert.equal(valid.strategy.template, "ema_trend");
