@@ -105,6 +105,35 @@ test("inside-bar breakout preserves historical-forward parity and fails closed o
   assert.equal(compileDirectionalSignal(strategy, noLookAhead)(3, 0), directionalSignal(strategy, noLookAhead.slice(0, 2), 0).target_exposure);
 });
 
+test("engulfing reversal preserves historical-forward parity and rejects malformed bodies", () => {
+  const strategy = { id: "engulfing", family: "engulfing_reversal", parameters: { min_body_ratio: 1.25 } };
+  const base = Date.parse("2026-01-01T00:00:00.000Z");
+  const row = (hour, open, high, low, close) => ({ closed_at: new Date(base + hour * 3600000).toISOString(), open, high, low, close, volume: 10 });
+
+  const bullish = [row(0, 104, 105, 99, 100), row(1, 99, 106, 98, 105), row(2, 105, 107, 104, 106)];
+  assert.equal(directionalSignal(strategy, bullish.slice(0, 2), 0).target_exposure, 1);
+  assert.equal(compileDirectionalSignal(strategy, bullish)(3, 0), 1);
+
+  const bearish = [row(0, 100, 105, 99, 104), row(1, 105, 106, 98, 99), row(2, 99, 100, 97, 98)];
+  assert.equal(directionalSignal(strategy, bearish.slice(0, 2), 0).target_exposure, -1);
+  assert.equal(compileDirectionalSignal(strategy, bearish)(3, 0), -1);
+
+  const sameDirection = [row(0, 100, 103, 99, 102), row(1, 99, 104, 98, 103)];
+  assert.equal(directionalSignal(strategy, sameDirection, 1).target_exposure, 0);
+
+  const incomplete = [row(0, 104, 105, 99, 100), row(1, 100.5, 106, 99, 105.5)];
+  assert.equal(directionalSignal(strategy, incomplete, 1).target_exposure, 0);
+
+  const boundary = [row(0, 104, 105, 99, 100), row(1, 99.5, 106, 98, 104.5)];
+  assert.equal(directionalSignal(strategy, boundary, 0).target_exposure, 1);
+
+  const zeroBody = [row(0, 100, 101, 99, 100), row(1, 99, 102, 98, 101)];
+  assert.equal(directionalSignal(strategy, zeroBody, 1).target_exposure, 0);
+
+  const noLookAhead = [...bullish.slice(0, 2), row(2, 50, 200, 1, 50)];
+  assert.equal(compileDirectionalSignal(strategy, noLookAhead)(2, 0), directionalSignal(strategy, noLookAhead.slice(0, 1), 0).target_exposure);
+});
+
 test("completes the full twelve-candidate institutional workload", () => {
   const windows = buildWalkForwardWindows(candles());
   const result = runDirectionalWalkForward({

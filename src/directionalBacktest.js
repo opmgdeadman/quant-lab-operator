@@ -309,6 +309,29 @@ export function compileDirectionalSignal(strategy, candles) {
     };
   }
 
+  if (family === "engulfing_reversal") {
+    const minBodyRatio = finite(parameters.min_body_ratio, "min_body_ratio");
+    return (executionIndex, currentExposure = 0) => {
+      const current = clamp(currentExposure);
+      if (executionIndex < 3) return current;
+      const prior = rows[executionIndex - 3];
+      const second = rows[executionIndex - 2];
+      const priorBody = Math.abs(prior.close - prior.open);
+      const secondBody = Math.abs(second.close - second.open);
+      if (priorBody <= EPSILON) return 0;
+      const priorDirection = Math.sign(prior.close - prior.open);
+      const secondDirection = Math.sign(second.close - second.open);
+      if (priorDirection === 0 || secondDirection === 0 || priorDirection === secondDirection) return 0;
+      const priorLowBody = Math.min(prior.open, prior.close);
+      const priorHighBody = Math.max(prior.open, prior.close);
+      const secondLowBody = Math.min(second.open, second.close);
+      const secondHighBody = Math.max(second.open, second.close);
+      const engulfed = secondLowBody <= priorLowBody + EPSILON && secondHighBody >= priorHighBody - EPSILON;
+      if (!engulfed || secondBody / priorBody + EPSILON < minBodyRatio) return 0;
+      return secondDirection > 0 ? 1 : -1;
+    };
+  }
+
   if (family === "donchian_breakout") {
     const lookback = integer(parameters.lookback, "lookback");
     return (executionIndex, currentExposure = 0) => {

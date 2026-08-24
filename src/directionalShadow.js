@@ -527,6 +527,25 @@ export function directionalSignal(spec, candles, currentExposure = 0) {
     if (breakout.close < mother.low) return signal(-TARGET_EXPOSURE, "inside_bar_breakout_short");
     return signal(0, "inside_bar_no_break_flat");
   }
+  if (spec.family === "engulfing_reversal") {
+    const minBodyRatio = finite(spec.parameters.min_body_ratio, "min_body_ratio");
+    if (rows.length < 2) return signal(current, "engulfing_insufficient_history");
+    const prior = rows.at(-2);
+    const second = rows.at(-1);
+    const priorBody = Math.abs(prior.close - prior.open);
+    const secondBody = Math.abs(second.close - second.open);
+    if (priorBody <= EPSILON) return signal(0, "engulfing_zero_prior_body_flat");
+    const priorDirection = Math.sign(prior.close - prior.open);
+    const secondDirection = Math.sign(second.close - second.open);
+    if (priorDirection === 0 || secondDirection === 0 || priorDirection === secondDirection) return signal(0, "engulfing_direction_invalid_flat");
+    const priorLowBody = Math.min(prior.open, prior.close);
+    const priorHighBody = Math.max(prior.open, prior.close);
+    const secondLowBody = Math.min(second.open, second.close);
+    const secondHighBody = Math.max(second.open, second.close);
+    const engulfed = secondLowBody <= priorLowBody + EPSILON && secondHighBody >= priorHighBody - EPSILON;
+    if (!engulfed || secondBody / priorBody + EPSILON < minBodyRatio) return signal(0, "engulfing_pattern_invalid_flat");
+    return secondDirection > 0 ? signal(TARGET_EXPOSURE, "engulfing_bullish_reversal") : signal(-TARGET_EXPOSURE, "engulfing_bearish_reversal");
+  }
   if (spec.family === "donchian_breakout") {
     const lookback = integer(spec.parameters.lookback, "lookback");
     if (rows.length < lookback + 1) return signal(current, "donchian_insufficient_history");

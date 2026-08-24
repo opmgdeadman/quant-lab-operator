@@ -118,6 +118,13 @@ export const INSTITUTIONAL_STRATEGY_TEMPLATES = deepFreeze({
       max_inside_range_ratio: numberRule(0.25, 1),
     },
   },
+  engulfing_reversal: {
+    family: "engulfing_reversal",
+    feature_set_id: "ohlc-engulfing-reversal-v1",
+    parameters: {
+      min_body_ratio: numberRule(1, 4),
+    },
+  },
   donchian_breakout: {
     family: "donchian_breakout",
     feature_set_id: "ohlc-donchian-v1",
