@@ -134,6 +134,25 @@ export function compileDirectionalSignal(strategy, candles) {
     };
   }
 
+  if (family === "close_location_pressure") {
+    const period = integer(parameters.period, "period");
+    const threshold = finite(parameters.pressure_threshold, "pressure_threshold");
+    return (executionIndex, currentExposure = 0) => {
+      const current = clamp(currentExposure);
+      if (executionIndex < period) return current;
+      let pressureTotal = 0;
+      for (let index = executionIndex - period; index < executionIndex; index += 1) {
+        const row = rows[index];
+        const range = row.high - row.low;
+        pressureTotal += range <= EPSILON ? 0 : ((2 * row.close) - row.high - row.low) / range;
+      }
+      const pressure = pressureTotal / period;
+      if (pressure > threshold) return 1;
+      if (pressure < -threshold) return -1;
+      return 0;
+    };
+  }
+
   if (family === "donchian_breakout") {
     const lookback = integer(parameters.lookback, "lookback");
     return (executionIndex, currentExposure = 0) => {

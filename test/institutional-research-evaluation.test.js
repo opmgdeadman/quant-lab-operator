@@ -149,6 +149,56 @@ test("ema pullback historical signal uses only pre-execution candle state", () =
   assert.equal(compileDirectionalSignal(strategy, mutated)(executionIndex, 0), baseline);
 });
 
+function closeLocationPressureSpec() {
+  return typedSpec({
+    strategy: {
+      template: "close_location_pressure",
+      feature_set_id: "ohlc-close-location-pressure-v1",
+      parameters: { period: 12, pressure_threshold: 0.25 },
+    },
+  });
+}
+
+test("close location pressure preregistration is exact and bounded", () => {
+  const validated = validateInstitutionalResearchSpec(closeLocationPressureSpec());
+  assert.equal(validated.strategy.template, "close_location_pressure");
+  assert.deepEqual(validated.strategy.parameters, { period: 12, pressure_threshold: 0.25 });
+  assert.throws(() => validateInstitutionalResearchSpec(typedSpec({
+    strategy: {
+      template: "close_location_pressure",
+      feature_set_id: "ohlc-close-location-pressure-v1",
+      parameters: { period: 12, pressure_threshold: 1.1 },
+    },
+  })), /pressure_threshold_out_of_bounds/);
+});
+
+test("close location pressure supports both signal paths and excludes the execution candle", () => {
+  const start = Date.parse("2026-01-01T00:00:00.000Z");
+  const rows = Array.from({ length: 20 }, (_, index) => ({
+    closed_at: new Date(start + index * 3600000).toISOString(),
+    open: 100,
+    high: 110,
+    low: 90,
+    close: index < 19 ? 108 : 92,
+    volume: 100,
+  }));
+  const strategy = buildStrategyFromResearchSpec("typed-close-location-pressure-001", closeLocationPressureSpec());
+  assert.equal(compileDirectionalSignal(strategy, rows)(19, 0), 1);
+  const futureMutated = rows.map((row, index) => index === 19 ? { ...row, close: 91 } : row);
+  assert.equal(compileDirectionalSignal(strategy, futureMutated)(19, 0), 1);
+});
+
+test("close location pressure executes through sealed next-candle walk-forward math", () => {
+  const policy = buildInstitutionalBacktestPolicy();
+  const windows = buildWalkForwardWindows(syntheticCandles(), policy);
+  const strategy = buildStrategyFromResearchSpec("typed-close-location-pressure-walk-forward-001", closeLocationPressureSpec());
+  const result = runDirectionalWalkForward({ windows, strategies: [strategy], policy });
+  assert.equal(result.length, 1);
+  assert.equal(result[0].windows.length, 5);
+  assert.equal(result[0].windows.every((row) => row.execution_model === "next_completed_candle_open"), true);
+  assert.equal(result[0].windows.every((row) => row.evidence_integrity_passed === true), true);
+});
+
 function donchianRegimeBreakoutSpec() {
   return typedSpec({
     strategy: {

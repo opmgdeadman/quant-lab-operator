@@ -63,6 +63,14 @@ export const INSTITUTIONAL_STRATEGY_TEMPLATES = deepFreeze({
       if (parameters.fast >= parameters.slow) throw new Error("institutional_spec_ema_pullback_fast_must_be_below_slow");
     },
   },
+  close_location_pressure: {
+    family: "close_location_pressure",
+    feature_set_id: "ohlc-close-location-pressure-v1",
+    parameters: {
+      period: integerRule(2, 120),
+      pressure_threshold: numberRule(0.05, 0.95),
+    },
+  },
   donchian_breakout: {
     family: "donchian_breakout",
     feature_set_id: "ohlc-donchian-v1",

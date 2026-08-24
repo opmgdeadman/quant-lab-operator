@@ -381,6 +381,19 @@ export function directionalSignal(spec, candles, currentExposure = 0) {
     if (fastEma < slowEma && latestClose >= fastEma * (1 + threshold)) return signal(-TARGET_EXPOSURE, "ema_pullback_downtrend_short");
     return signal(0, "ema_pullback_no_entry_flat");
   }
+  if (spec.family === "close_location_pressure") {
+    const period = integer(spec.parameters.period, "period");
+    const threshold = finite(spec.parameters.pressure_threshold, "pressure_threshold");
+    if (rows.length < period) return signal(current, "close_location_pressure_insufficient_history");
+    const window = rows.slice(-period);
+    const pressure = mean(window.map((row) => {
+      const range = row.high - row.low;
+      return range <= EPSILON ? 0 : ((2 * row.close) - row.high - row.low) / range;
+    }));
+    if (pressure > threshold) return signal(TARGET_EXPOSURE, "close_location_pressure_long");
+    if (pressure < -threshold) return signal(-TARGET_EXPOSURE, "close_location_pressure_short");
+    return signal(0, "close_location_pressure_flat");
+  }
   if (spec.family === "donchian_breakout") {
     const lookback = integer(spec.parameters.lookback, "lookback");
     if (rows.length < lookback + 1) return signal(current, "donchian_insufficient_history");
