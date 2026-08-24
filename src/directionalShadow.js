@@ -570,6 +570,21 @@ export function directionalSignal(spec, candles, currentExposure = 0) {
     if (efficiency + EPSILON < threshold || Math.abs(displacement) <= EPSILON) return signal(0, "efficiency_ratio_below_threshold_flat");
     return displacement > 0 ? signal(TARGET_EXPOSURE, "efficiency_ratio_trend_long") : signal(-TARGET_EXPOSURE, "efficiency_ratio_trend_short");
   }
+  if (spec.family === "rolling_median_reversion") {
+    const period = integer(spec.parameters.period, "period");
+    const thresholdPercent = finite(spec.parameters.threshold_percent, "threshold_percent");
+    if (rows.length < period) return signal(current, "rolling_median_insufficient_history");
+    const closes = rows.slice(-period).map((row) => finite(row.close, "close")).sort((a, b) => a - b);
+    if (closes.some((value) => value <= 0)) return signal(0, "rolling_median_nonpositive_close_flat");
+    const mid = Math.floor(closes.length / 2);
+    const median = closes.length % 2 === 0 ? (closes[mid - 1] + closes[mid]) / 2 : closes[mid];
+    if (!Number.isFinite(median) || median <= 0) return signal(0, "rolling_median_invalid_flat");
+    const latestClose = finite(rows.at(-1).close, "close");
+    const displacementPercent = ((latestClose / median) - 1) * 100;
+    if (displacementPercent + EPSILON >= thresholdPercent) return signal(-TARGET_EXPOSURE, "rolling_median_above_fair_value_short");
+    if (displacementPercent - EPSILON <= -thresholdPercent) return signal(TARGET_EXPOSURE, "rolling_median_below_fair_value_long");
+    return signal(0, "rolling_median_inside_threshold_flat");
+  }
   if (spec.family === "body_streak_reversal") {
     const streakLength = integer(spec.parameters.streak_length, "streak_length");
     const minBodyFraction = finite(spec.parameters.min_body_fraction, "min_body_fraction");

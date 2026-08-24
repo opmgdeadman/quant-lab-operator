@@ -133,6 +133,14 @@ export const INSTITUTIONAL_STRATEGY_TEMPLATES = deepFreeze({
       efficiency_threshold: numberRule(0.05, 1),
     },
   },
+  rolling_median_reversion: {
+    family: "rolling_median_reversion",
+    feature_set_id: "close-rolling-median-deviation-v1",
+    parameters: {
+      period: integerRule(12, 240),
+      threshold_percent: numberRule(0.25, 10),
+    },
+  },
   body_streak_reversal: {
     family: "body_streak_reversal",
     feature_set_id: "ohlc-body-streak-reversal-v1",

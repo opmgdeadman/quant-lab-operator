@@ -140,6 +140,68 @@ test("efficiency ratio gate 4 exact threshold and no look-ahead", () => {
   assert.equal(compileDirectionalSignal(strategy, mutated)(5, 0), baseline);
 });
 
+function rollingMedianReversionSpec() {
+  return typedSpec({ strategy: { template: "rolling_median_reversion", feature_set_id: "close-rolling-median-deviation-v1", parameters: { period: 48, threshold_percent: 2.0 } } });
+}
+
+function medianFixture(signalClose) {
+  const start = Date.parse("2026-01-01T00:00:00.000Z");
+  const closes = Array.from({ length: 48 }, (_, index) => index < 24 ? 98 : 102);
+  closes[47] = signalClose;
+  return closes.map((close, index) => ({ closed_at: new Date(start + index * 3600000).toISOString(), open: close, high: close + 1, low: close - 1, close, volume: 100 }));
+}
+
+test("rolling median reversion preregistration is exact and bounded", () => {
+  const validated = validateInstitutionalResearchSpec(rollingMedianReversionSpec());
+  assert.deepEqual(validated.strategy.parameters, { period: 48, threshold_percent: 2.0 });
+  assert.throws(() => validateInstitutionalResearchSpec(typedSpec({ strategy: { template: "rolling_median_reversion", feature_set_id: "close-rolling-median-deviation-v1", parameters: { period: 11, threshold_percent: 2.0 } } })), /period_out_of_bounds/);
+  assert.throws(() => validateInstitutionalResearchSpec(typedSpec({ strategy: { template: "rolling_median_reversion", feature_set_id: "close-rolling-median-deviation-v1", parameters: { period: 48, threshold_percent: 0.1 } } })), /threshold_percent_out_of_bounds/);
+});
+
+test("rolling median reversion computes even median and symmetric displacement signals", () => {
+  const strategy = buildStrategyFromResearchSpec("typed-median-reversion-001", rollingMedianReversionSpec());
+  const above = medianFixture(102);
+  const below = medianFixture(98);
+  assert.equal(compileDirectionalSignal(strategy, above)(48, 0), -1);
+  assert.equal(directionalSignal(strategy, above, 0).target_exposure, -1);
+  assert.equal(compileDirectionalSignal(strategy, below)(48, 0), 1);
+  assert.equal(directionalSignal(strategy, below, 0).target_exposure, 1);
+});
+
+test("rolling median reversion stays flat inside threshold and preserves exact boundaries", () => {
+  const strategy = buildStrategyFromResearchSpec("typed-median-reversion-boundary-001", rollingMedianReversionSpec());
+  const inside = medianFixture(101);
+  assert.equal(compileDirectionalSignal(strategy, inside)(48, 0), 0);
+  assert.equal(directionalSignal(strategy, inside, 0).target_exposure, 0);
+  const exactAbove = medianFixture(102);
+  const exactBelow = medianFixture(98);
+  assert.equal(compileDirectionalSignal(strategy, exactAbove)(48, 0), -1);
+  assert.equal(compileDirectionalSignal(strategy, exactBelow)(48, 0), 1);
+});
+
+test("rolling median reversion excludes execution candle and preserves historical forward parity", () => {
+  const strategy = buildStrategyFromResearchSpec("typed-median-reversion-no-lookahead-001", rollingMedianReversionSpec());
+  const signalRows = medianFixture(102);
+  const execution = { ...signalRows.at(-1), closed_at: new Date(Date.parse(signalRows.at(-1).closed_at) + 3600000).toISOString(), open: 100000, high: 100001, low: 1, close: 2 };
+  const rows = [...signalRows, execution];
+  assert.equal(compileDirectionalSignal(strategy, rows)(48, 0), -1);
+  const mutated = rows.map((row, index) => index === 48 ? { ...row, open: 1, high: 2, low: 0.5, close: 1 } : row);
+  assert.equal(compileDirectionalSignal(strategy, mutated)(48, 0), -1);
+  assert.equal(directionalSignal(strategy, signalRows, 0).target_exposure, -1);
+});
+
+test("rolling median reversion enforces minimum history and sealed next-candle execution", () => {
+  const strategy = buildStrategyFromResearchSpec("typed-median-reversion-walk-forward-001", rollingMedianReversionSpec());
+  assert.equal(compileDirectionalSignal(strategy, medianFixture(102).slice(0, 47))(47, 1), 1);
+  const policy = buildInstitutionalBacktestPolicy();
+  const windows = buildWalkForwardWindows(syntheticCandles(), policy);
+  const result = runDirectionalWalkForward({ windows, strategies: [strategy], policy });
+  assert.equal(result.length, 1);
+  assert.equal(result[0].windows.length, 5);
+  assert.equal(result[0].windows.every((row) => row.execution_model === "next_completed_candle_open"), true);
+  assert.equal(result[0].windows.every((row) => row.evidence_integrity_passed === true), true);
+});
+
 function bodyStreakReversalSpec() {
   return typedSpec({ strategy: { template: "body_streak_reversal", feature_set_id: "ohlc-body-streak-reversal-v1", parameters: { streak_length: 4, min_body_fraction: 0.30 } } });
 }

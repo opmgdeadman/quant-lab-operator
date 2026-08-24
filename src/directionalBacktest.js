@@ -427,6 +427,25 @@ export function compileDirectionalSignal(strategy, candles) {
     };
   }
 
+  if (family === "rolling_median_reversion") {
+    const period = integer(parameters.period, "period");
+    const thresholdPercent = finite(parameters.threshold_percent, "threshold_percent");
+    return (executionIndex, currentExposure = 0) => {
+      const current = clamp(currentExposure);
+      if (executionIndex < period) return current;
+      const closes = rows.slice(executionIndex - period, executionIndex).map((row) => finite(row.close, "close")).sort((a, b) => a - b);
+      if (closes.some((value) => value <= 0)) return 0;
+      const mid = Math.floor(closes.length / 2);
+      const median = closes.length % 2 === 0 ? (closes[mid - 1] + closes[mid]) / 2 : closes[mid];
+      if (!Number.isFinite(median) || median <= 0) return 0;
+      const latestClose = finite(rows[executionIndex - 1].close, "close");
+      const displacementPercent = ((latestClose / median) - 1) * 100;
+      if (displacementPercent + EPSILON >= thresholdPercent) return -1;
+      if (displacementPercent - EPSILON <= -thresholdPercent) return 1;
+      return 0;
+    };
+  }
+
   if (family === "body_streak_reversal") {
     const streakLength = integer(parameters.streak_length, "streak_length");
     const minBodyFraction = finite(parameters.min_body_fraction, "min_body_fraction");
