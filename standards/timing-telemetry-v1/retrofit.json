@@ -1,0 +1,22 @@
+{
+  "schema_version": "fleet-timing-telemetry-retrofit-manifest-v1",
+  "standard": "fleet-timing-telemetry-standard-v1",
+  "standard_version": "1.0.0",
+  "inventory_id": "quant-lab",
+  "mcp_name": "quant-lab",
+  "repository": {
+    "account": "opmgdeadman",
+    "name": "quant-lab-operator",
+    "branch": "main"
+  },
+  "runtime": {
+    "entrypoint": "src/index.js",
+    "telemetry_binding": "TELEMETRY_DB"
+  },
+  "core_target": "standards/fleet-timing-telemetry-v1.mjs",
+  "core_git_blob": "da65886ff56956a9348f6b1d8d8d378f231e22c3",
+  "config_target": "standards/fleet-timing-telemetry-config-v1.mjs",
+  "patch_paths": [],
+  "certification_adapter_module": "src/operator/fleetTelemetry.js",
+  "certification_state": "WIRED_UNVERIFIED"
+}
