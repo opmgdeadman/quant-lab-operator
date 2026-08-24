@@ -209,14 +209,16 @@ Permanent boundaries:
 
 ## Current Action
 
-Implement and govern the frozen `rolling_median_reversion` Stage 14 mechanism without observing performance before preregistration. Exact frozen shape: feature set `close-rolling-median-deviation-v1`, parameters `{period:48, threshold_percent:2.0}`.
+Implement and govern the frozen `volatility_shock_reversal` Stage 14 mechanism without observing performance before preregistration. Exact frozen shape: feature set `ohlc-true-range-shock-reversal-v1`, parameters `{period:24, multiplier:2.0}`.
 
-1. add strict typed-spec transport for `rolling_median_reversion` with only `period` in `[12,240]` and `threshold_percent` in `[0.25,10]`;
-2. implement historical and forward signal parity using only completed closes before each execution candle: compute the median of the latest 48 completed closes including the signal close, calculate percentage displacement of the signal close from that median, target short at displacement `>= +2.0%`, long at `<= -2.0%`, otherwise flat; require finite positive closes and minimum history;
-3. add adversarial regressions for positive-displacement short, negative-displacement long, inside-threshold flat, exact `+2.0%` and `-2.0%` boundaries, even-sized median calculation, insufficient history, next-completed-candle execution, execution-candle mutation invariance, and historical/forward signal parity;
-4. run exact-head CI, package-managed Timing Telemetry validation, Fleet Parity closure, Main, Recovery, and exact production alignment before preregistration;
-5. preregister `btc-rolling-median-reversion-48-200bp-v1` with unchanged 4,320-candle dataset, institutional walk-forward, cost, judge, and evidence-integrity policies, then advance proposed -> admitted -> sealed evaluation -> testing -> independent judge unchanged;
-6. allocate forward evidence only if every historical gate passes; otherwise record terminal rejection and continue to another materially distinct mechanism. Keep `btc-donchian-72-breakout-v1` untouched forward evidence accruing only when data health permits. Stage 13 remains sole production promotion authority and live capital remains disabled without explicit owner approval.
+Economic mechanism: an unusually large completed-candle true-range shock can represent short-horizon liquidity exhaustion rather than continuation. When the latest completed candle true range is at least 2.0x the mean true range of the preceding 24 completed candles, fade the shock direction on the next completed candle: bullish shock -> short, bearish shock -> long; otherwise flat. This is deliberately opposite the previously tested volatility-breakout continuation mechanism and does not reuse its hypothesis.
+
+1. add strict typed-spec transport for `volatility_shock_reversal` with only `period` in `[12,120]` and `multiplier` in `[1.25,5]`;
+2. implement historical and forward signal parity using only completed OHLC rows before each execution candle; compute the latest candle true range against the mean true range of the preceding 24 candles, require finite positive OHLC values and minimum history, and never include the execution candle in the signal;
+3. target short only when a bullish shock satisfies `latest_true_range >= 2.0 * prior_mean_true_range`, target long only for an equivalent bearish shock, otherwise flat; zero-body shocks remain flat;
+4. add adversarial regressions for bullish-shock short, bearish-shock long, below-threshold flat, exact 2.0x boundary, zero-body flat, insufficient history, next-completed-candle execution, execution-candle mutation invariance, and historical/forward signal parity;
+5. run exact-head CI, package-managed Timing Telemetry validation, Fleet Parity closure, Main, Recovery, and exact production alignment before preregistration;
+6. preregister `btc-volatility-shock-reversal-24-200-v1` with unchanged 4,320-candle dataset, institutional walk-forward, cost, judge, and evidence-integrity policies, then advance proposed -> admitted -> sealed evaluation -> testing -> independent judge unchanged; allocate forward evidence only if every historical gate passes, otherwise terminally reject without rescue tuning. Keep `btc-donchian-72-breakout-v1` untouched forward evidence accruing only when data health permits. Stage 13 remains sole production promotion authority and live capital remains disabled without explicit owner approval.
 
 ## Steady-State Operating Gate
 
