@@ -16,6 +16,7 @@ export const INSTITUTIONAL_RESEARCH_POLICY = Object.freeze({
     "mean_reversion",
     "regime_filter",
     "price_action",
+    "seasonality",
   ]),
   allowed_origins: Object.freeze(["operator", "bounded_factory"]),
   max_registered_hypotheses: 100,

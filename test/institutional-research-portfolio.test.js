@@ -135,11 +135,16 @@ test("0018 creates append-only hypothesis, lifecycle, rejection, and factory evi
   assert.match(priceActionMigration, /_ql_bak_hypotheses/);
   assert.match(priceActionMigration, /DROP TABLE institutional_hypotheses/);
   assert.match(priceActionMigration, /CREATE TABLE institutional_factory_admissions/);
+  const seasonalityMigration = await readFile(new URL("../migrations/0022_institutional_research_seasonality_family.sql", import.meta.url), "utf8");
+  assert.match(seasonalityMigration, /'seasonality'/);
+  assert.match(seasonalityMigration, /_ql_bak_hypotheses/);
+  assert.match(seasonalityMigration, /CREATE TABLE institutional_factory_admissions/);
 });
 
 test("preregistration is typed and rejects post-hoc unknown fields", () => {
   assert.equal(validateHypothesisInput(baseHypothesis()).market, "BTC-USD");
   assert.equal(validateHypothesisInput(baseHypothesis({ family: "price_action" })).family, "price_action");
+  assert.equal(validateHypothesisInput(baseHypothesis({ family: "seasonality" })).family, "seasonality");
   assert.throws(() => validateHypothesisInput(baseHypothesis({
     preregistration: { ...baseHypothesis().preregistration, rescue_threshold_after_results: "not allowed" },
   })), /institutional_research_spec_shape_invalid/);
