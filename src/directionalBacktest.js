@@ -115,6 +115,25 @@ export function compileDirectionalSignal(strategy, candles) {
     };
   }
 
+  if (family === "ema_pullback_trend") {
+    const fast = integer(parameters.fast, "fast");
+    const slow = integer(parameters.slow, "slow");
+    const threshold = finite(parameters.threshold_percent, "threshold_percent") / 100;
+    const fastValues = emaSeries(closes, fast);
+    const slowValues = emaSeries(closes, slow);
+    return (executionIndex, currentExposure = 0) => {
+      const current = clamp(currentExposure);
+      if (executionIndex < slow) return current;
+      const signalIndex = executionIndex - 1;
+      const fastEma = fastValues[signalIndex];
+      const slowEma = slowValues[signalIndex];
+      const latestClose = closes[signalIndex];
+      if (fastEma > slowEma && latestClose <= fastEma * (1 - threshold)) return 1;
+      if (fastEma < slowEma && latestClose >= fastEma * (1 + threshold)) return -1;
+      return 0;
+    };
+  }
+
   if (family === "donchian_breakout") {
     const lookback = integer(parameters.lookback, "lookback");
     return (executionIndex, currentExposure = 0) => {

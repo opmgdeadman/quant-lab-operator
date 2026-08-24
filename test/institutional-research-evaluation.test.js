@@ -112,6 +112,43 @@ test("EMA pullback trend preregistration is bounded and distinct from continuous
   })), /ema_pullback_fast_must_be_below_slow/);
 });
 
+test("ema pullback trend compiles through sealed next-candle walk-forward math", () => {
+  const spec = typedSpec({
+    strategy: {
+      template: "ema_pullback_trend",
+      feature_set_id: "close-ema-pullback-v1",
+      parameters: { fast: 24, slow: 96, threshold_percent: 1 },
+    },
+  });
+  const policy = buildInstitutionalBacktestPolicy();
+  const windows = buildWalkForwardWindows(syntheticCandles(), policy);
+  const strategy = buildStrategyFromResearchSpec("typed-ema-pullback-walk-forward-001", spec);
+  const result = runDirectionalWalkForward({ windows, strategies: [strategy], policy });
+  assert.equal(result.length, 1);
+  assert.equal(result[0].windows.length, 5);
+  assert.equal(result[0].windows.every((row) => row.execution_model === "next_completed_candle_open"), true);
+  assert.equal(result[0].windows.every((row) => row.evidence_integrity_passed === true), true);
+  assert.equal(result[0].windows.every((row) => Number.isFinite(row.test_return_percent)), true);
+});
+
+test("ema pullback historical signal uses only pre-execution candle state", () => {
+  const spec = typedSpec({
+    strategy: {
+      template: "ema_pullback_trend",
+      feature_set_id: "close-ema-pullback-v1",
+      parameters: { fast: 24, slow: 96, threshold_percent: 1 },
+    },
+  });
+  const strategy = buildStrategyFromResearchSpec("typed-ema-pullback-no-lookahead-001", spec);
+  const rows = syntheticCandles(150);
+  const executionIndex = 120;
+  const baseline = compileDirectionalSignal(strategy, rows)(executionIndex, 0);
+  const mutated = rows.map((row, index) => index === executionIndex
+    ? { ...row, open: row.open * 10, high: row.high * 10, low: row.low / 10, close: row.close / 2 }
+    : row);
+  assert.equal(compileDirectionalSignal(strategy, mutated)(executionIndex, 0), baseline);
+});
+
 function donchianRegimeBreakoutSpec() {
   return typedSpec({
     strategy: {
