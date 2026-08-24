@@ -570,6 +570,25 @@ export function directionalSignal(spec, candles, currentExposure = 0) {
     if (efficiency + EPSILON < threshold || Math.abs(displacement) <= EPSILON) return signal(0, "efficiency_ratio_below_threshold_flat");
     return displacement > 0 ? signal(TARGET_EXPOSURE, "efficiency_ratio_trend_long") : signal(-TARGET_EXPOSURE, "efficiency_ratio_trend_short");
   }
+  if (spec.family === "body_streak_reversal") {
+    const streakLength = integer(spec.parameters.streak_length, "streak_length");
+    const minBodyFraction = finite(spec.parameters.min_body_fraction, "min_body_fraction");
+    if (rows.length < streakLength) return signal(current, "body_streak_insufficient_history");
+    const window = rows.slice(-streakLength);
+    let direction = 0;
+    for (const row of window) {
+      const range = row.high - row.low;
+      if (range <= EPSILON) return signal(0, "body_streak_zero_range_flat");
+      const bodyDirection = Math.sign(row.close - row.open);
+      if (bodyDirection === 0) return signal(0, "body_streak_zero_body_flat");
+      if (Math.abs(row.close - row.open) / range + EPSILON < minBodyFraction) return signal(0, "body_streak_body_below_threshold_flat");
+      if (direction === 0) direction = bodyDirection;
+      else if (bodyDirection !== direction) return signal(0, "body_streak_mixed_direction_flat");
+    }
+    return direction > 0
+      ? signal(-TARGET_EXPOSURE, "body_streak_bullish_exhaustion_short")
+      : signal(TARGET_EXPOSURE, "body_streak_bearish_exhaustion_long");
+  }
   if (spec.family === "price_momentum") {
     const lookback = integer(spec.parameters.lookback, "lookback");
     const threshold = finite(spec.parameters.threshold_percent, "threshold_percent") / 100;

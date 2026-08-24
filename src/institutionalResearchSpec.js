@@ -133,6 +133,14 @@ export const INSTITUTIONAL_STRATEGY_TEMPLATES = deepFreeze({
       efficiency_threshold: numberRule(0.05, 1),
     },
   },
+  body_streak_reversal: {
+    family: "body_streak_reversal",
+    feature_set_id: "ohlc-body-streak-reversal-v1",
+    parameters: {
+      streak_length: integerRule(2, 12),
+      min_body_fraction: numberRule(0.05, 0.95),
+    },
+  },
   donchian_breakout: {
     family: "donchian_breakout",
     feature_set_id: "ohlc-donchian-v1",

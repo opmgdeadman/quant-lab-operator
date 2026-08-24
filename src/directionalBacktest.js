@@ -427,6 +427,27 @@ export function compileDirectionalSignal(strategy, candles) {
     };
   }
 
+  if (family === "body_streak_reversal") {
+    const streakLength = integer(parameters.streak_length, "streak_length");
+    const minBodyFraction = finite(parameters.min_body_fraction, "min_body_fraction");
+    return (executionIndex, currentExposure = 0) => {
+      const current = clamp(currentExposure);
+      if (executionIndex < streakLength) return current;
+      let direction = 0;
+      for (let index = executionIndex - streakLength; index < executionIndex; index += 1) {
+        const row = rows[index];
+        const range = row.high - row.low;
+        if (range <= EPSILON) return 0;
+        const bodyDirection = Math.sign(row.close - row.open);
+        if (bodyDirection === 0) return 0;
+        if (Math.abs(row.close - row.open) / range + EPSILON < minBodyFraction) return 0;
+        if (direction === 0) direction = bodyDirection;
+        else if (bodyDirection !== direction) return 0;
+      }
+      return direction > 0 ? -1 : 1;
+    };
+  }
+
   if (family === "price_momentum") {
     const lookback = integer(parameters.lookback, "lookback");
     const threshold = finite(parameters.threshold_percent, "threshold_percent") / 100;

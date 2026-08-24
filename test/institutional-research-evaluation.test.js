@@ -140,6 +140,73 @@ test("efficiency ratio gate 4 exact threshold and no look-ahead", () => {
   assert.equal(compileDirectionalSignal(strategy, mutated)(5, 0), baseline);
 });
 
+function bodyStreakReversalSpec() {
+  return typedSpec({ strategy: { template: "body_streak_reversal", feature_set_id: "ohlc-body-streak-reversal-v1", parameters: { streak_length: 4, min_body_fraction: 0.30 } } });
+}
+
+function bodyStreakRows(directions, bodyFraction = 0.30) {
+  const start = Date.parse("2026-01-01T00:00:00.000Z");
+  return directions.map((direction, index) => {
+    const low = 95;
+    const high = 105;
+    const body = 10 * bodyFraction;
+    const open = direction > 0 ? 100 : 100 + body;
+    const close = direction > 0 ? 100 + body : 100;
+    return { closed_at: new Date(start + index * 3600000).toISOString(), open, high, low, close, volume: 100 };
+  });
+}
+
+test("body streak reversal preregistration is exact and bounded", () => {
+  const validated = validateInstitutionalResearchSpec(bodyStreakReversalSpec());
+  assert.deepEqual(validated.strategy.parameters, { streak_length: 4, min_body_fraction: 0.30 });
+  assert.throws(() => validateInstitutionalResearchSpec(typedSpec({ strategy: { template: "body_streak_reversal", feature_set_id: "ohlc-body-streak-reversal-v1", parameters: { streak_length: 1, min_body_fraction: 0.30 } } })), /streak_length_out_of_bounds/);
+  assert.throws(() => validateInstitutionalResearchSpec(typedSpec({ strategy: { template: "body_streak_reversal", feature_set_id: "ohlc-body-streak-reversal-v1", parameters: { streak_length: 4, min_body_fraction: 0.99 } } })), /min_body_fraction_out_of_bounds/);
+});
+
+test("body streak reversal has symmetric exhaustion signals and exact threshold inclusion", () => {
+  const strategy = buildStrategyFromResearchSpec("typed-body-streak-001", bodyStreakReversalSpec());
+  const bullish = bodyStreakRows([1, 1, 1, 1]);
+  const bearish = bodyStreakRows([-1, -1, -1, -1]);
+  assert.equal(compileDirectionalSignal(strategy, bullish)(4, 0), -1);
+  assert.equal(directionalSignal(strategy, bullish, 0).target_exposure, -1);
+  assert.equal(compileDirectionalSignal(strategy, bearish)(4, 0), 1);
+  assert.equal(directionalSignal(strategy, bearish, 0).target_exposure, 1);
+});
+
+test("body streak reversal fails flat on mixed, weak, zero-range, and insufficient history", () => {
+  const strategy = buildStrategyFromResearchSpec("typed-body-streak-flat-001", bodyStreakReversalSpec());
+  const mixed = bodyStreakRows([1, 1, -1, 1]);
+  const weak = bodyStreakRows([1, 1, 1, 1], 0.29);
+  const zeroRange = bodyStreakRows([1, 1, 1, 1]).map((row, index) => index === 2 ? { ...row, open: 100, high: 100, low: 100, close: 100 } : row);
+  for (const rows of [mixed, weak, zeroRange]) {
+    assert.equal(compileDirectionalSignal(strategy, rows)(4, 0), 0);
+    assert.equal(directionalSignal(strategy, rows, 0).target_exposure, 0);
+  }
+  assert.equal(compileDirectionalSignal(strategy, bodyStreakRows([1, 1, 1]))(3, 1), 1);
+});
+
+test("body streak reversal excludes execution candle and preserves historical forward parity", () => {
+  const strategy = buildStrategyFromResearchSpec("typed-body-streak-no-lookahead-001", bodyStreakReversalSpec());
+  const signalRows = bodyStreakRows([1, 1, 1, 1]);
+  const execution = { ...signalRows.at(-1), closed_at: new Date(Date.parse(signalRows.at(-1).closed_at) + 3600000).toISOString(), open: 1, high: 100000, low: 0.01, close: 1 };
+  const rows = [...signalRows, execution];
+  assert.equal(compileDirectionalSignal(strategy, rows)(4, 0), -1);
+  const mutated = rows.map((row, index) => index === 4 ? { ...row, open: 100000, high: 100001, low: 1, close: 2 } : row);
+  assert.equal(compileDirectionalSignal(strategy, mutated)(4, 0), -1);
+  assert.equal(directionalSignal(strategy, signalRows, 0).target_exposure, -1);
+});
+
+test("body streak reversal executes through sealed next-completed-candle walk-forward math", () => {
+  const policy = buildInstitutionalBacktestPolicy();
+  const windows = buildWalkForwardWindows(syntheticCandles(), policy);
+  const strategy = buildStrategyFromResearchSpec("typed-body-streak-walk-forward-001", bodyStreakReversalSpec());
+  const result = runDirectionalWalkForward({ windows, strategies: [strategy], policy });
+  assert.equal(result.length, 1);
+  assert.equal(result[0].windows.length, 5);
+  assert.equal(result[0].windows.every((row) => row.execution_model === "next_completed_candle_open"), true);
+  assert.equal(result[0].windows.every((row) => row.evidence_integrity_passed === true), true);
+});
+
 test("EMA pullback trend preregistration is bounded and distinct from continuous EMA exposure", () => {
   const spec = typedSpec({
     strategy: {
