@@ -74,6 +74,35 @@ function historicalArtifact(overrides = {}) {
   };
 }
 
+test("directional crowding reversal preregistration, exact boundaries, zero denominator behavior, parity, and no-look-ahead", () => {
+  const spec = typedSpec({ strategy: { template: "directional_crowding_reversal", feature_set_id: "close-directional-crowding-v1", parameters: { period: 48, upper_fraction: 0.7, lower_fraction: 0.3 } } });
+  const valid = validateInstitutionalResearchSpec(spec);
+  assert.deepEqual(valid.strategy.parameters, { period: 48, upper_fraction: 0.7, lower_fraction: 0.3 });
+
+  const strategy = { id: "crowding-test", family: "directional_crowding_reversal", market: "BTC-USD", interval: "1h", parameters: { period: 10, upper_fraction: 0.7, lower_fraction: 0.3 } };
+  const makeRows = (moves) => {
+    let close = 100;
+    const closes = [close];
+    for (const move of moves) { close += move; closes.push(close); }
+    return closes.map((value, index) => ({ market: "BTC-USD", interval: "1h", closed_at: new Date(Date.parse("2026-03-01T00:00:00.000Z") + index * 3600000).toISOString(), open: value, high: value, low: value, close: value, volume: 1 }));
+  };
+  const high = makeRows([1,1,1,1,1,1,1,-1,-1,-1]);
+  const low = makeRows([-1,-1,-1,-1,-1,-1,-1,1,1,1]);
+  const flat = makeRows([1,1,1,1,1,-1,-1,-1,-1,-1]);
+  const zeros = makeRows([1,1,1,0,0,0,0,-1,-1,-1]);
+  assert.equal(compileDirectionalSignal(strategy, high)(11, 0), -1);
+  assert.equal(directionalSignal(strategy, high, 0).target_exposure, -1);
+  assert.equal(compileDirectionalSignal(strategy, low)(11, 0), 1);
+  assert.equal(directionalSignal(strategy, low, 0).target_exposure, 1);
+  assert.equal(compileDirectionalSignal(strategy, flat)(11, 0), 0);
+  assert.equal(directionalSignal(strategy, flat, 0).target_exposure, 0);
+  assert.equal(compileDirectionalSignal(strategy, zeros)(11, 0), 1);
+  assert.equal(directionalSignal(strategy, zeros, 0).target_exposure, 1);
+  const futureChanged = high.map((row) => ({ ...row }));
+  futureChanged[10] = { ...futureChanged[10], open: 1000, high: 1000, low: 1000, close: 1000 };
+  assert.equal(compileDirectionalSignal(strategy, futureChanged)(10, 0), compileDirectionalSignal(strategy, high)(10, 0));
+});
+
 test("rolling drawdown reversion preregistration, boundary, long-only parity, and no-look-ahead", () => {
   const spec = typedSpec({ strategy: { template: "rolling_drawdown_reversion", feature_set_id: "close-rolling-drawdown-v1", parameters: { period: 72, threshold_percent: 5 } } });
   const valid = validateInstitutionalResearchSpec(spec);

@@ -210,6 +210,25 @@ export function compileDirectionalSignal(strategy, candles) {
     };
   }
 
+  if (family === "directional_crowding_reversal") {
+    const period = integer(parameters.period, "period");
+    const upper = finite(parameters.upper_fraction, "upper_fraction");
+    const lower = finite(parameters.lower_fraction, "lower_fraction");
+    if (!(lower < upper)) throw new Error("directional_crowding_fraction_order_invalid");
+    return (executionIndex, currentExposure = 0) => {
+      const current = clamp(currentExposure);
+      if (executionIndex < period + 1) return current;
+      let positive = 0;
+      for (let index = executionIndex - period; index < executionIndex; index += 1) {
+        if (rows[index].close > rows[index - 1].close) positive += 1;
+      }
+      const fraction = positive / period;
+      if (fraction + EPSILON >= upper) return -1;
+      if (fraction - EPSILON <= lower) return 1;
+      return 0;
+    };
+  }
+
   if (family === "wick_rejection_reversal") {
     const period = integer(parameters.period, "period");
     const threshold = finite(parameters.wick_ratio_threshold, "wick_ratio_threshold");

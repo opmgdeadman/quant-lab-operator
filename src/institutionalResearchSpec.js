@@ -205,6 +205,18 @@ export const INSTITUTIONAL_STRATEGY_TEMPLATES = deepFreeze({
       threshold_percent: numberRule(0.25, 25),
     },
   },
+  directional_crowding_reversal: {
+    family: "directional_crowding_reversal",
+    feature_set_id: "close-directional-crowding-v1",
+    parameters: {
+      period: integerRule(12, 240),
+      upper_fraction: numberRule(0.5, 0.95),
+      lower_fraction: numberRule(0.05, 0.5),
+    },
+    validate(parameters) {
+      if (!(parameters.lower_fraction < parameters.upper_fraction)) throw new Error("directional_crowding_fraction_order_invalid");
+    },
+  },
   body_streak_reversal: {
     family: "body_streak_reversal",
     feature_set_id: "ohlc-body-streak-reversal-v1",

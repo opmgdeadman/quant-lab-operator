@@ -437,6 +437,21 @@ export function directionalSignal(spec, candles, currentExposure = 0) {
     if (drawdown + EPSILON >= threshold) return signal(TARGET_EXPOSURE, "rolling_drawdown_capitulation_long");
     return signal(0, "rolling_drawdown_interior_flat");
   }
+  if (spec.family === "directional_crowding_reversal") {
+    const period = integer(spec.parameters.period, "period");
+    const upper = finite(spec.parameters.upper_fraction, "upper_fraction");
+    const lower = finite(spec.parameters.lower_fraction, "lower_fraction");
+    if (!(lower < upper)) throw new Error("directional_crowding_fraction_order_invalid");
+    if (rows.length < period + 1) return signal(current, "directional_crowding_insufficient_history");
+    let positive = 0;
+    for (let index = rows.length - period; index < rows.length; index += 1) {
+      if (rows[index].close > rows[index - 1].close) positive += 1;
+    }
+    const fraction = positive / period;
+    if (fraction + EPSILON >= upper) return signal(-TARGET_EXPOSURE, "directional_crowding_high_short");
+    if (fraction - EPSILON <= lower) return signal(TARGET_EXPOSURE, "directional_crowding_low_long");
+    return signal(0, "directional_crowding_interior_flat");
+  }
   if (spec.family === "wick_rejection_reversal") {
     const period = integer(spec.parameters.period, "period");
     const threshold = finite(spec.parameters.wick_ratio_threshold, "wick_ratio_threshold");
