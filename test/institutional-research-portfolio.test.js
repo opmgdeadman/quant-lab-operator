@@ -133,6 +133,7 @@ test("0018 creates append-only hypothesis, lifecycle, rejection, and factory evi
 
 test("preregistration is typed and rejects post-hoc unknown fields", () => {
   assert.equal(validateHypothesisInput(baseHypothesis()).market, "BTC-USD");
+  assert.equal(validateHypothesisInput(baseHypothesis({ family: "price_action" })).family, "price_action");
   assert.throws(() => validateHypothesisInput(baseHypothesis({
     preregistration: { ...baseHypothesis().preregistration, rescue_threshold_after_results: "not allowed" },
   })), /institutional_research_spec_shape_invalid/);

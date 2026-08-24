@@ -320,7 +320,7 @@ export const capabilityDirectory = [
       hypothesis: objectSchema({
         id: { type: "string", minLength: 3, maxLength: 100, pattern: "^[a-z0-9][a-z0-9-]{2,99}$" },
         title: { type: "string", minLength: 1, maxLength: 180 },
-        family: { type: "string", enum: ["trend", "breakout", "momentum", "volatility", "mean_reversion", "regime_filter"] },
+        family: { type: "string", enum: ["trend", "breakout", "momentum", "volatility", "mean_reversion", "regime_filter", "price_action"] },
         origin: { type: "string", enum: ["operator", "bounded_factory"] },
         market: { type: "string", enum: ["BTC-USD"] },
         interval: { type: "string", enum: ["1h"] },
