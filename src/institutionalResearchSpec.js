@@ -157,6 +157,18 @@ export const INSTITUTIONAL_STRATEGY_TEMPLATES = deepFreeze({
       acceleration_threshold_percent: numberRule(0.05, 10),
     },
   },
+  range_position_state: {
+    family: "range_position_state",
+    feature_set_id: "ohlc-range-position-v1",
+    parameters: {
+      period: integerRule(12, 240),
+      lower: numberRule(5, 45),
+      upper: numberRule(55, 95),
+    },
+    cross_validate(parameters) {
+      if (parameters.lower >= parameters.upper) throw new Error("institutional_spec_range_position_order_invalid");
+    },
+  },
   close_quantile_reversion: {
     family: "close_quantile_reversion",
     feature_set_id: "close-quantile-rank-v1",

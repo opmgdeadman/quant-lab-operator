@@ -93,6 +93,45 @@ test("typed Stage 14 spec rejects unknown templates, mismatched features, rescue
   })), /threshold_percent_out_of_bounds/);
 });
 
+function rangePositionStrategy(parameters = { period: 4, lower: 20, upper: 80 }) {
+  return { id: "range-position-test", family: "range_position_state", market: "BTC-USD", interval: "1h", parameters };
+}
+
+function rangePositionRows(closes, lows = [], highs = []) {
+  return closes.map((close, index) => ({
+    market: "BTC-USD", interval: "1h",
+    closed_at: new Date(Date.parse("2026-01-01T00:00:00.000Z") + index * 3600000).toISOString(),
+    open: close,
+    high: highs[index] ?? Math.max(close, 100),
+    low: lows[index] ?? Math.min(close, 0),
+    close,
+    volume: 1,
+  }));
+}
+
+test("range position preregistration, exact boundaries, parity, zero-range, and no-look-ahead", () => {
+  const validated = validateInstitutionalResearchSpec(typedSpec({ strategy: { template: "range_position_state", feature_set_id: "ohlc-range-position-v1", parameters: { period: 48, lower: 20, upper: 80 } } }));
+  assert.deepEqual(validated.strategy.parameters, { period: 48, lower: 20, upper: 80 });
+  assert.throws(() => validateInstitutionalResearchSpec(typedSpec({ strategy: { template: "range_position_state", feature_set_id: "ohlc-range-position-v1", parameters: { period: 48, lower: 80, upper: 20 } } })), /range_position_order_invalid|lower_out_of_bounds/);
+
+  const strategy = rangePositionStrategy();
+  for (const [latest, expected] of [[80, 1], [20, -1], [50, 0]]) {
+    const rows = rangePositionRows([50, 50, 50, latest], [0, 0, 0, 0], [100, 100, 100, 100]);
+    assert.equal(compileDirectionalSignal(strategy, rows)(4, 0), expected);
+    assert.equal(directionalSignal(strategy, rows, 0).target_exposure, expected);
+  }
+
+  const flat = rangePositionRows([50, 50, 50, 50], [50, 50, 50, 50], [50, 50, 50, 50]);
+  assert.equal(compileDirectionalSignal(strategy, flat)(4, 0), 0);
+  assert.equal(directionalSignal(strategy, flat, 0).target_exposure, 0);
+
+  const history = rangePositionRows([50, 50, 50, 80, 1], [0, 0, 0, 0, 0], [100, 100, 100, 100, 100]);
+  const compiled = compileDirectionalSignal(strategy, history);
+  assert.equal(compiled(4, 0), 1);
+  history[4] = { ...history[4], low: 0.01, high: 999999, close: 999999 };
+  assert.equal(compiled(4, 0), 1);
+});
+
 function efficiencyRatioStrategy(parameters = { period: 4, efficiency_threshold: 0.35 }) {
   return { id: "efficiency-test", family: "efficiency_ratio_trend", market: "BTC-USD", interval: "1h", parameters };
 }

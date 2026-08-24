@@ -394,6 +394,21 @@ export function directionalSignal(spec, candles, currentExposure = 0) {
     if (pressure < -threshold) return signal(-TARGET_EXPOSURE, "close_location_pressure_short");
     return signal(0, "close_location_pressure_flat");
   }
+  if (spec.family === "range_position_state") {
+    const period = integer(spec.parameters.period, "period");
+    const lower = finite(spec.parameters.lower, "lower") / 100;
+    const upper = finite(spec.parameters.upper, "upper") / 100;
+    if (rows.length < period) return signal(current, "range_position_insufficient_history");
+    const window = rows.slice(-period);
+    const rangeLow = Math.min(...window.map((row) => row.low));
+    const rangeHigh = Math.max(...window.map((row) => row.high));
+    const range = rangeHigh - rangeLow;
+    if (range <= EPSILON) return signal(0, "range_position_zero_range_flat");
+    const position = (window.at(-1).close - rangeLow) / range;
+    if (position + EPSILON >= upper) return signal(TARGET_EXPOSURE, "range_position_high_long");
+    if (position - EPSILON <= lower) return signal(-TARGET_EXPOSURE, "range_position_low_short");
+    return signal(0, "range_position_interior_flat");
+  }
   if (spec.family === "wick_rejection_reversal") {
     const period = integer(spec.parameters.period, "period");
     const threshold = finite(spec.parameters.wick_ratio_threshold, "wick_ratio_threshold");
