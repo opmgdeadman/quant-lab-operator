@@ -623,6 +623,30 @@ export function directionalSignal(spec, candles, currentExposure = 0) {
     if (regimeReturn > 0 && momentumReturn > threshold) return signal(TARGET_EXPOSURE, "regime_momentum_up_up_long");
     return signal(0, regimeReturn <= 0 ? "regime_momentum_non_up_regime_flat" : "regime_momentum_weak_momentum_flat");
   }
+  if (spec.family === "linear_trend_residual_reversion") {
+    const period = integer(spec.parameters.period, "period");
+    const thresholdPercent = finite(spec.parameters.threshold_percent, "threshold_percent");
+    if (rows.length < period) return signal(current, "linear_trend_residual_insufficient_history");
+    const closes = rows.slice(-period).map((row) => finite(row.close, "close"));
+    if (closes.some((value) => value <= 0)) return signal(0, "linear_trend_residual_invalid_close_flat");
+    const xMean = (period - 1) / 2;
+    const yMean = mean(closes);
+    let numerator = 0;
+    let denominator = 0;
+    for (let index = 0; index < period; index += 1) {
+      const dx = index - xMean;
+      numerator += dx * (closes[index] - yMean);
+      denominator += dx * dx;
+    }
+    if (!Number.isFinite(denominator) || denominator <= EPSILON) return signal(0, "linear_trend_residual_invalid_fit_flat");
+    const slope = numerator / denominator;
+    const fittedEndpoint = yMean + slope * ((period - 1) - xMean);
+    if (!Number.isFinite(fittedEndpoint) || fittedEndpoint <= EPSILON) return signal(0, "linear_trend_residual_invalid_endpoint_flat");
+    const residualPercent = ((closes.at(-1) - fittedEndpoint) / fittedEndpoint) * 100;
+    if (residualPercent + EPSILON >= thresholdPercent) return signal(-TARGET_EXPOSURE, "linear_trend_residual_above_short");
+    if (residualPercent - EPSILON <= -thresholdPercent) return signal(TARGET_EXPOSURE, "linear_trend_residual_below_long");
+    return signal(0, "linear_trend_residual_inside_threshold_flat");
+  }
   if (spec.family === "volatility_shock_reversal") {
     const period = integer(spec.parameters.period, "period");
     const multiplier = finite(spec.parameters.multiplier, "multiplier");

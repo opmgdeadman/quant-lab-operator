@@ -823,6 +823,48 @@ test("volatility regime breakout executes through sealed next-candle walk-forwar
   assert.equal(result[0].windows.every((row) => row.evidence_integrity_passed === true), true);
 });
 
+function linearTrendResidualSpec() {
+  return typedSpec({
+    strategy: {
+      template: "linear_trend_residual_reversion",
+      feature_set_id: "close-linear-trend-residual-v1",
+      parameters: { period: 48, threshold_percent: 2 },
+    },
+  });
+}
+
+function linearTrendResidualRows(lastClose = 100) {
+  const start = Date.parse("2026-01-01T00:00:00.000Z");
+  return Array.from({ length: 49 }, (_, index) => ({
+    closed_at: new Date(start + index * 3600000).toISOString(),
+    open: index === 47 ? lastClose : 100,
+    high: Math.max(100, index === 47 ? lastClose : 100) + 1,
+    low: Math.min(100, index === 47 ? lastClose : 100) - 1,
+    close: index === 47 ? lastClose : index === 48 ? 100 : 100,
+    volume: 100,
+  }));
+}
+
+test("linear trend residual reversion is bounded and historical-forward paths agree", () => {
+  const spec = linearTrendResidualSpec();
+  const validated = validateInstitutionalResearchSpec(spec);
+  assert.deepEqual(validated.strategy.parameters, { period: 48, threshold_percent: 2 });
+  const strategy = buildStrategyFromResearchSpec("typed-linear-trend-residual-001", spec);
+  const above = linearTrendResidualRows(106);
+  const below = linearTrendResidualRows(94);
+  const flat = linearTrendResidualRows(101);
+  assert.equal(directionalSignal(strategy, above.slice(0, 48), 0).target_exposure, -1);
+  assert.equal(directionalSignal(strategy, below.slice(0, 48), 0).target_exposure, 1);
+  assert.equal(directionalSignal(strategy, flat.slice(0, 48), 0).target_exposure, 0);
+  assert.equal(compileDirectionalSignal(strategy, above)(48, 0), -1);
+  assert.equal(compileDirectionalSignal(strategy, below)(48, 0), 1);
+  assert.equal(compileDirectionalSignal(strategy, flat)(48, 0), 0);
+  const baseline = compileDirectionalSignal(strategy, above)(48, 0);
+  const mutatedExecution = above.map((row, index) => index === 48 ? { ...row, open: 5000, high: 6000, low: 4000, close: 5500 } : row);
+  assert.equal(compileDirectionalSignal(strategy, mutatedExecution)(48, 0), baseline);
+  assert.throws(() => validateInstitutionalResearchSpec(typedSpec({ strategy: { template: "linear_trend_residual_reversion", feature_set_id: "close-linear-trend-residual-v1", parameters: { period: 8, threshold_percent: 2 } } })), /period_out_of_bounds/);
+});
+
 function volatilityShockReversalSpec() {
   return typedSpec({
     strategy: {

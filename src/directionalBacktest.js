@@ -446,6 +446,34 @@ export function compileDirectionalSignal(strategy, candles) {
     };
   }
 
+  if (family === "linear_trend_residual_reversion") {
+    const period = integer(parameters.period, "period");
+    const thresholdPercent = finite(parameters.threshold_percent, "threshold_percent");
+    return (executionIndex, currentExposure = 0) => {
+      const current = clamp(currentExposure);
+      if (executionIndex < period) return current;
+      const closes = rows.slice(executionIndex - period, executionIndex).map((row) => Number(row.close));
+      if (closes.length !== period || closes.some((value) => !Number.isFinite(value) || value <= 0)) return 0;
+      const xMean = (period - 1) / 2;
+      const yMean = closes.reduce((sum, value) => sum + value, 0) / period;
+      let numerator = 0;
+      let denominator = 0;
+      for (let index = 0; index < period; index += 1) {
+        const dx = index - xMean;
+        numerator += dx * (closes[index] - yMean);
+        denominator += dx * dx;
+      }
+      if (!Number.isFinite(denominator) || denominator <= EPSILON) return 0;
+      const slope = numerator / denominator;
+      const fittedEndpoint = yMean + slope * ((period - 1) - xMean);
+      if (!Number.isFinite(fittedEndpoint) || fittedEndpoint <= EPSILON) return 0;
+      const residualPercent = ((closes.at(-1) - fittedEndpoint) / fittedEndpoint) * 100;
+      if (residualPercent + EPSILON >= thresholdPercent) return -1;
+      if (residualPercent - EPSILON <= -thresholdPercent) return 1;
+      return 0;
+    };
+  }
+
   if (family === "volatility_shock_reversal") {
     const period = integer(parameters.period, "period");
     const multiplier = finite(parameters.multiplier, "multiplier");

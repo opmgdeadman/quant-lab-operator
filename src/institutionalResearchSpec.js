@@ -133,6 +133,14 @@ export const INSTITUTIONAL_STRATEGY_TEMPLATES = deepFreeze({
       efficiency_threshold: numberRule(0.05, 1),
     },
   },
+  linear_trend_residual_reversion: {
+    family: "linear_trend_residual_reversion",
+    feature_set_id: "close-linear-trend-residual-v1",
+    parameters: {
+      period: integerRule(12, 120),
+      threshold_percent: numberRule(0.25, 10),
+    },
+  },
   rolling_median_reversion: {
     family: "rolling_median_reversion",
     feature_set_id: "close-rolling-median-deviation-v1",
