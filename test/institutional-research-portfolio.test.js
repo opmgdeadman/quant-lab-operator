@@ -129,6 +129,11 @@ test("0018 creates append-only hypothesis, lifecycle, rejection, and factory evi
   ]) assert.match(sql, new RegExp(marker));
   assert.match(sql, /market TEXT NOT NULL CHECK \(market = 'BTC-USD'\)/);
   assert.match(sql, /interval TEXT NOT NULL CHECK \(interval = '1h'\)/);
+  const priceActionMigration = await readFile(new URL("../migrations/0021_institutional_research_price_action_family.sql", import.meta.url), "utf8");
+  assert.match(priceActionMigration, /defer_foreign_keys = ON/);
+  assert.match(priceActionMigration, /'price_action'/);
+  assert.match(priceActionMigration, /institutional_hypotheses_v3/);
+  assert.match(priceActionMigration, /institutional_factory_admissions_v3/);
 });
 
 test("preregistration is typed and rejects post-hoc unknown fields", () => {
