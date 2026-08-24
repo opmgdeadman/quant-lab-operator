@@ -260,6 +260,29 @@ export function compileDirectionalSignal(strategy, candles) {
     };
   }
 
+  if (family === "hour_of_week_drift") {
+    const lookbackWeeks = integer(parameters.lookback_weeks, "lookback_weeks");
+    const thresholdBps = finite(parameters.mean_return_threshold_bps, "mean_return_threshold_bps");
+    return (executionIndex, currentExposure = 0) => {
+      const current = clamp(currentExposure);
+      const signalIndex = executionIndex - 1;
+      if (signalIndex < 1) return current;
+      const signalDate = new Date(rows[signalIndex].closed_at);
+      const targetSlot = signalDate.getUTCDay() * 24 + signalDate.getUTCHours();
+      const samples = [];
+      for (let index = signalIndex - 1; index >= 1 && samples.length < lookbackWeeks; index -= 1) {
+        const date = new Date(rows[index].closed_at);
+        if (date.getUTCDay() * 24 + date.getUTCHours() !== targetSlot) continue;
+        samples.push((rows[index].close / rows[index - 1].close) - 1);
+      }
+      if (samples.length < lookbackWeeks) return 0;
+      const meanReturnBps = (samples.reduce((sum, value) => sum + value, 0) / samples.length) * 10000;
+      if (meanReturnBps >= thresholdBps) return 1;
+      if (meanReturnBps <= -thresholdBps) return -1;
+      return 0;
+    };
+  }
+
   if (family === "donchian_breakout") {
     const lookback = integer(parameters.lookback, "lookback");
     return (executionIndex, currentExposure = 0) => {

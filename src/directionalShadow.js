@@ -486,6 +486,25 @@ export function directionalSignal(spec, candles, currentExposure = 0) {
     if (skew <= -threshold) return signal(-TARGET_EXPOSURE, "return_skew_negative");
     return signal(0, "return_skew_neutral_flat");
   }
+  if (spec.family === "hour_of_week_drift") {
+    const lookbackWeeks = integer(spec.parameters.lookback_weeks, "lookback_weeks");
+    const thresholdBps = finite(spec.parameters.mean_return_threshold_bps, "mean_return_threshold_bps");
+    if (rows.length < 2) return signal(current, "hour_of_week_insufficient_history");
+    const signalIndex = rows.length - 1;
+    const signalDate = new Date(rows[signalIndex].closed_at);
+    const targetSlot = signalDate.getUTCDay() * 24 + signalDate.getUTCHours();
+    const samples = [];
+    for (let index = signalIndex - 1; index >= 1 && samples.length < lookbackWeeks; index -= 1) {
+      const date = new Date(rows[index].closed_at);
+      if (date.getUTCDay() * 24 + date.getUTCHours() !== targetSlot) continue;
+      samples.push((rows[index].close / rows[index - 1].close) - 1);
+    }
+    if (samples.length < lookbackWeeks) return signal(0, "hour_of_week_insufficient_same_slot_history");
+    const meanReturnBps = (samples.reduce((sum, value) => sum + value, 0) / samples.length) * 10000;
+    if (meanReturnBps >= thresholdBps) return signal(TARGET_EXPOSURE, "hour_of_week_positive_drift");
+    if (meanReturnBps <= -thresholdBps) return signal(-TARGET_EXPOSURE, "hour_of_week_negative_drift");
+    return signal(0, "hour_of_week_neutral_flat");
+  }
   if (spec.family === "donchian_breakout") {
     const lookback = integer(spec.parameters.lookback, "lookback");
     if (rows.length < lookback + 1) return signal(current, "donchian_insufficient_history");

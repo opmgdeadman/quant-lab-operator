@@ -103,6 +103,14 @@ export const INSTITUTIONAL_STRATEGY_TEMPLATES = deepFreeze({
       skew_threshold: numberRule(0.05, 5),
     },
   },
+  hour_of_week_drift: {
+    family: "hour_of_week_drift",
+    feature_set_id: "time-hour-of-week-drift-v1",
+    parameters: {
+      lookback_weeks: integerRule(4, 24),
+      mean_return_threshold_bps: numberRule(0.1, 100),
+    },
+  },
   donchian_breakout: {
     family: "donchian_breakout",
     feature_set_id: "ohlc-donchian-v1",

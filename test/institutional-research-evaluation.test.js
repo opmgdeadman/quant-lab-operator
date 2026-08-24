@@ -356,6 +356,30 @@ test("return skew state is no-look-ahead, zero-variance safe, and sealed-walk-fo
   assert.equal(result[0].windows.every((row) => row.evidence_integrity_passed === true), true);
 });
 
+function hourOfWeekDriftSpec() {
+  return typedSpec({ strategy: { template: "hour_of_week_drift", feature_set_id: "time-hour-of-week-drift-v1", parameters: { lookback_weeks: 12, mean_return_threshold_bps: 5 } } });
+}
+
+test("hour-of-week drift preregistration is frozen and bounded", () => {
+  const validated = validateInstitutionalResearchSpec(hourOfWeekDriftSpec());
+  assert.deepEqual(validated.strategy.parameters, { lookback_weeks: 12, mean_return_threshold_bps: 5 });
+  assert.throws(() => validateInstitutionalResearchSpec(typedSpec({ strategy: { template: "hour_of_week_drift", feature_set_id: "time-hour-of-week-drift-v1", parameters: { lookback_weeks: 3, mean_return_threshold_bps: 5 } } })), /lookback_weeks_out_of_bounds/);
+});
+
+test("hour-of-week drift is no-look-ahead and sealed-walk-forward compatible", () => {
+  const rows = syntheticCandles(2400);
+  const strategy = buildStrategyFromResearchSpec("typed-hour-week-drift-001", hourOfWeekDriftSpec());
+  const executionIndex = 2200;
+  const baseline = compileDirectionalSignal(strategy, rows)(executionIndex, 0);
+  const mutated = rows.map((row, index) => index === executionIndex ? { ...row, close: row.close * 25 } : row);
+  assert.equal(compileDirectionalSignal(strategy, mutated)(executionIndex, 0), baseline);
+  const policy = buildInstitutionalBacktestPolicy();
+  const windows = buildWalkForwardWindows(syntheticCandles(), policy);
+  const result = runDirectionalWalkForward({ windows, strategies: [strategy], policy });
+  assert.equal(result[0].windows.length, 5);
+  assert.equal(result[0].windows.every((row) => row.evidence_integrity_passed === true), true);
+});
+
 function donchianRegimeBreakoutSpec() {
   return typedSpec({
     strategy: {
