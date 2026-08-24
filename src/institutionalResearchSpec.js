@@ -79,6 +79,14 @@ export const INSTITUTIONAL_STRATEGY_TEMPLATES = deepFreeze({
       wick_ratio_threshold: numberRule(1, 10),
     },
   },
+  return_autocorrelation_state: {
+    family: "return_autocorrelation_state",
+    feature_set_id: "close-return-autocorrelation-v1",
+    parameters: {
+      period: integerRule(12, 240),
+      autocorr_threshold: numberRule(0.01, 0.95),
+    },
+  },
   donchian_breakout: {
     family: "donchian_breakout",
     feature_set_id: "ohlc-donchian-v1",

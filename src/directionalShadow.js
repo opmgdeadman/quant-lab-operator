@@ -419,6 +419,35 @@ export function directionalSignal(spec, candles, currentExposure = 0) {
     if (upperRejection > lowerRejection * threshold) return signal(-TARGET_EXPOSURE, "wick_rejection_upper_dominant_short");
     return signal(0, "wick_rejection_balanced_flat");
   }
+  if (spec.family === "return_autocorrelation_state") {
+    const period = integer(spec.parameters.period, "period");
+    const threshold = finite(spec.parameters.autocorr_threshold, "autocorr_threshold");
+    if (rows.length < period + 2) return signal(current, "return_autocorrelation_insufficient_history");
+    const closes = rows.slice(-(period + 2)).map((row) => row.close);
+    const returns = [];
+    for (let index = 1; index < closes.length; index += 1) returns.push((closes[index] / closes[index - 1]) - 1);
+    const x = returns.slice(0, -1);
+    const y = returns.slice(1);
+    const xMean = mean(x);
+    const yMean = mean(y);
+    let covariance = 0;
+    let xVariance = 0;
+    let yVariance = 0;
+    for (let index = 0; index < x.length; index += 1) {
+      const dx = x[index] - xMean;
+      const dy = y[index] - yMean;
+      covariance += dx * dy;
+      xVariance += dx * dx;
+      yVariance += dy * dy;
+    }
+    if (xVariance <= EPSILON || yVariance <= EPSILON) return signal(0, "return_autocorrelation_zero_variance_flat");
+    const autocorrelation = covariance / Math.sqrt(xVariance * yVariance);
+    const latestReturn = returns.at(-1);
+    if (Math.abs(latestReturn) <= EPSILON || Math.abs(autocorrelation) < threshold) return signal(0, "return_autocorrelation_neutral_flat");
+    const latestSign = latestReturn > 0 ? TARGET_EXPOSURE : -TARGET_EXPOSURE;
+    if (autocorrelation > 0) return signal(latestSign, "return_autocorrelation_continuation");
+    return signal(-latestSign, "return_autocorrelation_reversal");
+  }
   if (spec.family === "donchian_breakout") {
     const lookback = integer(spec.parameters.lookback, "lookback");
     if (rows.length < lookback + 1) return signal(current, "donchian_insufficient_history");

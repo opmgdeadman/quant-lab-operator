@@ -261,6 +261,30 @@ test("wick rejection reversal excludes execution candle and executes through sea
   assert.equal(result[0].windows.every((row) => row.evidence_integrity_passed === true), true);
 });
 
+function returnAutocorrelationStateSpec() {
+  return typedSpec({ strategy: { template: "return_autocorrelation_state", feature_set_id: "close-return-autocorrelation-v1", parameters: { period: 48, autocorr_threshold: 0.15 } } });
+}
+
+test("return autocorrelation state preregistration is frozen and bounded", () => {
+  const validated = validateInstitutionalResearchSpec(returnAutocorrelationStateSpec());
+  assert.deepEqual(validated.strategy.parameters, { period: 48, autocorr_threshold: 0.15 });
+  assert.throws(() => validateInstitutionalResearchSpec(typedSpec({ strategy: { template: "return_autocorrelation_state", feature_set_id: "close-return-autocorrelation-v1", parameters: { period: 48, autocorr_threshold: 0 } } })), /autocorr_threshold_out_of_bounds/);
+});
+
+test("return autocorrelation state is no-look-ahead and sealed-walk-forward compatible", () => {
+  const rows = syntheticCandles(180);
+  const strategy = buildStrategyFromResearchSpec("typed-return-autocorr-001", returnAutocorrelationStateSpec());
+  const executionIndex = 150;
+  const baseline = compileDirectionalSignal(strategy, rows)(executionIndex, 0);
+  const mutated = rows.map((row, index) => index === executionIndex ? { ...row, close: row.close * 25 } : row);
+  assert.equal(compileDirectionalSignal(strategy, mutated)(executionIndex, 0), baseline);
+  const policy = buildInstitutionalBacktestPolicy();
+  const windows = buildWalkForwardWindows(syntheticCandles(), policy);
+  const result = runDirectionalWalkForward({ windows, strategies: [strategy], policy });
+  assert.equal(result[0].windows.length, 5);
+  assert.equal(result[0].windows.every((row) => row.evidence_integrity_passed === true), true);
+});
+
 function donchianRegimeBreakoutSpec() {
   return typedSpec({
     strategy: {

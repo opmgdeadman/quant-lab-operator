@@ -182,6 +182,38 @@ export function compileDirectionalSignal(strategy, candles) {
     };
   }
 
+  if (family === "return_autocorrelation_state") {
+    const period = integer(parameters.period, "period");
+    const threshold = finite(parameters.autocorr_threshold, "autocorr_threshold");
+    return (executionIndex, currentExposure = 0) => {
+      const current = clamp(currentExposure);
+      if (executionIndex < period + 2) return current;
+      const closes = rows.slice(executionIndex - period - 2, executionIndex).map((row) => row.close);
+      const returns = [];
+      for (let index = 1; index < closes.length; index += 1) returns.push((closes[index] / closes[index - 1]) - 1);
+      const x = returns.slice(0, -1);
+      const y = returns.slice(1);
+      const xMean = x.reduce((sum, value) => sum + value, 0) / x.length;
+      const yMean = y.reduce((sum, value) => sum + value, 0) / y.length;
+      let covariance = 0;
+      let xVariance = 0;
+      let yVariance = 0;
+      for (let index = 0; index < x.length; index += 1) {
+        const dx = x[index] - xMean;
+        const dy = y[index] - yMean;
+        covariance += dx * dy;
+        xVariance += dx * dx;
+        yVariance += dy * dy;
+      }
+      if (xVariance <= EPSILON || yVariance <= EPSILON) return 0;
+      const autocorrelation = covariance / Math.sqrt(xVariance * yVariance);
+      const latestReturn = returns.at(-1);
+      if (Math.abs(latestReturn) <= EPSILON || Math.abs(autocorrelation) < threshold) return 0;
+      const latestSign = latestReturn > 0 ? 1 : -1;
+      return autocorrelation > 0 ? latestSign : -latestSign;
+    };
+  }
+
   if (family === "donchian_breakout") {
     const lookback = integer(parameters.lookback, "lookback");
     return (executionIndex, currentExposure = 0) => {
