@@ -71,6 +71,14 @@ export const INSTITUTIONAL_STRATEGY_TEMPLATES = deepFreeze({
       pressure_threshold: numberRule(0.05, 0.95),
     },
   },
+  wick_rejection_reversal: {
+    family: "wick_rejection_reversal",
+    feature_set_id: "ohlc-wick-rejection-v1",
+    parameters: {
+      period: integerRule(2, 120),
+      wick_ratio_threshold: numberRule(1, 10),
+    },
+  },
   donchian_breakout: {
     family: "donchian_breakout",
     feature_set_id: "ohlc-donchian-v1",

@@ -394,6 +394,31 @@ export function directionalSignal(spec, candles, currentExposure = 0) {
     if (pressure < -threshold) return signal(-TARGET_EXPOSURE, "close_location_pressure_short");
     return signal(0, "close_location_pressure_flat");
   }
+  if (spec.family === "wick_rejection_reversal") {
+    const period = integer(spec.parameters.period, "period");
+    const threshold = finite(spec.parameters.wick_ratio_threshold, "wick_ratio_threshold");
+    if (rows.length < period) return signal(current, "wick_rejection_insufficient_history");
+    const window = rows.slice(-period);
+    let lowerRejection = 0;
+    let upperRejection = 0;
+    for (const row of window) {
+      const body = Math.abs(row.close - row.open);
+      const upperWick = Math.max(0, row.high - Math.max(row.open, row.close));
+      const lowerWick = Math.max(0, Math.min(row.open, row.close) - row.low);
+      if (body <= EPSILON) {
+        if (upperWick <= EPSILON && lowerWick <= EPSILON) continue;
+        const scale = Math.max(upperWick, lowerWick, EPSILON);
+        upperRejection += upperWick / scale;
+        lowerRejection += lowerWick / scale;
+      } else {
+        upperRejection += upperWick / body;
+        lowerRejection += lowerWick / body;
+      }
+    }
+    if (lowerRejection > upperRejection * threshold) return signal(TARGET_EXPOSURE, "wick_rejection_lower_dominant_long");
+    if (upperRejection > lowerRejection * threshold) return signal(-TARGET_EXPOSURE, "wick_rejection_upper_dominant_short");
+    return signal(0, "wick_rejection_balanced_flat");
+  }
   if (spec.family === "donchian_breakout") {
     const lookback = integer(spec.parameters.lookback, "lookback");
     if (rows.length < lookback + 1) return signal(current, "donchian_insufficient_history");

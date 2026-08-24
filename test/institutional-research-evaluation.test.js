@@ -199,6 +199,68 @@ test("close location pressure executes through sealed next-candle walk-forward m
   assert.equal(result[0].windows.every((row) => row.evidence_integrity_passed === true), true);
 });
 
+function wickRejectionReversalSpec() {
+  return typedSpec({
+    strategy: {
+      template: "wick_rejection_reversal",
+      feature_set_id: "ohlc-wick-rejection-v1",
+      parameters: { period: 12, wick_ratio_threshold: 2 },
+    },
+  });
+}
+
+test("wick rejection reversal preregistration is exact and bounded", () => {
+  const validated = validateInstitutionalResearchSpec(wickRejectionReversalSpec());
+  assert.equal(validated.strategy.template, "wick_rejection_reversal");
+  assert.deepEqual(validated.strategy.parameters, { period: 12, wick_ratio_threshold: 2 });
+  assert.throws(() => validateInstitutionalResearchSpec(typedSpec({
+    strategy: {
+      template: "wick_rejection_reversal",
+      feature_set_id: "ohlc-wick-rejection-v1",
+      parameters: { period: 12, wick_ratio_threshold: 0.5 },
+    },
+  })), /wick_ratio_threshold_out_of_bounds/);
+});
+
+test("wick rejection reversal has symmetric long short signals and explicit zero-body handling", () => {
+  const start = Date.parse("2026-01-01T00:00:00.000Z");
+  const buildRows = (side) => Array.from({ length: 13 }, (_, index) => {
+    const base = {
+      closed_at: new Date(start + index * 3600000).toISOString(),
+      open: 100,
+      high: 101,
+      low: 99,
+      close: 100,
+      volume: 100,
+    };
+    if (index === 12) return base;
+    return side === "lower"
+      ? { ...base, high: 100.5, low: 94, close: 100 }
+      : { ...base, high: 106, low: 99.5, close: 100 };
+  });
+  const strategy = buildStrategyFromResearchSpec("typed-wick-rejection-001", wickRejectionReversalSpec());
+  assert.equal(compileDirectionalSignal(strategy, buildRows("lower"))(12, 0), 1);
+  assert.equal(compileDirectionalSignal(strategy, buildRows("upper"))(12, 0), -1);
+});
+
+test("wick rejection reversal excludes execution candle and executes through sealed walk-forward math", () => {
+  const rows = syntheticCandles(150);
+  const strategy = buildStrategyFromResearchSpec("typed-wick-rejection-no-lookahead-001", wickRejectionReversalSpec());
+  const executionIndex = 120;
+  const baseline = compileDirectionalSignal(strategy, rows)(executionIndex, 0);
+  const mutated = rows.map((row, index) => index === executionIndex
+    ? { ...row, open: row.open * 10, high: row.high * 20, low: row.low / 20, close: row.close / 2 }
+    : row);
+  assert.equal(compileDirectionalSignal(strategy, mutated)(executionIndex, 0), baseline);
+  const policy = buildInstitutionalBacktestPolicy();
+  const windows = buildWalkForwardWindows(syntheticCandles(), policy);
+  const result = runDirectionalWalkForward({ windows, strategies: [strategy], policy });
+  assert.equal(result.length, 1);
+  assert.equal(result[0].windows.length, 5);
+  assert.equal(result[0].windows.every((row) => row.execution_model === "next_completed_candle_open"), true);
+  assert.equal(result[0].windows.every((row) => row.evidence_integrity_passed === true), true);
+});
+
 function donchianRegimeBreakoutSpec() {
   return typedSpec({
     strategy: {
