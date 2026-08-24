@@ -214,6 +214,31 @@ export function compileDirectionalSignal(strategy, candles) {
     };
   }
 
+  if (family === "return_semivariance_imbalance") {
+    const period = integer(parameters.period, "period");
+    const threshold = finite(parameters.imbalance_threshold, "imbalance_threshold");
+    return (executionIndex, currentExposure = 0) => {
+      const current = clamp(currentExposure);
+      if (executionIndex < period + 1) return current;
+      const windowCloses = rows.slice(executionIndex - period - 1, executionIndex).map((row) => row.close);
+      let upside = 0;
+      let downside = 0;
+      for (let index = 1; index < windowCloses.length; index += 1) {
+        const value = (windowCloses[index] / windowCloses[index - 1]) - 1;
+        if (!Number.isFinite(value)) return 0;
+        if (value > EPSILON) upside += value * value;
+        else if (value < -EPSILON) downside += value * value;
+      }
+      const total = upside + downside;
+      if (!Number.isFinite(total) || total <= EPSILON) return 0;
+      const upsideShare = upside / total;
+      const downsideShare = downside / total;
+      if (upsideShare + EPSILON >= threshold) return 1;
+      if (downsideShare + EPSILON >= threshold) return -1;
+      return 0;
+    };
+  }
+
   if (family === "return_sign_transition_state") {
     const period = integer(parameters.period, "period");
     const threshold = finite(parameters.persistence_threshold, "persistence_threshold");

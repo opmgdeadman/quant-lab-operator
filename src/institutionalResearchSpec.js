@@ -87,6 +87,14 @@ export const INSTITUTIONAL_STRATEGY_TEMPLATES = deepFreeze({
       autocorr_threshold: numberRule(0.01, 0.95),
     },
   },
+  return_semivariance_imbalance: {
+    family: "return_semivariance_imbalance",
+    feature_set_id: "close-return-semivariance-imbalance-v1",
+    parameters: {
+      period: integerRule(12, 240),
+      imbalance_threshold: numberRule(0.51, 0.95),
+    },
+  },
   return_sign_transition_state: {
     family: "return_sign_transition_state",
     feature_set_id: "close-return-sign-transition-v1",

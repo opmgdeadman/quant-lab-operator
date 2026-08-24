@@ -448,6 +448,27 @@ export function directionalSignal(spec, candles, currentExposure = 0) {
     if (autocorrelation > 0) return signal(latestSign, "return_autocorrelation_continuation");
     return signal(-latestSign, "return_autocorrelation_reversal");
   }
+  if (spec.family === "return_semivariance_imbalance") {
+    const period = integer(spec.parameters.period, "period");
+    const threshold = finite(spec.parameters.imbalance_threshold, "imbalance_threshold");
+    if (rows.length < period + 1) return signal(current, "return_semivariance_insufficient_history");
+    const windowCloses = rows.slice(-(period + 1)).map((row) => row.close);
+    let upside = 0;
+    let downside = 0;
+    for (let index = 1; index < windowCloses.length; index += 1) {
+      const value = (windowCloses[index] / windowCloses[index - 1]) - 1;
+      if (!Number.isFinite(value)) return signal(0, "return_semivariance_invalid_return_flat");
+      if (value > EPSILON) upside += value * value;
+      else if (value < -EPSILON) downside += value * value;
+    }
+    const total = upside + downside;
+    if (!Number.isFinite(total) || total <= EPSILON) return signal(0, "return_semivariance_zero_energy_flat");
+    const upsideShare = upside / total;
+    const downsideShare = downside / total;
+    if (upsideShare + EPSILON >= threshold) return signal(TARGET_EXPOSURE, "return_semivariance_upside_dominant_long");
+    if (downsideShare + EPSILON >= threshold) return signal(-TARGET_EXPOSURE, "return_semivariance_downside_dominant_short");
+    return signal(0, "return_semivariance_balanced_flat");
+  }
   if (spec.family === "return_sign_transition_state") {
     const period = integer(spec.parameters.period, "period");
     const threshold = finite(spec.parameters.persistence_threshold, "persistence_threshold");

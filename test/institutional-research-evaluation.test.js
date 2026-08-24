@@ -462,6 +462,58 @@ test("return autocorrelation state is no-look-ahead and sealed-walk-forward comp
   assert.equal(result[0].windows.every((row) => row.evidence_integrity_passed === true), true);
 });
 
+function returnSemivarianceImbalanceSpec() {
+  return typedSpec({ strategy: { template: "return_semivariance_imbalance", feature_set_id: "close-return-semivariance-imbalance-v1", parameters: { period: 72, imbalance_threshold: 0.65 } } });
+}
+
+function semivarianceRows(signs) {
+  const start = Date.parse("2026-01-01T00:00:00.000Z");
+  let close = 100;
+  const rows = [{ closed_at: new Date(start).toISOString(), open: close, high: close + 1, low: close - 1, close, volume: 100 }];
+  signs.forEach((sign, index) => {
+    const next = close * (sign > 0 ? 1.01 : sign < 0 ? 0.99 : 1);
+    rows.push({ closed_at: new Date(start + (index + 1) * 3600000).toISOString(), open: close, high: Math.max(close, next) + 1, low: Math.min(close, next) - 1, close: next, volume: 100 });
+    close = next;
+  });
+  return rows;
+}
+
+test("return semivariance imbalance preregistration is frozen and bounded", () => {
+  const validated = validateInstitutionalResearchSpec(returnSemivarianceImbalanceSpec());
+  assert.deepEqual(validated.strategy.parameters, { period: 72, imbalance_threshold: 0.65 });
+  assert.throws(() => validateInstitutionalResearchSpec(typedSpec({ strategy: { template: "return_semivariance_imbalance", feature_set_id: "close-return-semivariance-imbalance-v1", parameters: { period: 72, imbalance_threshold: 0.5 } } })), /imbalance_threshold_out_of_bounds/);
+});
+
+test("return semivariance imbalance has symmetric energy signals and historical-forward parity", () => {
+  const strategy = buildStrategyFromResearchSpec("typed-return-semivariance-001", returnSemivarianceImbalanceSpec());
+  const upside = semivarianceRows([...Array(60).fill(1), ...Array(12).fill(-1)]);
+  const downside = semivarianceRows([...Array(12).fill(1), ...Array(60).fill(-1)]);
+  const balanced = semivarianceRows([...Array(36).fill(1), ...Array(36).fill(-1)]);
+  for (const [rows, expected] of [[upside, 1], [downside, -1], [balanced, 0]]) {
+    assert.equal(compileDirectionalSignal(strategy, rows)(rows.length, 0), expected);
+    assert.equal(directionalSignal(strategy, rows, 0).target_exposure, expected);
+  }
+});
+
+test("return semivariance imbalance excludes execution candle, handles zero energy, and seals walk-forward", () => {
+  const strategy = buildStrategyFromResearchSpec("typed-return-semivariance-no-lookahead-001", returnSemivarianceImbalanceSpec());
+  const signalRows = semivarianceRows([...Array(60).fill(1), ...Array(12).fill(-1)]);
+  const execution = { ...signalRows.at(-1), closed_at: new Date(Date.parse(signalRows.at(-1).closed_at) + 3600000).toISOString(), open: 1, high: 100000, low: 0.01, close: 1 };
+  const rows = [...signalRows, execution];
+  const baseline = compileDirectionalSignal(strategy, rows)(signalRows.length, 0);
+  assert.equal(baseline, 1);
+  const mutated = rows.map((row, index) => index === signalRows.length ? { ...row, open: 100000, high: 100001, low: 1, close: 2 } : row);
+  assert.equal(compileDirectionalSignal(strategy, mutated)(signalRows.length, 0), baseline);
+  const flat = semivarianceRows(Array(72).fill(0));
+  assert.equal(compileDirectionalSignal(strategy, flat)(flat.length, 1), 0);
+  assert.equal(directionalSignal(strategy, flat, 1).target_exposure, 0);
+  const policy = buildInstitutionalBacktestPolicy();
+  const windows = buildWalkForwardWindows(syntheticCandles(), policy);
+  const result = runDirectionalWalkForward({ windows, strategies: [strategy], policy });
+  assert.equal(result[0].windows.length, 5);
+  assert.equal(result[0].windows.every((row) => row.execution_model === "next_completed_candle_open" && row.evidence_integrity_passed === true), true);
+});
+
 function returnSignTransitionStateSpec() {
   return typedSpec({ strategy: { template: "return_sign_transition_state", feature_set_id: "close-return-sign-transition-v1", parameters: { period: 48, persistence_threshold: 0.60 } } });
 }
