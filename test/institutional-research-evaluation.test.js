@@ -115,13 +115,16 @@ test("efficiency ratio trend is bounded, next-candle safe, and identical across 
     assert.equal(forward, expected);
   }
 
-  const boundaryRows = makeRows([100, 107, 100, 107, 107]);
+  const boundaryRows = makeRows([100, 107, 100, 107, 107, 999]);
   const displacement = 7;
   const path = 7 + 7 + 7 + 0;
   const threshold = displacement / path;
   const boundaryStrategy = { ...strategy, parameters: { period: 4, efficiency_threshold: threshold } };
-  assert.equal(compileDirectionalSignal(boundaryStrategy, [...boundaryRows, makeRows([999])[0]])(5, 0), 1);
-  assert.equal(directionalSignal(boundaryStrategy, boundaryRows, 0).target_exposure, 1);
+  const baselineHistorical = compileDirectionalSignal(boundaryStrategy, boundaryRows)(5, 0);
+  assert.equal(baselineHistorical, 1);
+  assert.equal(directionalSignal(boundaryStrategy, boundaryRows.slice(0, 5), 0).target_exposure, 1);
+  const mutatedExecution = boundaryRows.map((row, index) => index === 5 ? { ...row, open: 1, high: 1000000, low: 0.01, close: 1 } : row);
+  assert.equal(compileDirectionalSignal(boundaryStrategy, mutatedExecution)(5, 0), baselineHistorical);
 });
 
 test("EMA pullback trend preregistration is bounded and distinct from continuous EMA exposure", () => {
