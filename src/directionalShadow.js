@@ -557,6 +557,19 @@ export function directionalSignal(spec, candles, currentExposure = 0) {
     if (latest.close < lower) return signal(-TARGET_EXPOSURE, "donchian_breakout_short");
     return signal(current, "donchian_hold");
   }
+  if (spec.family === "efficiency_ratio_trend") {
+    const period = integer(spec.parameters.period, "period");
+    const threshold = finite(spec.parameters.efficiency_threshold, "efficiency_threshold");
+    if (closes.length < period + 1) return signal(current, "efficiency_ratio_insufficient_history");
+    const window = closes.slice(-(period + 1));
+    const displacement = window.at(-1) - window[0];
+    let pathLength = 0;
+    for (let index = 1; index < window.length; index += 1) pathLength += Math.abs(window[index] - window[index - 1]);
+    if (pathLength <= EPSILON) return signal(0, "efficiency_ratio_zero_path_flat");
+    const efficiency = Math.abs(displacement) / pathLength;
+    if (efficiency + EPSILON < threshold || Math.abs(displacement) <= EPSILON) return signal(0, "efficiency_ratio_below_threshold_flat");
+    return displacement > 0 ? signal(TARGET_EXPOSURE, "efficiency_ratio_trend_long") : signal(-TARGET_EXPOSURE, "efficiency_ratio_trend_short");
+  }
   if (spec.family === "price_momentum") {
     const lookback = integer(spec.parameters.lookback, "lookback");
     const threshold = finite(spec.parameters.threshold_percent, "threshold_percent") / 100;

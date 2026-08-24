@@ -125,6 +125,14 @@ export const INSTITUTIONAL_STRATEGY_TEMPLATES = deepFreeze({
       min_body_ratio: numberRule(1, 4),
     },
   },
+  efficiency_ratio_trend: {
+    family: "efficiency_ratio_trend",
+    feature_set_id: "close-efficiency-ratio-v1",
+    parameters: {
+      period: integerRule(4, 240),
+      efficiency_threshold: numberRule(0.05, 1),
+    },
+  },
   donchian_breakout: {
     family: "donchian_breakout",
     feature_set_id: "ohlc-donchian-v1",

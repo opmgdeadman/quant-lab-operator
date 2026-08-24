@@ -409,6 +409,24 @@ export function compileDirectionalSignal(strategy, candles) {
     };
   }
 
+  if (family === "efficiency_ratio_trend") {
+    const period = integer(parameters.period, "period");
+    const threshold = finite(parameters.efficiency_threshold, "efficiency_threshold");
+    return (executionIndex, currentExposure = 0) => {
+      const current = clamp(currentExposure);
+      if (executionIndex < period + 1) return current;
+      const signalIndex = executionIndex - 1;
+      const startIndex = signalIndex - period;
+      const displacement = closes[signalIndex] - closes[startIndex];
+      let pathLength = 0;
+      for (let index = startIndex + 1; index <= signalIndex; index += 1) pathLength += Math.abs(closes[index] - closes[index - 1]);
+      if (pathLength <= EPSILON) return 0;
+      const efficiency = Math.abs(displacement) / pathLength;
+      if (efficiency + EPSILON < threshold || Math.abs(displacement) <= EPSILON) return 0;
+      return displacement > 0 ? 1 : -1;
+    };
+  }
+
   if (family === "price_momentum") {
     const lookback = integer(parameters.lookback, "lookback");
     const threshold = finite(parameters.threshold_percent, "threshold_percent") / 100;

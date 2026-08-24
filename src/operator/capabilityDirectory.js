@@ -334,8 +334,8 @@ export const capabilityDirectory = [
           spec_version: { type: "integer", enum: [2] },
           dataset_id: { type: "string", enum: ["btc-usd-1h-completed-4320-v1"] },
           strategy: objectSchema({
-            template: { type: "string", enum: ["ema_trend", "ema_pullback_trend", "close_location_pressure", "wick_rejection_reversal", "return_autocorrelation_state", "return_sign_transition_state", "return_skew_state", "hour_of_week_drift", "inside_bar_breakout", "engulfing_reversal", "donchian_breakout", "donchian_regime_breakout", "donchian_compression_breakout", "dmi_adx_trend", "price_momentum", "regime_momentum", "volatility_breakout", "volatility_regime_breakout", "rsi_mean_reversion", "bollinger_mean_reversion"] },
-            feature_set_id: { type: "string", enum: ["close-ema-v1", "close-ema-pullback-v1", "ohlc-close-location-pressure-v1", "ohlc-wick-rejection-v1", "close-return-autocorrelation-v1", "close-return-sign-transition-v1", "close-return-skew-v1", "time-hour-of-week-drift-v1", "ohlc-inside-bar-v1", "ohlc-engulfing-reversal-v1", "ohlc-donchian-v1", "ohlc-donchian-regime-v1", "ohlc-donchian-compression-v1", "ohlc-dmi-adx-v1", "close-momentum-v1", "close-regime-momentum-v1", "ohlc-true-range-v1", "ohlc-true-range-regime-v1", "close-rsi-v1", "close-bollinger-v1"] },
+            template: { type: "string", enum: ["ema_trend", "ema_pullback_trend", "close_location_pressure", "wick_rejection_reversal", "return_autocorrelation_state", "return_sign_transition_state", "return_skew_state", "hour_of_week_drift", "inside_bar_breakout", "engulfing_reversal", "efficiency_ratio_trend", "donchian_breakout", "donchian_regime_breakout", "donchian_compression_breakout", "dmi_adx_trend", "price_momentum", "regime_momentum", "volatility_breakout", "volatility_regime_breakout", "rsi_mean_reversion", "bollinger_mean_reversion"] },
+            feature_set_id: { type: "string", enum: ["close-ema-v1", "close-ema-pullback-v1", "ohlc-close-location-pressure-v1", "ohlc-wick-rejection-v1", "close-return-autocorrelation-v1", "close-return-sign-transition-v1", "close-return-skew-v1", "time-hour-of-week-drift-v1", "ohlc-inside-bar-v1", "ohlc-engulfing-reversal-v1", "close-efficiency-ratio-v1", "ohlc-donchian-v1", "ohlc-donchian-regime-v1", "ohlc-donchian-compression-v1", "ohlc-dmi-adx-v1", "close-momentum-v1", "close-regime-momentum-v1", "ohlc-true-range-v1", "ohlc-true-range-regime-v1", "close-rsi-v1", "close-bollinger-v1"] },
             parameters: objectSchema({
               fast: { type: "integer", minimum: 2, maximum: 100 },
               slow: { type: "integer", minimum: 5, maximum: 300 },
@@ -356,6 +356,7 @@ export const capabilityDirectory = [
               mean_return_threshold_bps: { type: "number", minimum: 0.1, maximum: 100 },
               max_inside_range_ratio: { type: "number", minimum: 0.25, maximum: 1 },
               min_body_ratio: { type: "number", minimum: 1, maximum: 4 },
+              efficiency_threshold: { type: "number", minimum: 0.05, maximum: 1 },
               multiplier: { type: "number", minimum: 0.25, maximum: 5 },
               lower: { type: "number", minimum: 5, maximum: 45 },
               upper: { type: "number", minimum: 55, maximum: 95 },
