@@ -591,6 +591,26 @@ export function directionalSignal(spec, candles, currentExposure = 0) {
     if (efficiency + EPSILON < threshold || Math.abs(displacement) <= EPSILON) return signal(0, "efficiency_ratio_below_threshold_flat");
     return displacement > 0 ? signal(TARGET_EXPOSURE, "efficiency_ratio_trend_long") : signal(-TARGET_EXPOSURE, "efficiency_ratio_trend_short");
   }
+  if (spec.family === "close_quantile_reversion") {
+    const period = integer(spec.parameters.period, "period");
+    const lowerQuantile = finite(spec.parameters.lower_quantile, "lower_quantile");
+    const upperQuantile = finite(spec.parameters.upper_quantile, "upper_quantile");
+    if (!(lowerQuantile > 0 && lowerQuantile < upperQuantile && upperQuantile < 1)) throw new Error("close_quantile_threshold_order_invalid");
+    if (rows.length < period) return signal(current, "close_quantile_insufficient_history");
+    const window = rows.slice(-period).map((row) => finite(row.close, "close"));
+    if (window.some((value) => value <= 0)) return signal(0, "close_quantile_nonpositive_close_flat");
+    const latestClose = window.at(-1);
+    let below = 0;
+    let equal = 0;
+    for (const value of window) {
+      if (value < latestClose - EPSILON) below += 1;
+      else if (Math.abs(value - latestClose) <= EPSILON) equal += 1;
+    }
+    const midrank = (below + 0.5 * equal) / period;
+    if (midrank <= lowerQuantile + EPSILON) return signal(TARGET_EXPOSURE, "close_quantile_lower_tail_long");
+    if (midrank >= upperQuantile - EPSILON) return signal(-TARGET_EXPOSURE, "close_quantile_upper_tail_short");
+    return signal(0, "close_quantile_middle_flat");
+  }
   if (spec.family === "rolling_median_reversion") {
     const period = integer(spec.parameters.period, "period");
     const thresholdPercent = finite(spec.parameters.threshold_percent, "threshold_percent");

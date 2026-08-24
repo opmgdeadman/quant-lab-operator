@@ -105,6 +105,29 @@ test("volatility regime breakout trades only during true-range expansion", () =>
   assert.equal(flattened.target_exposure, 0);
 });
 
+test("close quantile reversion uses deterministic midrank tails and handles ties", () => {
+  const spec = { family: "close_quantile_reversion", parameters: { period: 10, lower_quantile: 0.1, upper_quantile: 0.9 } };
+  const lower = directionalSignal(spec, candles([9, 8, 7, 6, 5, 4, 3, 2, 1, 0.5]), 0);
+  const upper = directionalSignal(spec, candles([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]), 0);
+  const tied = directionalSignal(spec, candles([1, 2, 3, 4, 5, 5, 5, 6, 7, 5]), 0);
+  assert.equal(lower.target_exposure, 1);
+  assert.equal(lower.reason_code, "close_quantile_lower_tail_long");
+  assert.equal(upper.target_exposure, -1);
+  assert.equal(upper.reason_code, "close_quantile_upper_tail_short");
+  assert.equal(tied.target_exposure, 0);
+  assert.equal(tied.reason_code, "close_quantile_middle_flat");
+  assert.equal(directionalSignal(spec, candles([1, 2, 3]), -1).target_exposure, -1);
+});
+
+test("close quantile reversion ignores any future candle beyond the signal boundary", () => {
+  const spec = { family: "close_quantile_reversion", parameters: { period: 10, lower_quantile: 0.1, upper_quantile: 0.9 } };
+  const observed = candles([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+  const before = directionalSignal(spec, observed, 0);
+  const future = [...observed, ...candles([1000]).map((row) => ({ ...row, closed_at: "2026-01-02T00:00:00.000Z" }))];
+  const sameBoundary = directionalSignal(spec, future.slice(0, observed.length), 0);
+  assert.deepEqual(sameBoundary, before);
+});
+
 test("long paper exposure earns marked profit without exceeding entry equity", () => {
   const result = applySignedRebalance({
     portfolio: portfolio(),

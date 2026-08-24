@@ -149,6 +149,18 @@ export const INSTITUTIONAL_STRATEGY_TEMPLATES = deepFreeze({
       threshold_percent: numberRule(0.25, 10),
     },
   },
+  close_quantile_reversion: {
+    family: "close_quantile_reversion",
+    feature_set_id: "close-quantile-rank-v1",
+    parameters: {
+      period: integerRule(12, 240),
+      lower_quantile: numberRule(0.01, 0.49),
+      upper_quantile: numberRule(0.51, 0.99),
+    },
+    cross_validate(parameters) {
+      if (parameters.lower_quantile >= parameters.upper_quantile) throw new Error("institutional_spec_close_quantile_order_invalid");
+    },
+  },
   rolling_median_reversion: {
     family: "rolling_median_reversion",
     feature_set_id: "close-rolling-median-deviation-v1",
