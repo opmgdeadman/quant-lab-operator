@@ -13,7 +13,7 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   validation:
@@ -153,3 +153,62 @@ jobs:
       - name: Validate Wrangler config
         if: ${{ always() }}
         run: npm run check
+
+  fleet_timing_package_retrofit:
+    if: ${{ github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Quant Lab
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Checkout MCP Controller standards package
+        uses: actions/checkout@v4
+        with:
+          repository: opmgdeadman/mcp-controller
+          path: .controller
+      - name: Build Quant Lab timing retrofit config
+        run: |
+          cat > /tmp/quant-lab-timing.json <<'JSON'
+          {
+            "schema_version": "fleet-timing-telemetry-retrofit-config-v1",
+            "inventory_id": "quant-lab",
+            "mcp_name": "quant-lab",
+            "repository": {"account":"opmgdeadman","name":"quant-lab-operator","branch":"main"},
+            "runtime": {"entrypoint":"src/index.js","telemetry_binding":"TELEMETRY_DB"},
+            "central_store": "mcp-controller-audit",
+            "raw_retention_days": 7,
+            "integration": {
+              "core_target": "standards/fleet-timing-telemetry-v1.mjs",
+              "config_target": "standards/fleet-timing-telemetry-config-v1.mjs",
+              "retrofit_manifest": "standards/timing-telemetry-v1/retrofit.json",
+              "patches": []
+            },
+            "certification": {
+              "adapter_module": "src/operator/fleetTelemetry.js",
+              "certification_record": "benchmarks/certifications/quant-lab-fleet-timing-telemetry-v1.json",
+              "compliance_record": "inventory/compliance/quant-lab.json",
+              "probe": {
+                "first": {"tool_name":"get_quant_lab_startup_context","arguments":{}},
+                "second": {"tool_name":"get_quant_lab_status","arguments":{}}
+              }
+            }
+          }
+          JSON
+      - name: Run package Timing Telemetry installer
+        run: node .controller/benchmarks/standards/retrofits/fleet-standards-v1/timing-install-v1.js --config /tmp/quant-lab-timing.json --target . --controller-root .controller
+      - name: Verify Quant Lab tests after package install
+        run: |
+          npm ci
+          npm test
+      - name: Commit package-managed timing artifacts
+        run: |
+          git config user.name "quant-lab-operator"
+          git config user.email "quant-lab-operator@users.noreply.github.com"
+          git add standards/fleet-timing-telemetry-v1.mjs standards/fleet-timing-telemetry-config-v1.mjs standards/timing-telemetry-v1/retrofit.json
+          if git diff --cached --quiet; then
+            echo "Package timing retrofit already installed."
+          else
+            git commit -m "Install fleet Timing Telemetry package artifacts"
+            git push origin HEAD:main
+          fi
