@@ -175,6 +175,26 @@ export function compileDirectionalSignal(strategy, candles) {
     };
   }
 
+  if (family === "return_zscore_reversal") {
+    const period = integer(parameters.period, "period");
+    const threshold = finite(parameters.z_threshold, "z_threshold");
+    return (executionIndex, currentExposure = 0) => {
+      const current = clamp(currentExposure);
+      if (executionIndex < period + 2) return current;
+      const latestReturn = rows[executionIndex - 1].close / rows[executionIndex - 2].close - 1;
+      const priorReturns = [];
+      for (let index = executionIndex - period - 1; index <= executionIndex - 2; index += 1) priorReturns.push(rows[index].close / rows[index - 1].close - 1);
+      const mean = priorReturns.reduce((sum, value) => sum + value, 0) / priorReturns.length;
+      const variance = priorReturns.reduce((sum, value) => sum + (value - mean) ** 2, 0) / (priorReturns.length - 1);
+      const dispersion = Math.sqrt(Math.max(0, variance));
+      if (dispersion <= EPSILON) return 0;
+      const z = (latestReturn - mean) / dispersion;
+      if (z + EPSILON >= threshold) return -1;
+      if (z - EPSILON <= -threshold) return 1;
+      return 0;
+    };
+  }
+
   if (family === "wick_rejection_reversal") {
     const period = integer(parameters.period, "period");
     const threshold = finite(parameters.wick_ratio_threshold, "wick_ratio_threshold");

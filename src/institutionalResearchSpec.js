@@ -169,6 +169,14 @@ export const INSTITUTIONAL_STRATEGY_TEMPLATES = deepFreeze({
       if (parameters.lower >= parameters.upper) throw new Error("institutional_spec_range_position_order_invalid");
     },
   },
+  return_zscore_reversal: {
+    family: "return_zscore_reversal",
+    feature_set_id: "close-return-zscore-reversal-v1",
+    parameters: {
+      period: integerRule(12, 240),
+      z_threshold: numberRule(0.5, 5),
+    },
+  },
   close_quantile_reversion: {
     family: "close_quantile_reversion",
     feature_set_id: "close-quantile-rank-v1",

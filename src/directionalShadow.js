@@ -409,6 +409,22 @@ export function directionalSignal(spec, candles, currentExposure = 0) {
     if (position - EPSILON <= lower) return signal(-TARGET_EXPOSURE, "range_position_low_short");
     return signal(0, "range_position_interior_flat");
   }
+  if (spec.family === "return_zscore_reversal") {
+    const period = integer(spec.parameters.period, "period");
+    const threshold = finite(spec.parameters.z_threshold, "z_threshold");
+    if (rows.length < period + 2) return signal(current, "return_zscore_insufficient_history");
+    const latestReturn = rows.at(-1).close / rows.at(-2).close - 1;
+    const priorReturns = [];
+    for (let index = rows.length - period - 1; index <= rows.length - 2; index += 1) priorReturns.push(rows[index].close / rows[index - 1].close - 1);
+    const mean = priorReturns.reduce((sum, value) => sum + value, 0) / priorReturns.length;
+    const variance = priorReturns.reduce((sum, value) => sum + (value - mean) ** 2, 0) / (priorReturns.length - 1);
+    const dispersion = Math.sqrt(Math.max(0, variance));
+    if (dispersion <= EPSILON) return signal(0, "return_zscore_zero_dispersion_flat");
+    const z = (latestReturn - mean) / dispersion;
+    if (z + EPSILON >= threshold) return signal(-TARGET_EXPOSURE, "return_zscore_high_short");
+    if (z - EPSILON <= -threshold) return signal(TARGET_EXPOSURE, "return_zscore_low_long");
+    return signal(0, "return_zscore_interior_flat");
+  }
   if (spec.family === "wick_rejection_reversal") {
     const period = integer(spec.parameters.period, "period");
     const threshold = finite(spec.parameters.wick_ratio_threshold, "wick_ratio_threshold");

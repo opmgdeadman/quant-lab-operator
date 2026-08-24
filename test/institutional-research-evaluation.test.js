@@ -132,6 +132,35 @@ test("range position preregistration, exact boundaries, parity, zero-range, and 
   assert.equal(compiled(4, 0), 1);
 });
 
+function returnZscoreStrategy(parameters = { period: 4, z_threshold: 2 }) {
+  return { id: "return-zscore-test", family: "return_zscore_reversal", market: "BTC-USD", interval: "1h", parameters };
+}
+
+function returnZscoreRows(returns) {
+  const closes = [100];
+  for (const value of returns) closes.push(closes.at(-1) * (1 + value));
+  return closes.map((close, index) => ({ market: "BTC-USD", interval: "1h", closed_at: new Date(Date.parse("2026-01-01T00:00:00.000Z") + index * 3600000).toISOString(), open: close, high: close * 1.001, low: close * 0.999, close, volume: 1 }));
+}
+
+test("return z-score preregistration, zero dispersion, parity, boundary direction, and no-look-ahead", () => {
+  const validated = validateInstitutionalResearchSpec(typedSpec({ strategy: { template: "return_zscore_reversal", feature_set_id: "close-return-zscore-reversal-v1", parameters: { period: 48, z_threshold: 2 } } }));
+  assert.deepEqual(validated.strategy.parameters, { period: 48, z_threshold: 2 });
+  const strategy = returnZscoreStrategy();
+  const zero = returnZscoreRows([0, 0, 0, 0, 0]);
+  assert.equal(compileDirectionalSignal(strategy, zero)(5, 0), 0);
+  const prior = [-0.01, 0.01, -0.01, 0.01];
+  const sd = Math.sqrt(0.0004 / 3);
+  for (const [latest, expected] of [[2 * sd, -1], [-2 * sd, 1], [0, 0]]) {
+    const rows = returnZscoreRows([...prior, latest, 0]);
+    assert.equal(compileDirectionalSignal(strategy, rows)(6, 0), expected);
+    assert.equal(directionalSignal(strategy, rows.slice(0, 6), 0).target_exposure, expected);
+    const compiled = compileDirectionalSignal(strategy, rows);
+    const before = compiled(6, 0);
+    rows[6] = { ...rows[6], close: rows[6].close * 10, high: rows[6].high * 10, low: rows[6].low * 10 };
+    assert.equal(compiled(6, 0), before);
+  }
+});
+
 function efficiencyRatioStrategy(parameters = { period: 4, efficiency_threshold: 0.35 }) {
   return { id: "efficiency-test", family: "efficiency_ratio_trend", market: "BTC-USD", interval: "1h", parameters };
 }
