@@ -153,7 +153,7 @@ test("return acceleration spec is frozen and bounded", () => {
 test("return acceleration historical and forward paths agree at long short flat and exact threshold", () => {
   const strategy = buildStrategyFromResearchSpec("typed-return-acceleration-001", returnAccelerationSpec());
   const build = (a, b, c) => quantileRows([...Array(12).fill(a), ...Array(12).fill(b), c]);
-  for (const [rows, expected] of [[build(100, 101, 103), 1], [build(100, 99, 97), -1], [build(100, 101, 101.5), 0]]) {
+  for (const [rows, expected] of [[build(100, 100, 101), 1], [build(100, 100, 99), -1], [build(100, 100, 100.5), 0]]) {
     assert.equal(compileDirectionalSignal(strategy, rows)(25, 0), expected);
     assert.equal(directionalSignal(strategy, rows.slice(0, 25), 0).target_exposure, expected);
   }
@@ -161,7 +161,7 @@ test("return acceleration historical and forward paths agree at long short flat 
 
 test("return acceleration excludes execution candle and requires full two-window history", () => {
   const strategy = buildStrategyFromResearchSpec("typed-return-acceleration-no-lookahead-001", returnAccelerationSpec());
-  const rows = quantileRows([...Array(12).fill(100), ...Array(12).fill(101), 103, 999]);
+  const rows = quantileRows([...Array(12).fill(100), ...Array(12).fill(100), 101, 999]);
   assert.equal(compileDirectionalSignal(strategy, rows)(24, -1), -1);
   const baseline = compileDirectionalSignal(strategy, rows)(25, 0);
   assert.equal(baseline, 1);
