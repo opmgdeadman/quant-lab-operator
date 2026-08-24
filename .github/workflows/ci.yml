@@ -129,6 +129,18 @@ jobs:
       - name: Run institutional research portfolio tests
         if: ${{ always() }}
         run: node --test test/institutional-research-portfolio.test.js
+      - name: DIAGNOSTIC efficiency ratio gate 1
+        if: ${{ always() }}
+        run: node --test --test-name-pattern="efficiency ratio gate 1" test/institutional-research-evaluation.test.js
+      - name: DIAGNOSTIC efficiency ratio gate 2
+        if: ${{ always() }}
+        run: node --test --test-name-pattern="efficiency ratio gate 2" test/institutional-research-evaluation.test.js
+      - name: DIAGNOSTIC efficiency ratio gate 3
+        if: ${{ always() }}
+        run: node --test --test-name-pattern="efficiency ratio gate 3" test/institutional-research-evaluation.test.js
+      - name: DIAGNOSTIC efficiency ratio gate 4
+        if: ${{ always() }}
+        run: node --test --test-name-pattern="efficiency ratio gate 4" test/institutional-research-evaluation.test.js
       - name: Run institutional research evaluation tests
         if: ${{ always() }}
         run: node --test test/institutional-research-evaluation.test.js

@@ -93,38 +93,51 @@ test("typed Stage 14 spec rejects unknown templates, mismatched features, rescue
   })), /threshold_percent_out_of_bounds/);
 });
 
-test("efficiency ratio trend is bounded, next-candle safe, and identical across historical/forward compilers", () => {
-  const strategy = { id: "efficiency-test", family: "efficiency_ratio_trend", market: "BTC-USD", interval: "1h", parameters: { period: 4, efficiency_threshold: 0.35 } };
+function efficiencyRatioStrategy(parameters = { period: 4, efficiency_threshold: 0.35 }) {
+  return { id: "efficiency-test", family: "efficiency_ratio_trend", market: "BTC-USD", interval: "1h", parameters };
+}
+
+function efficiencyRows(closes) {
+  return closes.map((close, index) => ({ market: "BTC-USD", interval: "1h", closed_at: new Date(Date.parse("2026-01-01T00:00:00.000Z") + index * 3600000).toISOString(), open: close, high: close + 1, low: Math.max(0.01, close - 1), close, volume: 1 }));
+}
+
+test("efficiency ratio gate 1 preregistration bounds", () => {
   const spec = typedSpec({ strategy: { template: "efficiency_ratio_trend", feature_set_id: "close-efficiency-ratio-v1", parameters: { period: 24, efficiency_threshold: 0.35 } } });
   const validated = validateInstitutionalResearchSpec(spec);
-  assert.equal(validated.strategy.parameters.period, 24);
-  assert.equal(validated.strategy.parameters.efficiency_threshold, 0.35);
+  assert.deepEqual(validated.strategy.parameters, { period: 24, efficiency_threshold: 0.35 });
   assert.throws(() => validateInstitutionalResearchSpec(typedSpec({ strategy: { template: "efficiency_ratio_trend", feature_set_id: "close-efficiency-ratio-v1", parameters: { period: 3, efficiency_threshold: 0.35 } } })), /period_out_of_bounds/);
+});
 
-  const makeRows = (closes) => closes.map((close, index) => ({ market: "BTC-USD", interval: "1h", closed_at: new Date(Date.parse("2026-01-01T00:00:00.000Z") + index * 3600000).toISOString(), open: close, high: close + 1, low: close - 1, close, volume: 1 }));
+test("efficiency ratio gate 2 directional parity", () => {
+  const strategy = efficiencyRatioStrategy();
   for (const [closes, expected] of [
     [[100, 101, 102, 103, 104, 999], 1],
     [[104, 103, 102, 101, 100, 1], -1],
-    [[100, 110, 100, 110, 100, 999], 0],
-    [[100, 100, 100, 100, 100, 999], 0],
   ]) {
-    const rows = makeRows(closes);
-    const historical = compileDirectionalSignal(strategy, rows)(5, 0);
-    const forward = directionalSignal(strategy, rows.slice(0, 5), 0).target_exposure;
-    assert.equal(historical, expected);
-    assert.equal(forward, expected);
+    const rows = efficiencyRows(closes);
+    assert.equal(compileDirectionalSignal(strategy, rows)(5, 0), expected);
+    assert.equal(directionalSignal(strategy, rows.slice(0, 5), 0).target_exposure, expected);
   }
+});
 
-  const boundaryRows = makeRows([100, 107, 100, 107, 107, 999]);
-  const displacement = 7;
-  const path = 7 + 7 + 7 + 0;
-  const threshold = displacement / path;
-  const boundaryStrategy = { ...strategy, parameters: { period: 4, efficiency_threshold: threshold } };
-  const baselineHistorical = compileDirectionalSignal(boundaryStrategy, boundaryRows)(5, 0);
-  assert.equal(baselineHistorical, 1);
-  assert.equal(directionalSignal(boundaryStrategy, boundaryRows.slice(0, 5), 0).target_exposure, 1);
-  const mutatedExecution = boundaryRows.map((row, index) => index === 5 ? { ...row, open: 1, high: 1000000, low: 0.01, close: 1 } : row);
-  assert.equal(compileDirectionalSignal(boundaryStrategy, mutatedExecution)(5, 0), baselineHistorical);
+test("efficiency ratio gate 3 noisy and zero-path flat", () => {
+  const strategy = efficiencyRatioStrategy();
+  for (const closes of [[100, 110, 100, 110, 100, 999], [100, 100, 100, 100, 100, 999]]) {
+    const rows = efficiencyRows(closes);
+    assert.equal(compileDirectionalSignal(strategy, rows)(5, 0), 0);
+    assert.equal(directionalSignal(strategy, rows.slice(0, 5), 0).target_exposure, 0);
+  }
+});
+
+test("efficiency ratio gate 4 exact threshold and no look-ahead", () => {
+  const rows = efficiencyRows([100, 107, 100, 107, 107, 999]);
+  const threshold = 7 / 21;
+  const strategy = efficiencyRatioStrategy({ period: 4, efficiency_threshold: threshold });
+  const baseline = compileDirectionalSignal(strategy, rows)(5, 0);
+  assert.equal(baseline, 1);
+  assert.equal(directionalSignal(strategy, rows.slice(0, 5), 0).target_exposure, 1);
+  const mutated = rows.map((row, index) => index === 5 ? { ...row, open: 1, high: 1000000, low: 0.01, close: 1 } : row);
+  assert.equal(compileDirectionalSignal(strategy, mutated)(5, 0), baseline);
 });
 
 test("EMA pullback trend preregistration is bounded and distinct from continuous EMA exposure", () => {
