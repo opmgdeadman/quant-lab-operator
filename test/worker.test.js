@@ -166,7 +166,7 @@ test("operator mcp initialize requires auth and returns a session id", async () 
   assert.match(initializeBody.result.instructions, /stable five-tool gateway/);
   assert.match(initializeBody.result.instructions, /dynamic server-side capability definitions/);
   assert.match(initializeBody.result.instructions, /get_quant_lab_startup_context/);
-  assert.match(initializeBody.result.instructions, /canonical Git ECL/);
+  assert.match(initializeBody.result.instructions, /active owner-approved Quant Work Unit through M-BRAIN/);
   assert.match(initialize.headers.get("mcp-session-id"), /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/);
 });
 
