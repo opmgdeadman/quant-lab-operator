@@ -16,6 +16,7 @@ import { getLiveQualificationSummary, runProductionLiveQualification } from "../
 import { getRollingResearchSummary, runProductionRollingResearch } from "../../rollingResearch.js";
 import { getHistoricalBootstrapSummary, runProductionHistoricalBootstrap } from "../../historicalBootstrap.js";
 import { getMarketVolumeAudit } from "../../marketData.js";
+import { buildRevenueEngineStatus } from "../../autonomousRevenueEngine.js";
 import { renderProfessionalConsole } from "../../professionalConsole.js";
 import { syncQuantResumeCheckpoint } from "../fleetResume.js";
 import { runQuantFailureIntelligenceCertification } from "../fleetFailureIntelligence.js";
@@ -102,7 +103,11 @@ async function get_engineering_access_state(inputs, context) {
 }
 
 async function operator_status(inputs, context) {
-  const dbProbe = await context.databaseProbe(context.env);
+  const [dbProbe, researchPortfolio, liveQualification] = await Promise.all([
+    context.databaseProbe(context.env),
+    getInstitutionalResearchPortfolioSummary(context.env),
+    getLiveQualificationSummary(context.env),
+  ]);
   return {
     ok: true,
     authenticated_mcp: true,
@@ -111,6 +116,7 @@ async function operator_status(inputs, context) {
     exposed_tool_count: capabilityDirectory.length + 2,
     supported_intents: supportedIntents,
     capability_count: capabilityDirectory.length,
+    revenue_engine: buildRevenueEngineStatus({ researchPortfolio, liveQualification }),
   };
 }
 
