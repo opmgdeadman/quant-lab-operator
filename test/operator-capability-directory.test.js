@@ -10,7 +10,7 @@ import {
   validateCapabilityLifecycle,
 } from "../src/operator/capabilityDirectory.js";
 import { findDispatchedRun, handlers, validateHardeningTransition } from "../src/operator/handlers/controlPlane.js";
-import { buildActionClosure, classifyStructuredFailure, parseContinuationMetadata } from "../src/operator/executionKernel.js";
+import { buildActionClosure, classifyStructuredFailure } from "../src/operator/executionKernel.js";
 import { operationLeaseMs } from "../src/operator/receipts.js";
 import { publicTools } from "../src/operator/toolRegistry.js";
 
@@ -163,22 +163,18 @@ test("execution leases are bounded by operation class", () => {
   assert.equal(operationLeaseMs("deploy_cloudflare_worker"), 30 * 60 * 1000);
 });
 
-test("action closure is bound to the sole canonical Git ledger", () => {
-  const content = "## Active Job\n\nJob ID: `stage-13-directional-shadow-paper-research`\n\n## Current Action\n\nComplete the authority transition.";
-  assert.deepEqual(parseContinuationMetadata(content), {
-    active_job_id: "stage-13-directional-shadow-paper-research",
-    current_action: "Complete the authority transition.",
-  });
+test("action closure is bound to the active M-BRAIN Work Unit", () => {
   const closure = buildActionClosure({
     status: "completed",
     capability: { id: "operating.operator_status", handler_id: "operator_status" },
     operationId: "closure-test",
-    startupContext: { canonical_continuation: { path: "docs/ENGINEERING_CONTINUATION_LEDGER.md", sha: "abc123", content } },
+    startupContext: { operational_authority: { active_work_unit_id: "quant-test-work-unit" }, startup_authority: { path: "docs/QUANT_LAB_STARTUP_AUTHORITY.md", sha: "abc123" } },
   });
-  assert.equal(closure.canonical_continuation_sha, "abc123");
-  assert.equal(closure.active_job_id, "stage-13-directional-shadow-paper-research");
+  assert.equal(closure.authority, "m_brain_owner_approved_work_unit");
+  assert.equal(closure.mbrain_work_unit_id, "quant-test-work-unit");
+  assert.equal(closure.startup_authority_sha, "abc123");
   assert.equal(closure.owner_action_required, false);
-  assert.equal(closure.next_action, "reload_canonical_continuation_and_continue_current_action");
+  assert.equal(closure.next_action, "continue_active_m_brain_work_unit");
 });
 
 test("structured failures open incidents only when unexplained", () => {
