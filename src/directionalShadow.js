@@ -625,6 +625,36 @@ export function directionalSignal(spec, candles, currentExposure = 0) {
     if (totalReturn < -EPSILON) return signal(-TARGET_EXPOSURE, "volatility_autocorrelation_persistent_short");
     return signal(0, "volatility_autocorrelation_zero_direction_flat");
   }
+  if (spec.family === "return_permutation_entropy_trend") {
+    const period = integer(spec.parameters.period, "period");
+    const embedding = integer(spec.parameters.embedding, "embedding");
+    const threshold = finite(spec.parameters.entropy_threshold, "entropy_threshold");
+    if (embedding !== 3) throw new Error("return_permutation_entropy_embedding_invalid");
+    if (rows.length < period + 1) return signal(0, "return_permutation_entropy_insufficient_history_flat");
+    const windowCloses = rows.slice(-(period + 1)).map((row) => row.close);
+    const returns = [];
+    for (let index = 1; index < windowCloses.length; index += 1) returns.push(Math.log(windowCloses[index] / windowCloses[index - 1]));
+    const counts = new Map();
+    for (let index = 0; index <= returns.length - embedding; index += 1) {
+      const tuple = returns.slice(index, index + embedding);
+      const pattern = [...Array(embedding).keys()].sort((a, b) => tuple[a] - tuple[b] || a - b).join("");
+      counts.set(pattern, (counts.get(pattern) || 0) + 1);
+    }
+    const patternCount = returns.length - embedding + 1;
+    if (patternCount <= 0) return signal(0, "return_permutation_entropy_no_patterns_flat");
+    let entropy = 0;
+    for (const count of counts.values()) {
+      const probability = count / patternCount;
+      entropy -= probability * Math.log(probability);
+    }
+    const normalizedEntropy = entropy / Math.log(6);
+    if (!Number.isFinite(normalizedEntropy)) return signal(0, "return_permutation_entropy_invalid_flat");
+    if (normalizedEntropy - EPSILON > threshold) return signal(0, "return_permutation_entropy_high_complexity_flat");
+    const totalReturn = Math.log(windowCloses.at(-1) / windowCloses[0]);
+    if (totalReturn > EPSILON) return signal(TARGET_EXPOSURE, "return_permutation_entropy_ordered_long");
+    if (totalReturn < -EPSILON) return signal(-TARGET_EXPOSURE, "return_permutation_entropy_ordered_short");
+    return signal(0, "return_permutation_entropy_zero_direction_flat");
+  }
   if (spec.family === "return_semivariance_imbalance") {
     const period = integer(spec.parameters.period, "period");
     const threshold = finite(spec.parameters.imbalance_threshold, "imbalance_threshold");

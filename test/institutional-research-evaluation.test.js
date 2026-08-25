@@ -271,6 +271,48 @@ test("typed Stage 14 spec rejects unknown templates, mismatched features, rescue
   })), /threshold_percent_out_of_bounds/);
 });
 
+function permutationEntropyStrategy(parameters = { period: 9, embedding: 3, entropy_threshold: 0.85 }) {
+  return { id: "permutation-entropy-test", family: "return_permutation_entropy_trend", market: "BTC-USD", interval: "1h", parameters };
+}
+
+function permutationEntropyRows(returns) {
+  const closes = [100];
+  for (const value of returns) closes.push(closes.at(-1) * Math.exp(value));
+  return closes.map((close, index) => ({ market: "BTC-USD", interval: "1h", closed_at: new Date(Date.parse("2026-01-01T00:00:00.000Z") + index * 3600000).toISOString(), open: close, high: close * 1.001, low: close * 0.999, close, volume: 1 }));
+}
+
+test("return permutation entropy preregistration, ordinal complexity, parity, ties, and no-look-ahead", () => {
+  const validated = validateInstitutionalResearchSpec(typedSpec({ strategy: { template: "return_permutation_entropy_trend", feature_set_id: "close-return-permutation-entropy-v1", parameters: { period: 96, embedding: 3, entropy_threshold: 0.85 } } }));
+  assert.deepEqual(validated.strategy.parameters, { period: 96, embedding: 3, entropy_threshold: 0.85 });
+  assert.throws(() => validateInstitutionalResearchSpec(typedSpec({ strategy: { template: "return_permutation_entropy_trend", feature_set_id: "close-return-permutation-entropy-v1", parameters: { period: 96, embedding: 4, entropy_threshold: 0.85 } } })), /embedding_out_of_bounds/);
+
+  for (const [returns, expected] of [
+    [[0.001,0.002,0.003,0.004,0.005,0.006,0.007,0.008,0.009], 1],
+    [[-0.001,-0.002,-0.003,-0.004,-0.005,-0.006,-0.007,-0.008,-0.009], -1],
+  ]) {
+    const rows = permutationEntropyRows(returns);
+    const strategy = permutationEntropyStrategy();
+    assert.equal(compileDirectionalSignal(strategy, rows)(10, 0), expected);
+    assert.equal(directionalSignal(strategy, rows, 0).target_exposure, expected);
+  }
+
+  const noisyReturns = [0.001,0.003,0.002,0,0.002,0.004,0.001,0.003,0];
+  const noisyRows = permutationEntropyRows(noisyReturns);
+  const noisyStrategy = permutationEntropyStrategy();
+  assert.equal(compileDirectionalSignal(noisyStrategy, noisyRows)(10, 0), 0);
+  assert.equal(directionalSignal(noisyStrategy, noisyRows, 0).target_exposure, 0);
+
+  const ties = permutationEntropyRows(Array(9).fill(0));
+  assert.equal(compileDirectionalSignal(permutationEntropyStrategy(), ties)(10, 0), 0);
+  assert.equal(directionalSignal(permutationEntropyStrategy(), ties, 0).target_exposure, 0);
+
+  const future = permutationEntropyRows([0.001,0.002,0.003,0.004,0.005,0.006,0.007,0.008,0.009,0]);
+  const compiled = compileDirectionalSignal(permutationEntropyStrategy(), future);
+  const before = compiled(10, 0);
+  future[10] = { ...future[10], close: future[10].close * 100, high: future[10].high * 100, low: future[10].low * 100 };
+  assert.equal(compiled(10, 0), before);
+});
+
 function rangePositionStrategy(parameters = { period: 4, lower: 20, upper: 80 }) {
   return { id: "range-position-test", family: "range_position_state", market: "BTC-USD", interval: "1h", parameters };
 }

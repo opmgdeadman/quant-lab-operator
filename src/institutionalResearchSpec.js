@@ -131,6 +131,15 @@ export const INSTITUTIONAL_STRATEGY_TEMPLATES = deepFreeze({
       autocorr_threshold: numberRule(0.01, 0.95),
     },
   },
+  return_permutation_entropy_trend: {
+    family: "return_permutation_entropy_trend",
+    feature_set_id: "close-return-permutation-entropy-v1",
+    parameters: {
+      period: integerRule(12, 240),
+      embedding: integerRule(3, 3),
+      entropy_threshold: numberRule(0.1, 1),
+    },
+  },
   return_semivariance_imbalance: {
     family: "return_semivariance_imbalance",
     feature_set_id: "close-return-semivariance-imbalance-v1",

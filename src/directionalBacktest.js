@@ -430,6 +430,38 @@ export function compileDirectionalSignal(strategy, candles) {
     };
   }
 
+  if (family === "return_permutation_entropy_trend") {
+    const period = integer(parameters.period, "period");
+    const embedding = integer(parameters.embedding, "embedding");
+    const threshold = finite(parameters.entropy_threshold, "entropy_threshold");
+    if (embedding !== 3) throw new Error("return_permutation_entropy_embedding_invalid");
+    return (executionIndex) => {
+      if (executionIndex < period + 1) return 0;
+      const closes = rows.slice(executionIndex - period - 1, executionIndex).map((row) => row.close);
+      const returns = [];
+      for (let index = 1; index < closes.length; index += 1) returns.push(Math.log(closes[index] / closes[index - 1]));
+      const counts = new Map();
+      for (let index = 0; index <= returns.length - embedding; index += 1) {
+        const tuple = returns.slice(index, index + embedding);
+        const pattern = [...Array(embedding).keys()].sort((a, b) => tuple[a] - tuple[b] || a - b).join("");
+        counts.set(pattern, (counts.get(pattern) || 0) + 1);
+      }
+      const patternCount = returns.length - embedding + 1;
+      if (patternCount <= 0) return 0;
+      let entropy = 0;
+      for (const count of counts.values()) {
+        const probability = count / patternCount;
+        entropy -= probability * Math.log(probability);
+      }
+      const normalizedEntropy = entropy / Math.log(6);
+      if (!Number.isFinite(normalizedEntropy) || normalizedEntropy - EPSILON > threshold) return 0;
+      const totalReturn = Math.log(closes.at(-1) / closes[0]);
+      if (totalReturn > EPSILON) return 1;
+      if (totalReturn < -EPSILON) return -1;
+      return 0;
+    };
+  }
+
   if (family === "return_semivariance_imbalance") {
     const period = integer(parameters.period, "period");
     const threshold = finite(parameters.imbalance_threshold, "imbalance_threshold");
