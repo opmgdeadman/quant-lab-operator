@@ -20,28 +20,29 @@ Quant Lab is now governed as an industrial quantitative research organization ra
 
 Every scheduled operator run must use the maximum available execution budget to advance the active job through research, implementation, hostile validation, deployment, production verification, repair, or durable rejection. Status-only work is prohibited while a safe executable action exists.
 
-Stage 13 is complete and the directional institutional selection is the sole canonical production promotion authority. Stage 14 now has absolute engineering precedence: build the institutional hypothesis and research-portfolio control system while preserving the completed Stage 13 authority, independent judging, explicit all-cash behavior, and unchanged live-capital gates.
+Stage 13 is complete and the directional institutional selection remains the sole canonical production promotion authority. Stage 14's hypothesis registry, preregistration, hostile validation, rejection memory, and forward-evidence conveyor are now accepted as the research-control foundation; its existing survivors continue untouched paper evidence collection. Owner-approved Autonomous Revenue Engine v1 now gives absolute engineering precedence to Stage 15 multi-market data and financial-intelligence integration, followed by Stage 16 portfolio/risk and Stage 17 autonomous economic control. Engineering output is subordinate to validated economic progress, while all live-capital gates remain unchanged.
 
 ## Active Job
 
-Job ID: `stage-14-institutional-research-portfolio`
+Job ID: `stage-15-multi-market-data-and-feature-platform`
 Priority: P0
 State: ACTIVE
 
 Engineering objective:
 
-Turn Quant Lab from a fixed directional candidate program into a bounded institutional research portfolio that can continuously propose, preregister, test, reject, remember, and prioritize economically grounded hypotheses without weakening independent validation or creating fallback trading activity.
+Turn Quant Lab from a BTC-centric research institution into the market-agnostic execution and validation engine for Autonomous Revenue Engine v1. Signal Radar is the shared external-intelligence layer; Quant Lab owns economically grounded hypothesis formation, historical acquisition, hostile validation, forward paper evidence, portfolio construction, and revenue-readiness decisions across multiple market domains.
 
 Required scope:
 
-- create an immutable hypothesis registry with explicit economic mechanism, market premise, expected failure modes, research owner/function, and lineage;
-- preregister datasets, features, parameters, costs, partitions, judges, and promotion criteria before results are observed;
-- implement a bounded hypothesis lifecycle from proposed through admitted, testing, rejected, qualified, retired, or superseded without silent state changes;
-- make rejection memory durable so failed ideas cannot be recycled without materially new evidence;
-- add a research-throughput scorecard that measures useful evidence production, rejection discipline, queue age, and unresolved bottlenecks without rewarding raw experiment count;
-- add a bounded hypothesis factory that may generate new research candidates only inside declared families, dependency order, capacity limits, and independent hostile-validation rules;
-- prioritize research by expected information gain, plausible economic mechanism, independence, cost, scalability, portfolio need, and operational risk;
-- preserve the Stage 13 directional institutional authority, paper-main all-cash behavior, completed-candle-only data, no look-ahead, immutable lineage, duplicate protection, and unchanged live-capital gates while Stage 14 research capabilities are built.
+- define a universal instrument/venue/timeframe identity so research is not architecturally coupled to BTC-USD 1h;
+- ingest financially relevant Signal Radar observations through a source-provenance contract without making Radar a strategy engine;
+- establish an initial research universe spanning equities/ETFs, crypto, FX, futures/commodities, rates, and volatility where lawful accessible data exists;
+- build source and dataset lineage that records provider, timestamp, coverage, quality, cost, licensing/access constraints, and transformations;
+- prefer trustworthy existing historical datasets and APIs over slow self-collection; forward evidence remains prospective and untouched;
+- permit multiple research lanes to operate concurrently while keeping Git engineering authority singular and independent judging unchanged;
+- expand hypothesis origination beyond indicator parameter variants to external events, academic mechanisms, cross-market relationships, relative value, regime structure, execution effects, and failed-research synthesis;
+- measure every autonomous shift by economic progress: opportunity discovered, bad path killed, evidence quality improved, or opportunity universe expanded;
+- preserve Stage 13 production authority, Stage 14 immutable research evidence, paper-main all-cash behavior when no candidate qualifies, completed-data/no-look-ahead requirements, duplicate protection, and unchanged live-capital gates.
 
 Permanent boundaries:
 
@@ -243,13 +244,14 @@ Permanent boundaries:
 
 ## Current Action
 
-Return Stage 14 to materially distinct alpha research after terminal rejection of `btc-return-permutation-entropy-trend-96-3-085-v1` while preserving both historical survivors' untouched forward evidence.
+Implement and release Autonomous Revenue Engine v1 foundation while `btc-donchian-72-breakout-v1` and `btc-variance-ratio-trend-96-8-120-v1` continue untouched forward evidence collection in parallel. Do not spend the engineering queue on another BTC-only mechanism until this foundation is released.
 
-1. Inspect rejection memory and current open research capacity; do not rescue permutation entropy by changing its 96-hour period, embedding, or 0.85 threshold.
-2. Select and freeze one economically grounded mechanism materially distinct from the tested trend, breakout, momentum, volatility, mean-reversion, candle-pattern, calendar, autocorrelation, variance-ratio, jump, and permutation-entropy mechanisms.
-3. Preregister its mechanism, exact typed strategy shape, frozen 4,320-candle five-window dataset, institutional costs, independent judge, and evidence-integrity policy before observing performance; implement any required bounded capability only behind the stable five-tool gateway.
-4. Release only after exact-head CI, package-managed Timing Telemetry, Fleet Parity, Main, Recovery, and exact production alignment; then advance proposed -> admitted -> sealed evaluation -> testing -> independent judge unchanged.
-5. Allocate forward evidence only if every historical gate passes. Keep `btc-donchian-72-breakout-v1` and `btc-variance-ratio-trend-96-8-120-v1` untouched in parallel. Stage 13 remains sole production promotion authority and live capital remains disabled without evidence eligibility and explicit owner approval.
+1. Establish the Signal Radar -> Quant financial-intelligence contract: normalized event identity, source provenance, domain, asset/market tags, event time, observed time, novelty/confidence, routing targets, and immutable evidence reference. Signal Radar senses and preserves; Quant Lab hypothesizes and tests.
+2. Add market-agnostic research-universe definitions and instrument identity covering the first six domains: equities/ETFs, crypto, FX, futures/commodities, rates, and volatility. No live trading capability is added.
+3. Add historical-data source registry and acquisition metadata so Quant can query/download trustworthy existing datasets rather than waiting to self-collect history. Paid data remains prohibited without owner approval.
+4. Add parallel research-lane and economic-progress contracts: discovery, dataset scouting, hypothesis generation, adversarial validation, regime analysis, execution research, portfolio research, and failure synthesis. Raw experiment count is not a success metric.
+5. Add revenue scorecard/owner surface with market domains searched, source classes, hypotheses admitted/rejected/testing, forward survivors, paper P&L/drawdown, blockers, and distance to owner live-review eligibility. Every scheduled shift must classify economic progress as increased, neutral, or decreased with evidence.
+6. Preserve Stage 13 production authority, Stage 14 evidence immutability and forward collectors, independent hostile judging, paper-only boundaries, no-look-ahead rules, exact cost stress, and explicit cash allocation. Release only after exact-head CI, package-managed Timing Telemetry, Fleet Parity, Main, Recovery, and production alignment pass.
 
 ## Steady-State Operating Gate
 
@@ -280,10 +282,10 @@ Quant Lab remains healthy only while:
 11. `stage-11-professional-quant-console` — COMPLETE
 12. `stage-12-canonical-brand-identity` — COMPLETE
 13. `stage-13-directional-shadow-paper-research` — COMPLETE
-14. `stage-14-institutional-research-portfolio` — ACTIVE; hypothesis registry, preregistration, lifecycle, rejection memory, research-throughput scorecard, and bounded hypothesis factory
-15. `stage-15-multi-market-data-and-feature-platform` — PLANNED; justified market/timeframe expansion, feature lineage, provider reconciliation, regime evidence, and data-quality economics
-16. `stage-16-portfolio-execution-and-independent-risk` — PLANNED; correlation-aware paper portfolios, execution realism, capacity, risk veto, decay detection, and anomaly response
-17. `stage-17-autonomous-institutional-control-plane` — PLANNED; hourly CIO allocation across research, validation, engineering, portfolio, risk, and incident workstreams with durable metrics
+14. `stage-14-institutional-research-portfolio` — FOUNDATION COMPLETE / OPERATING; immutable research, hostile judging, rejection memory, and forward evidence continue without engineering precedence
+15. `stage-15-multi-market-data-and-feature-platform` — ACTIVE; Autonomous Revenue Engine v1 financial-intelligence ingress, market-agnostic instrument/data lineage, external historical acquisition, and multi-domain research universe
+16. `stage-16-portfolio-execution-and-independent-risk` — NEXT; correlation-aware multi-edge paper portfolios, execution realism, capacity, risk veto, decay detection, and anomaly response
+17. `stage-17-autonomous-institutional-control-plane` — NEXT; M-directed economic allocation across discovery, data, research, validation, portfolio, risk, and incident workstreams with durable revenue metrics
 18. `stage-18-owner-funded-live-readiness` — BLOCKED ON EVIDENCE AND OWNER APPROVAL; harden qualification, implement micro-live adapter, paper-shadow comparison, venue reconciliation, kill switches, and bounded scaling
 
 Only one engineering job may be ACTIVE. The institution may maintain multiple research hypotheses and evidence-collection workstreams in D1, but no competing Git engineering authority is permitted. New engineering work must be inserted into this queue with explicit precedence rather than stored in chat or D1 as a competing continuation source.
