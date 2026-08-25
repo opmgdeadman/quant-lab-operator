@@ -651,7 +651,7 @@ async function run_failure_intelligence_certification(inputs, context) {
     ...certification,
     paper_only: true,
     live_capital_enabled: false,
-    canonical_git_authority_unchanged: true,
+    mbrain_operational_authority_unchanged: true,
   };
 }
 
@@ -661,7 +661,7 @@ async function run_timing_telemetry_certification(inputs, context) {
     ...certification,
     paper_only: true,
     live_capital_enabled: false,
-    canonical_git_authority_unchanged: true,
+    mbrain_operational_authority_unchanged: true,
   };
 }
 
@@ -676,6 +676,16 @@ async function checkpoint_quant_lab_resume(inputs, context) {
 }
 
 async function read_continuation(inputs, context) {
+  return {
+    ok: true,
+    state: "external_authority",
+    authority: "m_brain_owner_approved_work_unit",
+    required_router: "M-BRAIN_Gateway.routeTurn",
+    work_unit_binding_required: true,
+    live_continuation_local: false,
+    git_continuation_authoritative: false,
+    d1_continuation_authoritative: false,
+  };
   const continuation = context.startupContext?.canonical_continuation || null;
   if (!continuation?.ok || !continuation.sha || !continuation.content) {
     return {

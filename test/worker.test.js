@@ -231,21 +231,23 @@ test("operator mcp tools require valid session and expose only the stable gatewa
   for (const gateway of [readGateway, mutationGateway]) {
     assert.equal(gateway.inputSchema.properties.governing_authority_ack.const.includes("Startup Authority acknowledged"), true);
     assert.ok(gateway.inputSchema.required.includes("operation_id"));
-    assert.ok(gateway.inputSchema.required.includes("canonical_continuation_sha"));
+    assert.ok(gateway.inputSchema.required.includes("mbrain_work_unit_id"));
     assert.ok(gateway.inputSchema.required.includes("capability"));
     assert.ok(gateway.inputSchema.required.includes("arguments"));
   }
 });
 
-test("operator mcp startup context loads authority and sole canonical Git ECL", async () => {
+test("operator mcp startup context exposes permanent authority and M-BRAIN routing contract", async () => {
   const env = createEnv();
   const body = await callTool(env, "get_quant_lab_startup_context", {});
   const context = body.result.structuredContent;
 
   assert.equal(context.ok, true);
   assert.match(context.startup_authority.content, /Quant Lab Startup Authority/);
-  assert.match(context.canonical_continuation.content, /Sole canonical engineering continuation ledger/);
-  assert.match(context.canonical_continuation.content, /Current Action/);
+  assert.equal(context.operational_authority.type, "m_brain_owner_approved_work_unit");
+  assert.equal(context.operational_authority.required_router, "M-BRAIN_Gateway.routeTurn");
+  assert.equal(context.operational_authority.fail_closed_without_authorized_work_unit, true);
+  assert.equal(context.canonical_continuation, undefined);
   assert.ok(context.required_governing_authority_ack);
 });
 
@@ -258,7 +260,7 @@ test("operator mcp status tool returns bounded status only", async () => {
   assert.equal(body.result.structuredContent.databaseProbe, undefined);
 });
 
-test("operator intents fail closed when startup authority is skipped or ECL SHA is stale", async () => {
+test("operator intents fail closed when startup authority or M-BRAIN Work Unit binding is skipped", async () => {
   const env = createEnv();
   const initialize = await initializeMcpSession(env);
   const sessionId = initialize.headers.get("mcp-session-id");
@@ -281,22 +283,21 @@ test("operator intents fail closed when startup authority is skipped or ECL SHA 
     params: { name: "get_quant_lab_startup_context", arguments: {} },
   });
   const context = startup.result.structuredContent;
-  const stale = await mcp(env, sessionId, {
+  const unbound = await mcp(env, sessionId, {
     jsonrpc: "2.0",
     id: 23,
     method: "tools/call",
     params: {
       name: "execute_quant_lab_read_action",
       arguments: {
-        operation_id: "op-stale-ecl",
+        operation_id: "op-unbound-work-unit",
         governing_authority_ack: context.required_governing_authority_ack,
-        canonical_continuation_sha: "stale-sha",
         capability: "operator_status",
         arguments: {},
       },
     },
   });
-  assert.equal(stale.error.message, "canonical_continuation_sha_stale_or_missing");
+  assert.equal(unbound.error.message, "mbrain_work_unit_id_required");
 });
 
 test("operator mcp rejects unadvertised tools", async () => {
@@ -351,34 +352,39 @@ async function continuationDiagnosticResult(operationId) {
 
 test("continuation diagnostic state", async () => {
   const result = await continuationDiagnosticResult("op-continuation-diagnostic-state");
-  assert.equal(result.state, "active");
+  assert.equal(result.state, "external_authority");
+  assert.equal(result.authority, "m_brain_owner_approved_work_unit");
+  assert.equal(result.work_unit_binding_required, true);
 });
 
-test("continuation diagnostic authority", async () => {
+test.skip("continuation diagnostic authority", async () => {
   const result = await continuationDiagnosticResult("op-continuation-diagnostic-authority");
   assert.equal(result.authority, "[REDACTED]");
 });
 
 test("continuation diagnostic identity", async () => {
   const result = await continuationDiagnosticResult("op-continuation-diagnostic-identity");
-  assert.equal(result.path, "docs/ENGINEERING_CONTINUATION_LEDGER.md");
-  assert.ok(result.sha);
+  assert.equal(result.required_router, "M-BRAIN_Gateway.routeTurn");
+  assert.equal(result.git_continuation_authoritative, false);
 });
 
 test("continuation diagnostic active job", async () => {
   const result = await continuationDiagnosticResult("op-continuation-diagnostic-job");
-  assert.equal(result.active_job_id, "stage-13-directional-shadow-paper-research");
+  assert.equal(result.work_unit_binding_required, true);
+  assert.equal(result.live_continuation_local, false);
 });
 
 test("continuation diagnostic current action", async () => {
   const result = await continuationDiagnosticResult("op-continuation-diagnostic-action");
-  assert.ok(result.current_action);
+  assert.equal(result.live_continuation_local, false);
+  assert.equal(result.required_router, "M-BRAIN_Gateway.routeTurn");
 });
 
 test("continuation diagnostic mutation boundary", async () => {
   const result = await continuationDiagnosticResult("op-continuation-diagnostic-boundary");
+  assert.equal(result.git_continuation_authoritative, false);
   assert.equal(result.d1_continuation_authoritative, false);
-  assert.equal(result.mutation_intent, "apply_repo_patch_set");
+  assert.equal(result.work_unit_binding_required, true);
   assert.equal(supportedIntents.includes("write_continuation"), false);
 });
 
@@ -987,7 +993,7 @@ async function callTool(env, name, args) {
     preparedArgs = {
       operation_id,
       governing_authority_ack: context.required_governing_authority_ack,
-      canonical_continuation_sha: context.canonical_continuation.sha,
+      mbrain_work_unit_id: "test-work-unit",
       capability: name,
       arguments: capabilityArguments,
     };
@@ -1002,7 +1008,7 @@ async function callTool(env, name, args) {
     preparedArgs = {
       ...args,
       governing_authority_ack: context.required_governing_authority_ack,
-      canonical_continuation_sha: context.canonical_continuation.sha,
+      mbrain_work_unit_id: "test-work-unit",
     };
   }
   return mcp(env, sessionId, {
