@@ -119,6 +119,8 @@ test("bipower jump continuation preregistration, direction, degeneracy, parity, 
   const positive = makeRows([0.001, 0.001, 0.08, 0.001, 0.001]);
   const negative = makeRows([-0.001, -0.001, -0.08, -0.001, -0.001]);
   const below = makeRows([0.01, 0.01, 0.01, 0.01, 0.01]);
+  const exactRoot = ((0.75 * Math.PI) - Math.sqrt((0.75 * Math.PI) ** 2 - 4)) / 2;
+  const exact = makeRows([0.01, 0.01 * exactRoot, 0, 0, 0]);
   const degenerate = makeRows([0, 0, 0, 0, 0]);
   assert.equal(compileDirectionalSignal(strategy, positive)(period, 0), 1);
   assert.equal(directionalSignal(strategy, positive.slice(0, period), 0).target_exposure, 1);
@@ -126,6 +128,8 @@ test("bipower jump continuation preregistration, direction, degeneracy, parity, 
   assert.equal(directionalSignal(strategy, negative.slice(0, period), 0).target_exposure, -1);
   assert.equal(compileDirectionalSignal(strategy, below)(period, 0), 0);
   assert.equal(directionalSignal(strategy, below.slice(0, period), 0).target_exposure, 0);
+  assert.equal(compileDirectionalSignal(strategy, exact)(period, 0), 1);
+  assert.equal(directionalSignal(strategy, exact.slice(0, period), 0).target_exposure, 1);
   assert.equal(compileDirectionalSignal(strategy, degenerate)(period, 0), 0);
   assert.equal(directionalSignal(strategy, degenerate.slice(0, period), 0).target_exposure, 0);
   const futureChanged = positive.map((row) => ({ ...row }));
