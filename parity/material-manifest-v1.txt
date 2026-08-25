@@ -26,6 +26,7 @@ package-lock.json
 package.json
 parity/material-manifest-v1.txt
 scripts/deploy-worker.mjs
+src/autonomousRevenueEngine.js
 src/baselineBench.js
 src/brandAndroid192Asset.js
 src/brandAndroid512Asset.js
