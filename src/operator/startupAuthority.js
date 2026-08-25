@@ -2,33 +2,30 @@ import { readRepoContent } from "./githubApi.js";
 import { repoSnapshots } from "./repoSnapshots.js";
 
 export const STARTUP_AUTHORITY_PATH = "docs/QUANT_LAB_STARTUP_AUTHORITY.md";
-export const ENGINEERING_CONTINUATION_PATH = "docs/ENGINEERING_CONTINUATION_LEDGER.md";
-export const REQUIRED_GOVERNING_AUTHORITY_ACK = "Quant Lab Startup Authority acknowledged. Paper only; no live capital without explicit owner approval. Execute only the canonical Git ECL current action.";
+export const REQUIRED_GOVERNING_AUTHORITY_ACK = "Quant Lab Startup Authority acknowledged. Execute only the M-BRAIN-authorized active Work Unit while preserving permanent Quant safety boundaries.";
 
 export async function loadQuantStartupContext(env) {
-  const [authority, continuation] = await Promise.all([
-    loadCanonicalDocument(env, STARTUP_AUTHORITY_PATH),
-    loadCanonicalDocument(env, ENGINEERING_CONTINUATION_PATH),
-  ]);
+  const authority = await loadCanonicalDocument(env, STARTUP_AUTHORITY_PATH);
 
   const errors = [];
   if (!authority.ok) errors.push(`${STARTUP_AUTHORITY_PATH}:${authority.error}`);
-  if (!continuation.ok) errors.push(`${ENGINEERING_CONTINUATION_PATH}:${continuation.error}`);
   if (authority.ok && !authority.content.includes("# Quant Lab Startup Authority")) {
     errors.push(`${STARTUP_AUTHORITY_PATH}:invalid_document_identity`);
   }
-  if (continuation.ok && !continuation.content.includes("Authority: Sole canonical engineering continuation ledger")) {
-    errors.push(`${ENGINEERING_CONTINUATION_PATH}:invalid_continuation_authority`);
-  }
-  if (continuation.ok && !continuation.content.includes("## Current Action")) {
-    errors.push(`${ENGINEERING_CONTINUATION_PATH}:missing_current_action`);
+  if (authority.ok && !authority.content.includes("## M-BRAIN Operational Authority")) {
+    errors.push(`${STARTUP_AUTHORITY_PATH}:missing_m_brain_operational_authority`);
   }
 
   return {
     ok: errors.length === 0,
     required_governing_authority_ack: REQUIRED_GOVERNING_AUTHORITY_ACK,
     startup_authority: authority.ok ? authority : null,
-    canonical_continuation: continuation.ok ? continuation : null,
+    operational_authority: {
+      type: "m_brain_owner_approved_work_unit",
+      required_router: "M-BRAIN_Gateway.routeTurn",
+      fail_closed_without_authorized_work_unit: true,
+      proof_contract_grants_execution_authority: false,
+    },
     errors,
   };
 }
