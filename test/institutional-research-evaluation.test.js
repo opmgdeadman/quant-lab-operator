@@ -104,6 +104,35 @@ test("variance ratio trend preregistration, exact 1.20 boundary, direction, dege
   assert.equal(compileDirectionalSignal(strategy, futureChanged)(period, 0), compileDirectionalSignal(strategy, positive)(period, 0));
 });
 
+test("bipower jump continuation preregistration, direction, degeneracy, parity, threshold and no-look-ahead", () => {
+  const spec = typedSpec({ strategy: { template: "bipower_jump_continuation", feature_set_id: "close-bipower-jump-v1", parameters: { period: 48, jump_ratio_threshold: 1.5 } } });
+  const valid = validateInstitutionalResearchSpec(spec);
+  assert.deepEqual(valid.strategy.parameters, { period: 48, jump_ratio_threshold: 1.5 });
+
+  const period = 6;
+  const makeRows = (logReturns) => {
+    const closes = [100];
+    for (const value of logReturns) closes.push(closes.at(-1) * Math.exp(value));
+    return [...closes, closes.at(-1)].map((close, index) => ({ market: "BTC-USD", interval: "1h", closed_at: new Date(Date.parse("2026-04-03T00:00:00.000Z") + index * 3600000).toISOString(), open: close, high: close, low: close, close, volume: 1 }));
+  };
+  const strategy = { id: "bipower-test", family: "bipower_jump_continuation", market: "BTC-USD", interval: "1h", parameters: { period, jump_ratio_threshold: 1.5 } };
+  const positive = makeRows([0.001, 0.001, 0.08, 0.001, 0.001]);
+  const negative = makeRows([-0.001, -0.001, -0.08, -0.001, -0.001]);
+  const below = makeRows([0.01, 0.01, 0.01, 0.01, 0.01]);
+  const degenerate = makeRows([0, 0, 0, 0, 0]);
+  assert.equal(compileDirectionalSignal(strategy, positive)(period, 0), 1);
+  assert.equal(directionalSignal(strategy, positive.slice(0, period), 0).target_exposure, 1);
+  assert.equal(compileDirectionalSignal(strategy, negative)(period, 0), -1);
+  assert.equal(directionalSignal(strategy, negative.slice(0, period), 0).target_exposure, -1);
+  assert.equal(compileDirectionalSignal(strategy, below)(period, 0), 0);
+  assert.equal(directionalSignal(strategy, below.slice(0, period), 0).target_exposure, 0);
+  assert.equal(compileDirectionalSignal(strategy, degenerate)(period, 0), 0);
+  assert.equal(directionalSignal(strategy, degenerate.slice(0, period), 0).target_exposure, 0);
+  const futureChanged = positive.map((row) => ({ ...row }));
+  futureChanged[period] = { ...futureChanged[period], open: 1, high: 1, low: 1, close: 1 };
+  assert.equal(compileDirectionalSignal(strategy, futureChanged)(period, 0), compileDirectionalSignal(strategy, positive)(period, 0));
+});
+
 test("linear slope t-score trend preregistration, exact boundaries, degenerate dispersion, parity, and no-look-ahead", () => {
   const spec = typedSpec({ strategy: { template: "linear_slope_tscore_trend", feature_set_id: "close-linear-slope-tscore-v1", parameters: { period: 48, t_threshold: 2 } } });
   const valid = validateInstitutionalResearchSpec(spec);

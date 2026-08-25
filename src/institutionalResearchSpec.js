@@ -91,6 +91,14 @@ export const INSTITUTIONAL_STRATEGY_TEMPLATES = deepFreeze({
       if (parameters.horizon >= parameters.period - 1) throw new Error("institutional_spec_variance_ratio_horizon_invalid");
     },
   },
+  bipower_jump_continuation: {
+    family: "bipower_jump_continuation",
+    feature_set_id: "close-bipower-jump-v1",
+    parameters: {
+      period: integerRule(4, 240),
+      jump_ratio_threshold: numberRule(1, 10),
+    },
+  },
   close_location_pressure: {
     family: "close_location_pressure",
     feature_set_id: "ohlc-close-location-pressure-v1",

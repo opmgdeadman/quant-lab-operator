@@ -504,6 +504,28 @@ export function directionalSignal(spec, candles, currentExposure = 0) {
     if (totalReturn < -EPSILON) return signal(-TARGET_EXPOSURE, "variance_ratio_persistent_short");
     return signal(0, "variance_ratio_zero_direction_flat");
   }
+  if (spec.family === "bipower_jump_continuation") {
+    const period = integer(spec.parameters.period, "period");
+    const threshold = finite(spec.parameters.jump_ratio_threshold, "jump_ratio_threshold");
+    if (rows.length < period) return signal(current, "bipower_jump_insufficient_history");
+    const window = rows.slice(-period);
+    const returns = [];
+    for (let index = 1; index < period; index += 1) returns.push(Math.log(window[index].close / window[index - 1].close));
+    let realizedVariance = 0;
+    let bipowerSum = 0;
+    for (let index = 0; index < returns.length; index += 1) {
+      realizedVariance += returns[index] * returns[index];
+      if (index > 0) bipowerSum += Math.abs(returns[index]) * Math.abs(returns[index - 1]);
+    }
+    const bipowerVariation = (Math.PI / 2) * bipowerSum;
+    if (!Number.isFinite(realizedVariance) || !Number.isFinite(bipowerVariation) || bipowerVariation <= EPSILON) return signal(0, "bipower_jump_degenerate_flat");
+    const ratio = realizedVariance / bipowerVariation;
+    if (!Number.isFinite(ratio) || ratio + EPSILON < threshold) return signal(0, "bipower_jump_below_threshold_flat");
+    const totalReturn = Math.log(window[period - 1].close / window[0].close);
+    if (totalReturn > EPSILON) return signal(TARGET_EXPOSURE, "bipower_jump_positive_continuation_long");
+    if (totalReturn < -EPSILON) return signal(-TARGET_EXPOSURE, "bipower_jump_negative_continuation_short");
+    return signal(0, "bipower_jump_zero_direction_flat");
+  }
   if (spec.family === "directional_crowding_reversal") {
     const period = integer(spec.parameters.period, "period");
     const upper = finite(spec.parameters.upper_fraction, "upper_fraction");

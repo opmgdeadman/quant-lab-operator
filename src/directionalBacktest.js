@@ -160,6 +160,32 @@ export function compileDirectionalSignal(strategy, candles) {
     };
   }
 
+  if (family === "bipower_jump_continuation") {
+    const period = integer(parameters.period, "period");
+    const threshold = finite(parameters.jump_ratio_threshold, "jump_ratio_threshold");
+    return (executionIndex, currentExposure = 0) => {
+      const current = clamp(currentExposure);
+      if (executionIndex < period) return current;
+      const start = executionIndex - period;
+      const returns = [];
+      for (let index = start + 1; index < executionIndex; index += 1) returns.push(Math.log(rows[index].close / rows[index - 1].close));
+      let realizedVariance = 0;
+      let bipowerSum = 0;
+      for (let index = 0; index < returns.length; index += 1) {
+        realizedVariance += returns[index] * returns[index];
+        if (index > 0) bipowerSum += Math.abs(returns[index]) * Math.abs(returns[index - 1]);
+      }
+      const bipowerVariation = (Math.PI / 2) * bipowerSum;
+      if (!Number.isFinite(realizedVariance) || !Number.isFinite(bipowerVariation) || bipowerVariation <= EPSILON) return 0;
+      const ratio = realizedVariance / bipowerVariation;
+      if (!Number.isFinite(ratio) || ratio + EPSILON < threshold) return 0;
+      const totalReturn = Math.log(rows[executionIndex - 1].close / rows[start].close);
+      if (totalReturn > EPSILON) return 1;
+      if (totalReturn < -EPSILON) return -1;
+      return 0;
+    };
+  }
+
   if (family === "close_location_pressure") {
     const period = integer(parameters.period, "period");
     const threshold = finite(parameters.pressure_threshold, "pressure_threshold");
