@@ -134,6 +134,32 @@ export function compileDirectionalSignal(strategy, candles) {
     };
   }
 
+  if (family === "variance_ratio_trend") {
+    const period = integer(parameters.period, "period");
+    const horizon = integer(parameters.horizon, "horizon");
+    const threshold = finite(parameters.vr_threshold, "vr_threshold");
+    return (executionIndex, currentExposure = 0) => {
+      const current = clamp(currentExposure);
+      if (executionIndex < period) return current;
+      const start = executionIndex - period;
+      const oneHour = [];
+      for (let index = start + 1; index < executionIndex; index += 1) oneHour.push(Math.log(rows[index].close / rows[index - 1].close));
+      const oneMean = oneHour.reduce((sum, value) => sum + value, 0) / oneHour.length;
+      const oneVariance = oneHour.reduce((sum, value) => sum + (value - oneMean) ** 2, 0) / oneHour.length;
+      if (!Number.isFinite(oneVariance) || oneVariance <= EPSILON) return 0;
+      const horizonReturns = [];
+      for (let index = start + horizon; index < executionIndex; index += 1) horizonReturns.push(Math.log(rows[index].close / rows[index - horizon].close));
+      const horizonMean = horizonReturns.reduce((sum, value) => sum + value, 0) / horizonReturns.length;
+      const horizonVariance = horizonReturns.reduce((sum, value) => sum + (value - horizonMean) ** 2, 0) / horizonReturns.length;
+      const ratio = horizonVariance / (horizon * oneVariance);
+      if (!Number.isFinite(ratio) || ratio + EPSILON < threshold) return 0;
+      const totalReturn = Math.log(rows[executionIndex - 1].close / rows[start].close);
+      if (totalReturn > EPSILON) return 1;
+      if (totalReturn < -EPSILON) return -1;
+      return 0;
+    };
+  }
+
   if (family === "close_location_pressure") {
     const period = integer(parameters.period, "period");
     const threshold = finite(parameters.pressure_threshold, "pressure_threshold");

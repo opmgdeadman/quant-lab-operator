@@ -79,6 +79,18 @@ export const INSTITUTIONAL_STRATEGY_TEMPLATES = deepFreeze({
       t_threshold: numberRule(0.5, 10),
     },
   },
+  variance_ratio_trend: {
+    family: "variance_ratio_trend",
+    feature_set_id: "close-variance-ratio-trend-v1",
+    parameters: {
+      period: integerRule(7, 240),
+      horizon: integerRule(2, 24),
+      vr_threshold: numberRule(1, 5),
+    },
+    cross_validate(parameters) {
+      if (parameters.horizon >= parameters.period - 1) throw new Error("institutional_spec_variance_ratio_horizon_invalid");
+    },
+  },
   close_location_pressure: {
     family: "close_location_pressure",
     feature_set_id: "ohlc-close-location-pressure-v1",

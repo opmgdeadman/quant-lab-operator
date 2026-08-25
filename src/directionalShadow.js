@@ -482,6 +482,28 @@ export function directionalSignal(spec, candles, currentExposure = 0) {
     if (tScore - EPSILON <= -threshold) return signal(-TARGET_EXPOSURE, "linear_slope_tscore_negative_short");
     return signal(0, "linear_slope_tscore_interior_flat");
   }
+  if (spec.family === "variance_ratio_trend") {
+    const period = integer(spec.parameters.period, "period");
+    const horizon = integer(spec.parameters.horizon, "horizon");
+    const threshold = finite(spec.parameters.vr_threshold, "vr_threshold");
+    if (rows.length < period) return signal(current, "variance_ratio_insufficient_history");
+    const window = rows.slice(-period);
+    const oneHour = [];
+    for (let index = 1; index < period; index += 1) oneHour.push(Math.log(window[index].close / window[index - 1].close));
+    const oneMean = mean(oneHour);
+    const oneVariance = mean(oneHour.map((value) => (value - oneMean) ** 2));
+    if (!Number.isFinite(oneVariance) || oneVariance <= EPSILON) return signal(0, "variance_ratio_degenerate_flat");
+    const horizonReturns = [];
+    for (let index = horizon; index < period; index += 1) horizonReturns.push(Math.log(window[index].close / window[index - horizon].close));
+    const horizonMean = mean(horizonReturns);
+    const horizonVariance = mean(horizonReturns.map((value) => (value - horizonMean) ** 2));
+    const ratio = horizonVariance / (horizon * oneVariance);
+    if (!Number.isFinite(ratio) || ratio + EPSILON < threshold) return signal(0, "variance_ratio_below_threshold_flat");
+    const totalReturn = Math.log(window[period - 1].close / window[0].close);
+    if (totalReturn > EPSILON) return signal(TARGET_EXPOSURE, "variance_ratio_persistent_long");
+    if (totalReturn < -EPSILON) return signal(-TARGET_EXPOSURE, "variance_ratio_persistent_short");
+    return signal(0, "variance_ratio_zero_direction_flat");
+  }
   if (spec.family === "directional_crowding_reversal") {
     const period = integer(spec.parameters.period, "period");
     const upper = finite(spec.parameters.upper_fraction, "upper_fraction");
