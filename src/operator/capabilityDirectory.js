@@ -360,6 +360,8 @@ export const capabilityDirectory = [
               efficiency_threshold: { type: "number", minimum: 0.05, maximum: 1 },
               acceleration_threshold_percent: { type: "number", minimum: 0.05, maximum: 10 },
               z_threshold: { type: "number", minimum: 0.5, maximum: 5 },
+              upper_fraction: { type: "number", minimum: 0.5, maximum: 0.95 },
+              lower_fraction: { type: "number", minimum: 0.05, maximum: 0.5 },
               lower_quantile: { type: "number", minimum: 0.01, maximum: 0.49 },
               upper_quantile: { type: "number", minimum: 0.51, maximum: 0.99 },
               streak_length: { type: "integer", minimum: 2, maximum: 12 },

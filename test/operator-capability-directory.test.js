@@ -113,7 +113,7 @@ test("institutional hypothesis schema stays strict internally while the public M
   const parameters = registration.input_schema.properties.hypothesis.properties.preregistration.properties.strategy.properties.parameters;
   assert.deepEqual(parameters.required, []);
   assert.equal(parameters.additionalProperties, false);
-  for (const name of ["fast", "slow", "lookback", "regime_lookback", "regime_period", "threshold_percent", "period", "adx_threshold", "multiplier", "lower", "upper", "exit_lower", "exit_upper", "deviations"]) {
+  for (const name of ["fast", "slow", "lookback", "regime_lookback", "regime_period", "threshold_percent", "period", "adx_threshold", "upper_fraction", "lower_fraction", "multiplier", "lower", "upper", "exit_lower", "exit_upper", "deviations"]) {
     assert.ok(parameters.properties[name]);
   }
   const tools = publicTools({ type: "object" }, { type: "object" }, { type: "object" });
