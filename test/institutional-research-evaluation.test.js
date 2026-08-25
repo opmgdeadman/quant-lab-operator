@@ -114,8 +114,9 @@ test("volatility autocorrelation trend preregistration, clustering threshold, di
     for (const value of logReturns) closes.push(closes.at(-1) * Math.exp(value));
     return [...closes, closes.at(-1)].map((close, index) => ({ market: "BTC-USD", interval: "1h", closed_at: new Date(Date.parse("2026-04-04T00:00:00.000Z") + index * 3600000).toISOString(), open: close, high: close, low: close, close, volume: 1 }));
   };
-  const clusteredPositive = makeRows([0.001,0.002,0.004,0.008,0.004,0.002,0.001,0.002,0.004,0.008,0.004,0.002,0.001]);
-  const clusteredNegative = makeRows([-0.001,-0.002,-0.004,-0.008,-0.004,-0.002,-0.001,-0.002,-0.004,-0.008,-0.004,-0.002,-0.001]);
+  const clusteredPositive = makeRows([0.001,0.001,0.001,0.008,0.008,0.008,0.001,0.001,0.001,0.008,0.008,0.008,0.001]);
+  const clusteredNegative = makeRows([-0.001,-0.001,-0.001,-0.008,-0.008,-0.008,-0.001,-0.001,-0.001,-0.008,-0.008,-0.008,-0.001]);
+  const belowThreshold = makeRows([0.001,0.002,0.004,0.008,0.004,0.002,0.001,0.002,0.004,0.008,0.004,0.002,0.001]);
   const degenerate = makeRows(Array(13).fill(0));
   const strategy = { id: "vol-ac-test", family: "volatility_autocorrelation_trend", market: "BTC-USD", interval: "1h", parameters: { period, autocorr_threshold: 0.15 } };
   const executionIndex = clusteredPositive.length - 1;
@@ -123,6 +124,8 @@ test("volatility autocorrelation trend preregistration, clustering threshold, di
   assert.equal(directionalSignal(strategy, clusteredPositive.slice(0, executionIndex), 0).target_exposure, 1);
   assert.equal(compileDirectionalSignal(strategy, clusteredNegative)(executionIndex, 0), -1);
   assert.equal(directionalSignal(strategy, clusteredNegative.slice(0, executionIndex), 0).target_exposure, -1);
+  assert.equal(compileDirectionalSignal(strategy, belowThreshold)(executionIndex, 0), 0);
+  assert.equal(directionalSignal(strategy, belowThreshold.slice(0, executionIndex), 0).target_exposure, 0);
   assert.equal(compileDirectionalSignal(strategy, degenerate)(degenerate.length - 1, 0), 0);
   assert.equal(directionalSignal(strategy, degenerate.slice(0, -1), 0).target_exposure, 0);
   const futureChanged = clusteredPositive.map((row) => ({ ...row }));
