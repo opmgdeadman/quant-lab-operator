@@ -1,11 +1,13 @@
 # Quant Lab Startup Authority
 
-Last updated: 2026-08-05
+Last updated: 2026-08-25
 State: ACTIVE
 
 ## Read First
 
-This document is the mandatory startup authority for Quant Lab. The full institutional doctrine is defined in `docs/QUANT_LAB_INSTITUTIONAL_OPERATING_SYSTEM.md`. The sole canonical engineering queue remains `docs/ENGINEERING_CONTINUATION_LEDGER.md`.
+This document is the mandatory permanent startup authority for Quant Lab. The full institutional doctrine is defined in `docs/QUANT_LAB_INSTITUTIONAL_OPERATING_SYSTEM.md`.
+
+Live operational continuation, active work, lifecycle state, approvals, and exact next action are governed by the owner-approved active Quant Lab Work Unit in M-BRAIN. Git stores code and permanent engineering documentation; it does not maintain a competing live work queue.
 
 ## Institutional Mission
 
@@ -41,21 +43,31 @@ Owner involvement is required only for:
 - maximum capital-at-risk limits and changes;
 - destructive or irreversible actions with material external consequences.
 
+## M-BRAIN Operational Authority
+
+M-BRAIN is the sole live operational continuation and governance plane for Quant Lab.
+
+- The active owner-approved Quant Work Unit defines the current objective, scope, lifecycle phase, current action, blockers, verification boundary, and exact next action.
+- The Quant resume capsule and Current-State surfaces are durable handoff/currentness views of that operational state; they may not create a competing active job.
+- A scheduled Quant operator wake must bind `routeTurn` to its active Quant Work Unit before any material action. Material execution is allowed only when M-BRAIN returns an authorized execution route for that Work Unit.
+- The Scheduled Operator Proof Contract is audit and receipt doctrine only. It does not grant execution authority.
+- Tool Dispatch Integrity, Failure Intelligence, independent validation, risk vetoes, and this permanent Startup Authority remain mandatory downstream.
+
 ## Hourly Operator Contract
 
 The scheduled Quant Lab operator is an active production shift, not a watcher or status reporter.
 
 On every hourly invocation it must:
 
-1. load this authority and the sole canonical Engineering Continuation Ledger;
+1. load this permanent authority, load the active Quant M-BRAIN Work Unit/current state, and bind `routeTurn` to that Work Unit before material execution;
 2. inspect production truth, evidence, incidents, and blockers;
-3. choose the highest-value safe action using expected information gain, economic potential, dependency order, and risk;
-4. execute research, implementation, validation, deployment, production commissioning, repair, or evidence recording;
+3. choose the highest-value safe action within the active Work Unit using expected information gain, economic potential, dependency order, and risk;
+4. execute research, implementation, validation, deployment, production commissioning, repair, or evidence recording when the M-BRAIN route authorizes it;
 5. use the full available run and tool budget while productive bounded work remains;
 6. attack its own result adversarially before promotion;
-7. preserve completed proof and establish the exact next executable action.
+7. preserve completed proof and establish the exact next executable action in M-BRAIN.
 
-A run that merely reports status while productive work exists is an operating failure.
+A run that merely reports status while productive authorized work exists is an operating failure.
 
 Every run must attempt to produce new evidence, a stronger capability, a verified repair, a validated deployment, a formally killed bad idea, a justified portfolio decision, or a promotion that passed unchanged gates.
 
@@ -112,16 +124,17 @@ No date forces promotion. Failed evidence extends paper research rather than low
 
 Every fresh Quant Lab operating session must load and acknowledge this authority before engineering, research, deployment, or trading actions.
 
-After startup authority is loaded, the operator must read the sole canonical Engineering Continuation Ledger and execute only its active job and current action while applying the broader institutional doctrine.
+For live work, the operator must then resolve the active Quant Work Unit through M-BRAIN and execute only the M-BRAIN-authorized action inside that Work Unit. If no active authorized Work Unit exists, material execution fails closed rather than reconstructing an action from Git history, chat context, memory, website state, or runtime telemetry.
 
-The operator must not substitute chat context, memory, website state, runtime telemetry, or owner excitement for canonical authority and evidence.
+The operator must not substitute chat context, memory, website state, runtime telemetry, archived ledgers, or owner excitement for canonical authority and evidence.
 
 ## Source Hierarchy and Required Separation
 
-- Mandatory startup authority: this document.
+- Permanent startup authority: this document.
 - Full mission and institutional operating doctrine: `docs/QUANT_LAB_INSTITUTIONAL_OPERATING_SYSTEM.md`.
-- Engineering continuity, active job, and queue: `docs/ENGINEERING_CONTINUATION_LEDGER.md`.
+- Live operational continuation, active work, lifecycle, approvals, queue position, blockers, and exact next action: M-BRAIN owner-approved Quant Work Unit plus M-BRAIN resume/Current-State projections.
 - Runtime state, receipts, market data, portfolios, hypotheses, experiments, incidents, and telemetry: D1.
+- Git repository: source code, migrations, tests, and permanent/reference engineering documentation.
 - Website: operating console and owner visibility layer backed by runtime state.
 
-D1 continuation summaries and receipts are operational telemetry. They may support execution but may not override the Git-based Engineering Continuation Ledger.
+No Git ledger, D1 continuation summary, receipt, website state, chat context, or model memory may override the active M-BRAIN Work Unit. Historical continuation ledgers may be retained only as explicitly superseded archival evidence.
