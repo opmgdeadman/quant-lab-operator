@@ -541,6 +541,57 @@ test("ema pullback historical signal uses only pre-execution candle state", () =
   assert.equal(compileDirectionalSignal(strategy, mutated)(executionIndex, 0), baseline);
 });
 
+function bodyPressureTrendSpec() {
+  return typedSpec({
+    strategy: {
+      template: "body_pressure_trend",
+      feature_set_id: "ohlc-body-pressure-v1",
+      parameters: { period: 24, pressure_threshold: 0.20 },
+    },
+  });
+}
+
+test("body pressure trend preregistration is exact and bounded", () => {
+  const validated = validateInstitutionalResearchSpec(bodyPressureTrendSpec());
+  assert.equal(validated.strategy.template, "body_pressure_trend");
+  assert.deepEqual(validated.strategy.parameters, { period: 24, pressure_threshold: 0.20 });
+  assert.throws(() => validateInstitutionalResearchSpec(typedSpec({
+    strategy: {
+      template: "body_pressure_trend",
+      feature_set_id: "ohlc-body-pressure-v1",
+      parameters: { period: 24, pressure_threshold: 1.1 },
+    },
+  })), /pressure_threshold_out_of_bounds/);
+});
+
+test("body pressure trend historical and forward paths agree at exact boundaries and ignore execution candle", () => {
+  const start = Date.parse("2026-01-01T00:00:00.000Z");
+  const buildRows = (body) => Array.from({ length: 25 }, (_, index) => ({
+    closed_at: new Date(start + index * 3600000).toISOString(),
+    open: 100,
+    high: 110,
+    low: 90,
+    close: index < 24 ? 100 + body : 100,
+    volume: 100,
+  }));
+  const strategy = buildStrategyFromResearchSpec("typed-body-pressure-001", bodyPressureTrendSpec());
+  const longRows = buildRows(4);
+  const shortRows = buildRows(-4);
+  assert.equal(compileDirectionalSignal(strategy, longRows)(24, 0), 1);
+  assert.equal(compileDirectionalSignal(strategy, shortRows)(24, 0), -1);
+  assert.equal(directionalSignal(strategy, longRows.slice(0, 24), 0).target_exposure, 1);
+  assert.equal(directionalSignal(strategy, shortRows.slice(0, 24), 0).target_exposure, -1);
+  const futureMutated = longRows.map((row, index) => index === 24 ? { ...row, open: 1, high: 1000, low: 0.5, close: 999 } : row);
+  assert.equal(compileDirectionalSignal(strategy, futureMutated)(24, 0), 1);
+});
+
+test("body pressure trend handles zero-range and interior pressure as flat", () => {
+  const strategy = buildStrategyFromResearchSpec("typed-body-pressure-flat-001", bodyPressureTrendSpec());
+  const start = Date.parse("2026-01-01T00:00:00.000Z");
+  const rows = Array.from({ length: 24 }, (_, index) => ({ closed_at: new Date(start + index * 3600000).toISOString(), open: 100, high: 100, low: 100, close: 100, volume: 100 }));
+  assert.equal(directionalSignal(strategy, rows, 0).target_exposure, 0);
+});
+
 function closeLocationPressureSpec() {
   return typedSpec({
     strategy: {

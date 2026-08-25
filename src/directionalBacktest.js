@@ -153,6 +153,25 @@ export function compileDirectionalSignal(strategy, candles) {
     };
   }
 
+  if (family === "body_pressure_trend") {
+    const period = integer(parameters.period, "period");
+    const threshold = finite(parameters.pressure_threshold, "pressure_threshold");
+    return (executionIndex, currentExposure = 0) => {
+      const current = clamp(currentExposure);
+      if (executionIndex < period) return current;
+      let total = 0;
+      for (let index = executionIndex - period; index < executionIndex; index += 1) {
+        const row = rows[index];
+        const range = row.high - row.low;
+        total += range <= EPSILON ? 0 : (row.close - row.open) / range;
+      }
+      const pressure = total / period;
+      if (pressure + EPSILON >= threshold) return 1;
+      if (pressure - EPSILON <= -threshold) return -1;
+      return 0;
+    };
+  }
+
   if (family === "range_position_state") {
     const period = integer(parameters.period, "period");
     const lower = finite(parameters.lower, "lower") / 100;

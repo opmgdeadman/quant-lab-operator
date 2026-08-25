@@ -437,6 +437,21 @@ export function directionalSignal(spec, candles, currentExposure = 0) {
     if (drawdown + EPSILON >= threshold) return signal(TARGET_EXPOSURE, "rolling_drawdown_capitulation_long");
     return signal(0, "rolling_drawdown_interior_flat");
   }
+  if (spec.family === "body_pressure_trend") {
+    const period = integer(spec.parameters.period, "period");
+    const threshold = finite(spec.parameters.pressure_threshold, "pressure_threshold");
+    if (rows.length < period) return signal(current, "body_pressure_insufficient_history");
+    const window = rows.slice(-period);
+    let total = 0;
+    for (const row of window) {
+      const range = row.high - row.low;
+      total += range <= EPSILON ? 0 : (row.close - row.open) / range;
+    }
+    const pressure = total / period;
+    if (pressure + EPSILON >= threshold) return signal(TARGET_EXPOSURE, "body_pressure_positive_long");
+    if (pressure - EPSILON <= -threshold) return signal(-TARGET_EXPOSURE, "body_pressure_negative_short");
+    return signal(0, "body_pressure_interior_flat");
+  }
   if (spec.family === "directional_crowding_reversal") {
     const period = integer(spec.parameters.period, "period");
     const upper = finite(spec.parameters.upper_fraction, "upper_fraction");
