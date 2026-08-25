@@ -172,6 +172,41 @@ export function compileDirectionalSignal(strategy, candles) {
     };
   }
 
+  if (family === "linear_slope_tscore_trend") {
+    const period = integer(parameters.period, "period");
+    const threshold = finite(parameters.t_threshold, "t_threshold");
+    return (executionIndex, currentExposure = 0) => {
+      const current = clamp(currentExposure);
+      if (executionIndex < period) return current;
+      const xMean = (period - 1) / 2;
+      let yTotal = 0;
+      for (let index = executionIndex - period; index < executionIndex; index += 1) yTotal += rows[index].close;
+      const yMean = yTotal / period;
+      let sxx = 0;
+      let sxy = 0;
+      for (let offset = 0; offset < period; offset += 1) {
+        const dx = offset - xMean;
+        sxx += dx * dx;
+        sxy += dx * (rows[executionIndex - period + offset].close - yMean);
+      }
+      if (sxx <= EPSILON) return 0;
+      const slope = sxy / sxx;
+      let sse = 0;
+      for (let offset = 0; offset < period; offset += 1) {
+        const fitted = yMean + slope * (offset - xMean);
+        const residual = rows[executionIndex - period + offset].close - fitted;
+        sse += residual * residual;
+      }
+      const variance = sse / (period - 2);
+      const slopeSe = Math.sqrt(Math.max(0, variance) / sxx);
+      if (!Number.isFinite(slopeSe) || slopeSe <= EPSILON) return 0;
+      const tScore = slope / slopeSe;
+      if (tScore + EPSILON >= threshold) return 1;
+      if (tScore - EPSILON <= -threshold) return -1;
+      return 0;
+    };
+  }
+
   if (family === "range_position_state") {
     const period = integer(parameters.period, "period");
     const lower = finite(parameters.lower, "lower") / 100;

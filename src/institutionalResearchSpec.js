@@ -71,6 +71,14 @@ export const INSTITUTIONAL_STRATEGY_TEMPLATES = deepFreeze({
       pressure_threshold: numberRule(0.05, 0.95),
     },
   },
+  linear_slope_tscore_trend: {
+    family: "linear_slope_tscore_trend",
+    feature_set_id: "close-linear-slope-tscore-v1",
+    parameters: {
+      period: integerRule(12, 240),
+      t_threshold: numberRule(0.5, 10),
+    },
+  },
   close_location_pressure: {
     family: "close_location_pressure",
     feature_set_id: "ohlc-close-location-pressure-v1",

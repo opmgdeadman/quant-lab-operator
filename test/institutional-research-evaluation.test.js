@@ -74,6 +74,38 @@ function historicalArtifact(overrides = {}) {
   };
 }
 
+test("linear slope t-score trend preregistration, exact boundaries, degenerate dispersion, parity, and no-look-ahead", () => {
+  const spec = typedSpec({ strategy: { template: "linear_slope_tscore_trend", feature_set_id: "close-linear-slope-tscore-v1", parameters: { period: 48, t_threshold: 2 } } });
+  const valid = validateInstitutionalResearchSpec(spec);
+  assert.deepEqual(valid.strategy.parameters, { period: 48, t_threshold: 2 });
+
+  const period = 6;
+  const residuals = [1, -1, -1, 1, 0, 0];
+  const sxx = 17.5;
+  const slopeAtTwo = 2 * Math.sqrt((4 / (period - 2)) / sxx);
+  const makeRows = (slope, residualScale = 1) => Array.from({ length: period + 1 }, (_, index) => {
+    const residual = index < period ? residuals[index] * residualScale : 0;
+    const close = 100 + slope * index + residual;
+    return { market: "BTC-USD", interval: "1h", closed_at: new Date(Date.parse("2026-04-01T00:00:00.000Z") + index * 3600000).toISOString(), open: close, high: close, low: close, close, volume: 1 };
+  });
+  const strategy = { id: "tscore-test", family: "linear_slope_tscore_trend", market: "BTC-USD", interval: "1h", parameters: { period, t_threshold: 2 } };
+  const positive = makeRows(slopeAtTwo);
+  const negative = makeRows(-slopeAtTwo);
+  const interior = makeRows(slopeAtTwo * 0.5);
+  const degenerate = makeRows(1, 0);
+  assert.equal(compileDirectionalSignal(strategy, positive)(period, 0), 1);
+  assert.equal(directionalSignal(strategy, positive.slice(0, period), 0).target_exposure, 1);
+  assert.equal(compileDirectionalSignal(strategy, negative)(period, 0), -1);
+  assert.equal(directionalSignal(strategy, negative.slice(0, period), 0).target_exposure, -1);
+  assert.equal(compileDirectionalSignal(strategy, interior)(period, 0), 0);
+  assert.equal(directionalSignal(strategy, interior.slice(0, period), 0).target_exposure, 0);
+  assert.equal(compileDirectionalSignal(strategy, degenerate)(period, 0), 0);
+  assert.equal(directionalSignal(strategy, degenerate.slice(0, period), 0).target_exposure, 0);
+  const futureChanged = positive.map((row) => ({ ...row }));
+  futureChanged[period] = { ...futureChanged[period], open: 10000, high: 10000, low: 10000, close: 10000 };
+  assert.equal(compileDirectionalSignal(strategy, futureChanged)(period, 0), compileDirectionalSignal(strategy, positive)(period, 0));
+});
+
 test("directional crowding reversal preregistration, exact boundaries, zero denominator behavior, parity, and no-look-ahead", () => {
   const spec = typedSpec({ strategy: { template: "directional_crowding_reversal", feature_set_id: "close-directional-crowding-v1", parameters: { period: 48, upper_fraction: 0.7, lower_fraction: 0.3 } } });
   const valid = validateInstitutionalResearchSpec(spec);

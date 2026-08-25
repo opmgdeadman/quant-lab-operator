@@ -452,6 +452,36 @@ export function directionalSignal(spec, candles, currentExposure = 0) {
     if (pressure - EPSILON <= -threshold) return signal(-TARGET_EXPOSURE, "body_pressure_negative_short");
     return signal(0, "body_pressure_interior_flat");
   }
+  if (spec.family === "linear_slope_tscore_trend") {
+    const period = integer(spec.parameters.period, "period");
+    const threshold = finite(spec.parameters.t_threshold, "t_threshold");
+    if (rows.length < period) return signal(current, "linear_slope_tscore_insufficient_history");
+    const window = rows.slice(-period);
+    const xMean = (period - 1) / 2;
+    const yMean = mean(window.map((row) => row.close));
+    let sxx = 0;
+    let sxy = 0;
+    for (let index = 0; index < period; index += 1) {
+      const dx = index - xMean;
+      sxx += dx * dx;
+      sxy += dx * (window[index].close - yMean);
+    }
+    if (sxx <= EPSILON) return signal(0, "linear_slope_tscore_degenerate_flat");
+    const slope = sxy / sxx;
+    let sse = 0;
+    for (let index = 0; index < period; index += 1) {
+      const fitted = yMean + slope * (index - xMean);
+      const residual = window[index].close - fitted;
+      sse += residual * residual;
+    }
+    const variance = sse / (period - 2);
+    const slopeSe = Math.sqrt(Math.max(0, variance) / sxx);
+    if (!Number.isFinite(slopeSe) || slopeSe <= EPSILON) return signal(0, "linear_slope_tscore_degenerate_flat");
+    const tScore = slope / slopeSe;
+    if (tScore + EPSILON >= threshold) return signal(TARGET_EXPOSURE, "linear_slope_tscore_positive_long");
+    if (tScore - EPSILON <= -threshold) return signal(-TARGET_EXPOSURE, "linear_slope_tscore_negative_short");
+    return signal(0, "linear_slope_tscore_interior_flat");
+  }
   if (spec.family === "directional_crowding_reversal") {
     const period = integer(spec.parameters.period, "period");
     const upper = finite(spec.parameters.upper_fraction, "upper_fraction");
