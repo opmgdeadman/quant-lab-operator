@@ -21,7 +21,11 @@ State: ACTIVE
 
 ## Read First
 
-This document governs Quant Lab operating behavior. It is separate from the Engineering Continuation Ledger.
+This document governs permanent Quant Lab operating behavior.
+
+## M-BRAIN Operational Authority
+
+M-BRAIN owner-approved active Work Units are the sole live operational continuation authority. Git stores code and permanent engineering documentation and does not maintain a competing live queue.
 
 ## Mission
 
@@ -29,7 +33,7 @@ Build and operate an autonomous paper-trading laboratory that earns a tightly co
 
 ## Startup Contract
 
-Every fresh Quant Lab operating session must load and acknowledge this authority before engineering, research, deployment, or trading actions. Paper trading only until the live-capital gate is satisfied and owner approval is explicit. After startup authority is loaded, read the sole canonical Engineering Continuation Ledger and execute only its active job and current action. D1, receipts, website state, chat context, and model memory may not override the Git ledger.`,
+Every fresh Quant Lab operating session must load and acknowledge this authority before engineering, research, deployment, or trading actions. The operator must then resolve and bind the active M-BRAIN Work Unit before material execution; absent an authorized Work Unit, material execution fails closed.`, 
   "docs/ENGINEERING_CONTINUATION_LEDGER.md": `# Quant Lab Engineering Continuation Ledger
 
 Status: ACTIVE

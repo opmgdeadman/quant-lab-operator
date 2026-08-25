@@ -17,7 +17,7 @@ export function publicTools(publicStatusSchema, startupContextSchema, executeInt
     {
       name: "get_quant_lab_startup_context",
       title: "Get Quant Lab Startup Context",
-      description: "Load the mandatory Quant Lab Startup Authority and sole canonical Git Engineering Continuation Ledger before any operator execution.",
+      description: "Load the permanent Quant Lab Startup Authority and M-BRAIN Work Unit routing contract before any operator execution.",
       annotations: {
         readOnlyHint: true,
         destructiveHint: false,
@@ -90,10 +90,10 @@ function gatewayInputSchema() {
       type: "string",
       const: REQUIRED_GOVERNING_AUTHORITY_ACK,
     },
-    canonical_continuation_sha: { type: "string", minLength: 1, maxLength: 80 },
+    mbrain_work_unit_id: { type: "string", minLength: 1, maxLength: 120 },
     capability: capabilitySelectorSchema,
     arguments: dynamicArgumentsSchema,
-  }, ["operation_id", "governing_authority_ack", "canonical_continuation_sha", "capability", "arguments"]);
+  }, ["operation_id", "governing_authority_ack", "mbrain_work_unit_id", "capability", "arguments"]);
 }
 
 function withTelemetry(schema) {

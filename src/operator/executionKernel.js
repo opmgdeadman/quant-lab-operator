@@ -148,12 +148,16 @@ function validateStartupAuthority(inputs, startupContext) {
   if (inputs.governing_authority_ack !== REQUIRED_GOVERNING_AUTHORITY_ACK) {
     throw new ExecutionKernelError("governing_authority_ack_required");
   }
-  if (inputs.canonical_continuation_sha !== startupContext.canonical_continuation?.sha) {
-    throw new ExecutionKernelError("canonical_continuation_sha_stale_or_missing");
+  if (typeof inputs.mbrain_work_unit_id !== "string" || inputs.mbrain_work_unit_id.length < 1 || inputs.mbrain_work_unit_id.length > 120) {
+    throw new ExecutionKernelError("mbrain_work_unit_id_required");
   }
+  startupContext.operational_authority = {
+    ...(startupContext.operational_authority || {}),
+    active_work_unit_id: inputs.mbrain_work_unit_id,
+  };
   const capabilityInputs = { ...inputs };
   delete capabilityInputs.governing_authority_ack;
-  delete capabilityInputs.canonical_continuation_sha;
+  delete capabilityInputs.mbrain_work_unit_id;
   return capabilityInputs;
 }
 
@@ -222,29 +226,19 @@ async function safeRecordIncident(env, input) {
   }
 }
 
-export function parseContinuationMetadata(content) {
-  const text = typeof content === "string" ? content : "";
-  return {
-    active_job_id: text.match(/Job ID:\s*`([^`]+)`/)?.[1] || null,
-    current_action: text.match(/## Current Action\s+([^\n]+)/)?.[1]?.trim() || null,
-  };
-}
-
 export function buildActionClosure({ status, capability, operationId, startupContext, incident = null }) {
-  const continuation = startupContext?.canonical_continuation || {};
-  const metadata = parseContinuationMetadata(continuation.content);
+  const workUnitId = startupContext?.operational_authority?.active_work_unit_id || null;
   return {
     status,
-    authority: "sole_canonical_git_engineering_continuation_ledger",
-    canonical_continuation_path: continuation.path || "docs/ENGINEERING_CONTINUATION_LEDGER.md",
-    canonical_continuation_sha: continuation.sha || null,
-    active_job_id: metadata.active_job_id,
-    current_action: metadata.current_action,
-    evidence: [`capability:${capability.id}`, `handler:${capability.handler_id}`, `receipt:operator_receipt_${operationId}`],
+    authority: "m_brain_owner_approved_work_unit",
+    mbrain_work_unit_id: workUnitId,
+    startup_authority_path: startupContext?.startup_authority?.path || "docs/QUANT_LAB_STARTUP_AUTHORITY.md",
+    startup_authority_sha: startupContext?.startup_authority?.sha || null,
+    evidence: [`capability:${capability.id}`, `handler:${capability.handler_id}`, `receipt:operator_receipt_${operationId}`, `work_unit:${workUnitId || "missing"}`],
     hardening_incident_id: incident?.id || null,
     next_action: status === "completed"
-      ? "reload_canonical_continuation_and_continue_current_action"
-      : "repair_root_cause_add_regression_validate_exact_sha_deploy_then_resume",
+      ? "continue_active_m_brain_work_unit"
+      : "repair_root_cause_add_regression_validate_exact_sha_deploy_then_resume_active_m_brain_work_unit",
     owner_action_required: false,
   };
 }

@@ -221,7 +221,7 @@ async function mcpResponseFor(message, request, env) {
             deploymentSha: env.DEPLOYMENT_SHA || "unknown",
             executionKernelVersion: executionKernelInfo.version,
           },
-          instructions: "Authenticated Quant Operator MCP. Sessions are deployment-scoped and must reinitialize after a Worker, Execution Kernel, or public schema change. The public surface is a stable five-tool gateway: load startup authority, inspect dynamic server-side capability definitions, then execute through the read-only or mutation gateway matching the capability effect class. Internal capability and strategy evolution must not change tools/list. Before any operator execution, call get_quant_lab_startup_context, read the full Startup Authority and sole canonical Git ECL, then send the exact required acknowledgment and current ECL SHA.",
+          instructions: "Authenticated Quant Operator MCP. Sessions are deployment-scoped and must reinitialize after a Worker, Execution Kernel, or public schema change. The public surface is a stable five-tool gateway: load permanent startup authority, inspect dynamic server-side capability definitions, then execute through the read-only or mutation gateway matching the capability effect class. Internal capability and strategy evolution must not change tools/list. Before material operator execution, resolve the active owner-approved Quant Work Unit through M-BRAIN, bind routeTurn to that Work Unit, call get_quant_lab_startup_context, then send the exact required acknowledgment and bound mbrain_work_unit_id. Git does not provide live continuation authority.",
         },
       },
     };
@@ -381,7 +381,7 @@ async function callPublicToolBusiness(name, args, env) {
     inputs: {
       ...args.arguments,
       governing_authority_ack: args.governing_authority_ack,
-      canonical_continuation_sha: args.canonical_continuation_sha,
+      mbrain_work_unit_id: args.mbrain_work_unit_id,
     },
   }, {
     env,
@@ -1437,6 +1437,17 @@ function startupContextSchema() {
     },
     required: ["ok", "path", "sha", "source", "content"],
   };
+  const operationalAuthoritySchema = {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      type: { type: "string", const: "m_brain_owner_approved_work_unit" },
+      required_router: { type: "string", const: "M-BRAIN_Gateway.routeTurn" },
+      fail_closed_without_authorized_work_unit: { type: "boolean", const: true },
+      proof_contract_grants_execution_authority: { type: "boolean", const: false },
+    },
+    required: ["type", "required_router", "fail_closed_without_authorized_work_unit", "proof_contract_grants_execution_authority"],
+  };
   return {
     type: "object",
     additionalProperties: false,
@@ -1444,10 +1455,10 @@ function startupContextSchema() {
       ok: { type: "boolean" },
       required_governing_authority_ack: { type: "string" },
       startup_authority: { anyOf: [{ type: "null" }, documentSchema] },
-      canonical_continuation: { anyOf: [{ type: "null" }, documentSchema] },
+      operational_authority: operationalAuthoritySchema,
       errors: { type: "array", items: { type: "string" } },
     },
-    required: ["ok", "required_governing_authority_ack", "startup_authority", "canonical_continuation", "errors"],
+    required: ["ok", "required_governing_authority_ack", "startup_authority", "operational_authority", "errors"],
   };
 }
 
