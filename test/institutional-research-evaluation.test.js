@@ -104,6 +104,32 @@ test("variance ratio trend preregistration, exact 1.20 boundary, direction, dege
   assert.equal(compileDirectionalSignal(strategy, futureChanged)(period, 0), compileDirectionalSignal(strategy, positive)(period, 0));
 });
 
+test("volatility autocorrelation trend preregistration, clustering threshold, direction, degeneracy, parity and no-look-ahead", () => {
+  const spec = typedSpec({ strategy: { template: "volatility_autocorrelation_trend", feature_set_id: "close-volatility-autocorrelation-v1", parameters: { period: 96, autocorr_threshold: 0.15 } } });
+  const valid = validateInstitutionalResearchSpec(spec);
+  assert.deepEqual(valid.strategy.parameters, { period: 96, autocorr_threshold: 0.15 });
+  const period = 12;
+  const makeRows = (logReturns) => {
+    const closes = [100];
+    for (const value of logReturns) closes.push(closes.at(-1) * Math.exp(value));
+    return [...closes, closes.at(-1)].map((close, index) => ({ market: "BTC-USD", interval: "1h", closed_at: new Date(Date.parse("2026-04-04T00:00:00.000Z") + index * 3600000).toISOString(), open: close, high: close, low: close, close, volume: 1 }));
+  };
+  const clusteredPositive = makeRows([0.001,0.002,0.004,0.008,0.004,0.002,0.001,0.002,0.004,0.008,0.004,0.002,0.001]);
+  const clusteredNegative = makeRows([-0.001,-0.002,-0.004,-0.008,-0.004,-0.002,-0.001,-0.002,-0.004,-0.008,-0.004,-0.002,-0.001]);
+  const degenerate = makeRows(Array(13).fill(0));
+  const strategy = { id: "vol-ac-test", family: "volatility_autocorrelation_trend", market: "BTC-USD", interval: "1h", parameters: { period, autocorr_threshold: 0.15 } };
+  const executionIndex = clusteredPositive.length - 1;
+  assert.equal(compileDirectionalSignal(strategy, clusteredPositive)(executionIndex, 0), 1);
+  assert.equal(directionalSignal(strategy, clusteredPositive.slice(0, executionIndex), 0).target_exposure, 1);
+  assert.equal(compileDirectionalSignal(strategy, clusteredNegative)(executionIndex, 0), -1);
+  assert.equal(directionalSignal(strategy, clusteredNegative.slice(0, executionIndex), 0).target_exposure, -1);
+  assert.equal(compileDirectionalSignal(strategy, degenerate)(degenerate.length - 1, 0), 0);
+  assert.equal(directionalSignal(strategy, degenerate.slice(0, -1), 0).target_exposure, 0);
+  const futureChanged = clusteredPositive.map((row) => ({ ...row }));
+  futureChanged[executionIndex] = { ...futureChanged[executionIndex], open: 1, high: 1, low: 1, close: 1 };
+  assert.equal(compileDirectionalSignal(strategy, futureChanged)(executionIndex, 0), compileDirectionalSignal(strategy, clusteredPositive)(executionIndex, 0));
+});
+
 test("bipower jump continuation preregistration, direction, degeneracy, parity, threshold and no-look-ahead", () => {
   const spec = typedSpec({ strategy: { template: "bipower_jump_continuation", feature_set_id: "close-bipower-jump-v1", parameters: { period: 48, jump_ratio_threshold: 1.5 } } });
   const valid = validateInstitutionalResearchSpec(spec);

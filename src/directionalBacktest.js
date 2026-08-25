@@ -396,6 +396,40 @@ export function compileDirectionalSignal(strategy, candles) {
     };
   }
 
+  if (family === "volatility_autocorrelation_trend") {
+    const period = integer(parameters.period, "period");
+    const threshold = finite(parameters.autocorr_threshold, "autocorr_threshold");
+    return (executionIndex, currentExposure = 0) => {
+      const current = clamp(currentExposure);
+      if (executionIndex < period + 2) return current;
+      const closes = rows.slice(executionIndex - period - 2, executionIndex).map((row) => row.close);
+      const returns = [];
+      for (let index = 1; index < closes.length; index += 1) returns.push(Math.log(closes[index] / closes[index - 1]));
+      const squared = returns.map((value) => value * value);
+      const x = squared.slice(0, -1);
+      const y = squared.slice(1);
+      const xMean = x.reduce((sum, value) => sum + value, 0) / x.length;
+      const yMean = y.reduce((sum, value) => sum + value, 0) / y.length;
+      let covariance = 0;
+      let xVariance = 0;
+      let yVariance = 0;
+      for (let index = 0; index < x.length; index += 1) {
+        const dx = x[index] - xMean;
+        const dy = y[index] - yMean;
+        covariance += dx * dy;
+        xVariance += dx * dx;
+        yVariance += dy * dy;
+      }
+      if (xVariance <= EPSILON || yVariance <= EPSILON) return 0;
+      const autocorrelation = covariance / Math.sqrt(xVariance * yVariance);
+      if (!Number.isFinite(autocorrelation) || autocorrelation + EPSILON < threshold) return 0;
+      const totalReturn = Math.log(closes.at(-1) / closes[0]);
+      if (totalReturn > EPSILON) return 1;
+      if (totalReturn < -EPSILON) return -1;
+      return 0;
+    };
+  }
+
   if (family === "return_semivariance_imbalance") {
     const period = integer(parameters.period, "period");
     const threshold = finite(parameters.imbalance_threshold, "imbalance_threshold");

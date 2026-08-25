@@ -123,6 +123,14 @@ export const INSTITUTIONAL_STRATEGY_TEMPLATES = deepFreeze({
       autocorr_threshold: numberRule(0.01, 0.95),
     },
   },
+  volatility_autocorrelation_trend: {
+    family: "volatility_autocorrelation_trend",
+    feature_set_id: "close-volatility-autocorrelation-v1",
+    parameters: {
+      period: integerRule(12, 240),
+      autocorr_threshold: numberRule(0.01, 0.95),
+    },
+  },
   return_semivariance_imbalance: {
     family: "return_semivariance_imbalance",
     feature_set_id: "close-return-semivariance-imbalance-v1",

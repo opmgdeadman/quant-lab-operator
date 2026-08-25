@@ -595,6 +595,36 @@ export function directionalSignal(spec, candles, currentExposure = 0) {
     if (autocorrelation > 0) return signal(latestSign, "return_autocorrelation_continuation");
     return signal(-latestSign, "return_autocorrelation_reversal");
   }
+  if (spec.family === "volatility_autocorrelation_trend") {
+    const period = integer(spec.parameters.period, "period");
+    const threshold = finite(spec.parameters.autocorr_threshold, "autocorr_threshold");
+    if (rows.length < period + 2) return signal(current, "volatility_autocorrelation_insufficient_history");
+    const closes = rows.slice(-(period + 2)).map((row) => row.close);
+    const returns = [];
+    for (let index = 1; index < closes.length; index += 1) returns.push(Math.log(closes[index] / closes[index - 1]));
+    const squared = returns.map((value) => value * value);
+    const x = squared.slice(0, -1);
+    const y = squared.slice(1);
+    const xMean = mean(x);
+    const yMean = mean(y);
+    let covariance = 0;
+    let xVariance = 0;
+    let yVariance = 0;
+    for (let index = 0; index < x.length; index += 1) {
+      const dx = x[index] - xMean;
+      const dy = y[index] - yMean;
+      covariance += dx * dy;
+      xVariance += dx * dx;
+      yVariance += dy * dy;
+    }
+    if (xVariance <= EPSILON || yVariance <= EPSILON) return signal(0, "volatility_autocorrelation_zero_variance_flat");
+    const autocorrelation = covariance / Math.sqrt(xVariance * yVariance);
+    if (!Number.isFinite(autocorrelation) || autocorrelation + EPSILON < threshold) return signal(0, "volatility_autocorrelation_below_threshold_flat");
+    const totalReturn = Math.log(closes.at(-1) / closes[0]);
+    if (totalReturn > EPSILON) return signal(TARGET_EXPOSURE, "volatility_autocorrelation_persistent_long");
+    if (totalReturn < -EPSILON) return signal(-TARGET_EXPOSURE, "volatility_autocorrelation_persistent_short");
+    return signal(0, "volatility_autocorrelation_zero_direction_flat");
+  }
   if (spec.family === "return_semivariance_imbalance") {
     const period = integer(spec.parameters.period, "period");
     const threshold = finite(spec.parameters.imbalance_threshold, "imbalance_threshold");
