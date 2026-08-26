@@ -4,7 +4,7 @@ Last updated: 2026-08-06
 
 ## Authority
 
-Quant Lab is operated through an authenticated, deployment-scoped MCP. The source-controlled Startup Authority and `docs/ENGINEERING_CONTINUATION_LEDGER.md` govern every operator action. Chat history and D1 continuation records are not continuation authority.
+Quant Lab is operated through an authenticated, deployment-scoped MCP. The source-controlled Startup Authority is the permanent constitution; the owner-approved active Quant Work Unit in M-BRAIN is the sole live continuation and governance authority. Chat history, Git ledgers, and D1 continuation records are not continuation authority.
 
 ## Public Contract
 
@@ -18,7 +18,7 @@ The public MCP advertises exactly five stable tools:
 
 Internal capabilities remain strict entries in `src/operator/capabilityDirectory.js`, but they are server-side registry data rather than one ChatGPT tool per capability. Strategy templates, feature sets, parameter contracts, datasets, workflows, and future research classes therefore evolve without changing `tools/list`.
 
-`get_quant_lab_capability_definition` dynamically returns the bounded current registry or one exact source-controlled capability definition. The two execution gateways carry a stable outer envelope with `operation_id`, exact Startup Authority acknowledgment, current Git ECL SHA, a capability selector, and a generic arguments object. The server then resolves the capability, rejects read/mutation effect mismatches, validates the exact strict capability schema, and dispatches only through the existing execution kernel.
+`get_quant_lab_capability_definition` dynamically returns the bounded current registry or one exact source-controlled capability definition. The two execution gateways carry a stable outer envelope with `operation_id`, exact Startup Authority acknowledgment, `mbrain_work_unit_id`, a capability selector, and a generic arguments object. The server then resolves the capability, rejects read/mutation effect mismatches, validates the exact strict capability schema, and dispatches only through the existing execution kernel.
 
 The gateway contract preserves deterministic source-defined routing, bounded output, idempotent receipts, leases, incident handling, and truthful read-vs-mutation annotations without exporting domain vocabulary into the public MCP schema.
 
@@ -27,7 +27,7 @@ The gateway contract preserves deterministic source-defined routing, bounded out
 `quant-lab-execution-kernel-v1` owns:
 
 - capability resolution
-- startup-authority and canonical-ledger validation
+- Startup Authority and M-BRAIN Work Unit validation
 - client payload safety
 - operation fingerprints and leases
 - duplicate replay and conflicting-payload rejection
@@ -35,7 +35,7 @@ The gateway contract preserves deterministic source-defined routing, bounded out
 - canonical handler execution
 - compact durable receipts and audit records
 - unexplained-failure hardening incidents
-- ledger-bound action closure
+- M-BRAIN-Work-Unit-bound action closure
 
 A call that is already active returns `operation_already_in_progress`; it does not launch a competing runner. A completed or failed operation replays its durable result when the same identity and payload are used again.
 

@@ -56,13 +56,14 @@ Cloudflare credentials remain in GitHub Actions. GitHub credentials remain serve
 
 ## Canonical Authority
 
-- Startup authority: `docs/QUANT_LAB_STARTUP_AUTHORITY.md`
-- Sole engineering continuation ledger: `docs/ENGINEERING_CONTINUATION_LEDGER.md`
+- Permanent startup authority: `docs/QUANT_LAB_STARTUP_AUTHORITY.md`
+- Live continuation, approvals, queue position, blockers, and exact next action: owner-approved Quant Work Units in M-BRAIN
 - Reusable operating rules: `OPERATING_MEMORY.md`
 - Capability contract: `src/operator/capabilityDirectory.js`
 - Capability lifecycle: `src/operator/capabilityLifecycle.json`
+- Historical continuation ledgers: archival evidence only; never live authority
 
-Chat context, workflow narration, D1 continuation summaries, and runtime receipts cannot override the canonical Git ledger.
+Chat context, workflow narration, Git ledgers, D1 continuation summaries, and runtime receipts cannot override the active M-BRAIN Work Unit.
 
 ## MCP Contract
 
@@ -72,7 +73,7 @@ The public MCP surface consists of:
 - bounded authenticated infrastructure status;
 - one direct typed tool for each capability-directory entry.
 
-All capability schemas are closed. Every operation requires the exact governing-authority acknowledgment and current continuation-ledger SHA. Sessions are deployment-scoped and must be reinitialized after a deployment changes the MCP contract.
+All capability schemas are closed. Every operation requires the exact Startup Authority acknowledgment and `mbrain_work_unit_id` for the active M-BRAIN Work Unit. Sessions are deployment-scoped and must be reinitialized after a deployment changes the MCP contract.
 
 The MCP exposes no arbitrary shell, arbitrary SQL, unrestricted GitHub API, unrestricted Cloudflare API, generic code execution, or raw credential access.
 

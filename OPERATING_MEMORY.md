@@ -7,9 +7,9 @@ Keep this file limited to active reusable rules. Historical debugging belongs in
 ## Governing Authority
 
 - Quant Lab is paper-only. No live capital, live order routing, or relaxation of risk boundaries occurs without explicit owner authorization.
-- `docs/ENGINEERING_CONTINUATION_LEDGER.md` is the sole continuation authority.
-- Chat history, D1 continuation tables, receipts, workflow state, and runtime summaries are evidence only. They cannot create, reorder, or resume work.
-- Before every capability call, load the Startup Authority and canonical Git ledger. Supply the exact acknowledgment and current ledger SHA. Stale authority fails closed.
+- Owner-approved Quant Work Units in M-BRAIN are the sole live continuation and governance authority.
+- Chat history, Git ledgers, D1 continuation tables, receipts, workflow state, and runtime summaries are evidence only. They cannot create, reorder, or resume live work.
+- Before every capability call, load the Startup Authority and bind the active M-BRAIN Work Unit. Supply the exact acknowledgment and `mbrain_work_unit_id`; missing or mismatched authority fails closed.
 
 ## MCP Contract
 
@@ -27,7 +27,7 @@ Keep this file limited to active reusable rules. Historical debugging belongs in
 - Active operations hold bounded leases. Competing calls return `operation_already_in_progress`; stale leases may be taken over atomically.
 - Completed and failed operations replay their exact durable result.
 - Receipts must finalize status and result, not merely update a timestamp.
-- Every result contains action closure bound back to the canonical Git ledger.
+- Every result contains action closure bound back to the active M-BRAIN Work Unit.
 
 ## Capability Lifecycle
 
@@ -81,4 +81,4 @@ Keep this file limited to active reusable rules. Historical debugging belongs in
 
 ## Current Engineering State
 
-The Lensically-derived main control-plane transplant is implemented in source. It is not complete until the final head passes Worker, quant-core, and Wrangler validation; migrations and Worker deployment complete; production reports the exact SHA; direct typed tools are live; and the canonical continuation ledger records the verified state and next Stage 13 action.
+The Lensically-derived main control-plane transplant is implemented in source. It is not complete until the final head passes Worker, quant-core, and Wrangler validation; migrations and Worker deployment complete; production reports the exact SHA; the stable read/mutation gateways are live; and the active M-BRAIN Work Unit records the verified state and exact next action.

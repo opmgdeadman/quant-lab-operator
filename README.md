@@ -43,11 +43,11 @@ Only advertised direct typed tools with closed schemas may execute. Unknown or i
 
 Advertised tools:
 
-- `get_quant_lab_startup_context`: mandatory read-first Startup Authority plus sole canonical Git Engineering Continuation Ledger.
+- `get_quant_lab_startup_context`: mandatory read-first Startup Authority plus the M-BRAIN Work Unit routing contract.
 - `get_quant_lab_status`: read-only authenticated infrastructure status.
 - one direct typed tool for every capability declared in `src/operator/capabilityDirectory.js`.
 
-The generic `execute_quant_lab_intent` envelope is retired from the source-controlled MCP `0.4.0` contract. Every direct capability has a closed schema, deterministic static routing, durable idempotent receipts, operation leases, bounded output, and ledger-bound action closure. Every call includes the exact governing-authority acknowledgment and current canonical ECL SHA returned by startup context; skipped or stale authority fails closed.
+The generic `execute_quant_lab_intent` envelope is retired. The stable public read/mutation gateways keep capability vocabulary server-side while preserving closed schemas, deterministic routing, durable idempotent receipts, operation leases, bounded output, and M-BRAIN-Work-Unit-bound action closure. Every execution call includes the exact Startup Authority acknowledgment and `mbrain_work_unit_id`; missing or mismatched authority fails closed.
 
 There are no shell, arbitrary SQL, unrestricted GitHub, unrestricted Cloudflare, generic router, or arbitrary code-execution tools. GitHub and Cloudflare control remains source-defined and server-side. The model never receives raw tokens or deployment credentials.
 

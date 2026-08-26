@@ -5,7 +5,7 @@ Single public repository for the Quant Lab paper-trading laboratory, deployed as
 
 The operating model is not localhost or a required local runtime. Changes are pushed to GitHub, validated by GitHub Actions, deployed to Cloudflare, and verified against the live Worker, D1 binding, website, and authenticated MCP.
 
-The authenticated MCP exposes get_quant_lab_status and execute_quant_lab_intent. Domain trading functionality must sit behind source-defined bounded intents and tests.`,
+The authenticated MCP exposes startup context, infrastructure status, capability-definition lookup, and stable read/mutation execution gateways. Domain trading functionality must remain behind source-defined bounded capabilities and tests.`,
   "OPERATING_MEMORY.md": `# Quant Lab Operating Memory
 
 Quant Lab is a public GitHub plus Cloudflare Worker system with an authenticated MCP boundary. Current milestone is the Lensically-style operator control plane with durable receipts.`,
@@ -14,7 +14,7 @@ Quant Lab is a public GitHub plus Cloudflare Worker system with an authenticated
 Use one public repo. Keep secrets in GitHub/Cloudflare secret storage. Keep MCP/control routes authenticated. Use direct typed tools and closed schemas.`,
   "docs/MCP_OPERATOR_CONTROL_PLANE_HANDOFF.md": `# MCP Operator Control Plane Handoff
 
-Implement get_quant_lab_status plus execute_quant_lab_intent. Intents must be source-defined, audited, idempotent, bounded, and fail closed.`,
+Historical note: the legacy execute_quant_lab_intent design is superseded by stable read/mutation execution gateways. Current live execution authority is the permanent Startup Authority plus the active owner-approved M-BRAIN Work Unit.`,
   "docs/QUANT_LAB_STARTUP_AUTHORITY.md": `# Quant Lab Startup Authority
 
 State: ACTIVE
@@ -36,8 +36,8 @@ Build and operate an autonomous paper-trading laboratory that earns a tightly co
 Every fresh Quant Lab operating session must load and acknowledge this authority before engineering, research, deployment, or trading actions. The operator must then resolve and bind the active M-BRAIN Work Unit before material execution; absent an authorized Work Unit, material execution fails closed.`, 
   "docs/ENGINEERING_CONTINUATION_LEDGER.md": `# Quant Lab Engineering Continuation Ledger
 
-Status: ACTIVE
-Authority: Sole canonical engineering continuation ledger
+Status: SUPERSEDED REFERENCE SNAPSHOT
+Authority: Historical evidence only
 
 ## Active Job
 
@@ -48,7 +48,7 @@ State: ACTIVE
 
 Complete the engineering-control prerequisite, deploy MCP version 0.4.0, then resume the institutional directional-authority transition without weakening evidence gates.
 
-No chat context, model memory, D1 continuation summary, runtime receipt, website state, or other document may override this ledger.`,
+Live continuation and governance are owned by the active owner-approved Quant Work Unit in M-BRAIN. This bundled ledger snapshot is historical evidence only and cannot create, reorder, or resume live work.`,
   "src/index.js": `src/index.js routes HTTP/OAuth/MCP requests and delegates public tool execution to the operator registry and execution kernel.`,
   "test/worker.test.js": `Worker tests cover auth, removed public proof routes, MCP sessions, and operator tool dispatch.`,
   "wrangler.jsonc": `Cloudflare Worker config binds D1 database quant_lab_operator and exposes production environment variables without secret values.`,
