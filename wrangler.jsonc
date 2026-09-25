@@ -9,7 +9,7 @@
   },
   "vars": {
     "ENVIRONMENT": "production",
-    "CURRENT_PHASE": "autonomous-steady-state",
+    "CURRENT_PHASE": "dormant-read-only",
     "MARKET_DATA_PROVIDER": "coinbase_exchange",
     "DEPLOYMENT_SHA": "set-by-deploy-script",
     "REPOSITORY_SHA": "set-by-deploy-script",
@@ -18,9 +18,6 @@
     "GITHUB_REPO": "quant-lab-operator",
     "GITHUB_BRANCH": "main",
     "GITHUB_DEPLOY_WORKFLOW_ID": "quant-lab-deploy.yml"
-  },
-  "triggers": {
-    "crons": ["5 * * * *"]
   },
   "d1_databases": [
     {
