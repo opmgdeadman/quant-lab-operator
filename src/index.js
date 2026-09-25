@@ -94,9 +94,8 @@ export default {
     setFleetTelemetryContext(ctx);
     return handleRequest(request, env);
   },
-  scheduled(controller, env, ctx) {
-    const scheduledAt = new Date(controller.scheduledTime);
-    ctx.waitUntil(runScheduledQuantLabOperation(env, scheduledAt));
+  scheduled(_controller, _env, _ctx) {
+    return;
   },
 };
 
@@ -358,7 +357,10 @@ async function callPublicToolBusiness(name, args, env) {
   if (name === "get_quant_lab_capability_definition") {
     return quantCapabilityDefinition(args.capability);
   }
-  if (name !== "execute_quant_lab_read_action" && name !== "execute_quant_lab_mutation_action") {
+  if (name === "execute_quant_lab_mutation_action") {
+    throw new ToolInputError("quant_lab_read_only_dormant_mode");
+  }
+  if (name !== "execute_quant_lab_read_action") {
     throw new ToolInputError("stable_operator_gateway_required");
   }
 
@@ -366,9 +368,9 @@ async function callPublicToolBusiness(name, args, env) {
   if (!capability) {
     throw new ToolInputError("unknown_capability");
   }
-  const requiredClass = name === "execute_quant_lab_read_action" ? "read" : "mutation";
+  const requiredClass = "read";
   if (capability.operation_class !== requiredClass) {
-    throw new ToolInputError(`capability_effect_mismatch:${requiredClass}_gateway`);
+    throw new ToolInputError("capability_effect_mismatch:read_gateway");
   }
   if (!args.arguments || typeof args.arguments !== "object" || Array.isArray(args.arguments)) {
     throw new ToolInputError("invalid_capability_arguments");
