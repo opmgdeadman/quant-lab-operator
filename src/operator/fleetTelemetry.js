@@ -16,19 +16,9 @@ export async function traceQuantTool(runtimeEnv, toolName, suppliedTraceId, args
     const result = await operation();
     const durationMs = roundMs(performance.now() - startedPerf);
     const finishedAt = new Date().toISOString();
-    scheduleTelemetry(runtimeEnv.TELEMETRY_DB, {
-      traceId, spanId, mcpName: "quant-lab", toolName, startedAt, finishedAt,
-      durationMs, outcome: "SUCCESS", requestBytes, responseBytes: byteLength(result),
-      errorClass: null, errorMessage: null,
-    });
-    return attachReceipt(result, { trace_id: traceId, span_id: spanId, duration_ms: durationMs, capture_mode: "async" });
+    return attachReceipt(result, { trace_id: traceId, span_id: spanId, duration_ms: durationMs, capture_mode: "response_only" });
   } catch (error) {
     const durationMs = roundMs(performance.now() - startedPerf);
-    scheduleTelemetry(runtimeEnv.TELEMETRY_DB, {
-      traceId, spanId, mcpName: "quant-lab", toolName, startedAt, finishedAt: new Date().toISOString(),
-      durationMs, outcome: "FAILURE", requestBytes, responseBytes: null,
-      errorClass: error instanceof Error ? error.name : "Error", errorMessage: toErrorMessage(error).slice(0, 400),
-    });
     throw error;
   }
 }
