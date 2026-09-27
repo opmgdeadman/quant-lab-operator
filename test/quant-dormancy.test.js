@@ -5,6 +5,8 @@ import { readFileSync } from "node:fs";
 const wrangler = readFileSync(new URL("../wrangler.jsonc", import.meta.url), "utf8");
 const index = readFileSync(new URL("../src/index.js", import.meta.url), "utf8");
 const telemetry = readFileSync(new URL("../src/operator/fleetTelemetry.js", import.meta.url), "utf8");
+const deployWorker = readFileSync(new URL("../scripts/deploy-worker.mjs", import.meta.url), "utf8");
+const deployWorkflow = readFileSync(new URL("../.github/workflows/quant-lab-deploy.yml", import.meta.url), "utf8");
 
 test("Quant Lab remains dormant read-only", () => {
   assert.doesNotMatch(wrangler, /"crons"\s*:/);
@@ -14,4 +16,10 @@ test("Quant Lab remains dormant read-only", () => {
   assert.doesNotMatch(index, /ctx\.waitUntil\(runScheduledQuantLabOperation/);
   assert.doesNotMatch(telemetry, /scheduleTelemetry\(runtimeEnv\.TELEMETRY_DB/);
   assert.match(telemetry, /capture_mode: "response_only"/);
+
+  assert.match(deployWorker, /const phase = "dormant-read-only";/);
+  assert.doesNotMatch(deployWorker, /process\.env\.CURRENT_PHASE/);
+  assert.match(deployWorker, /if \(!isDryRun\) \{[\s\S]*"d1",[\s\S]*"migrations",[\s\S]*"apply",[\s\S]*"quant_lab_operator",[\s\S]*"--remote"/);
+  assert.doesNotMatch(deployWorkflow, /CURRENT_PHASE:\s*autonomous-steady-state/);
+  assert.match(deployWorkflow, /CURRENT_PHASE:\s*dormant-read-only/);
 });
