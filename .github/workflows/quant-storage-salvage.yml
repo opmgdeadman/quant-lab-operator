@@ -79,7 +79,7 @@ jobs:
 
       - name: Verify production health
         run: |
-          curl --fail --silent --show-error https://quant-lab-operator.briangriffin355.workers.dev/health > /tmp/quant-health.json
+          curl --fail --silent --show-error https://quant-lab-operator.briangriffin355.workers.dev/api/public/status > /tmp/quant-health.json
 
       - name: Persist storage receipt
         run: |
