@@ -425,14 +425,13 @@ test("forbidden public input keys reject before handler dispatch", async () => {
   assert.equal(body.result.structuredContent.error, "forbidden_public_input_key");
 });
 
-test("run_validation returns explicit worker runtime limitation", async () => {
+test("run_validation is unavailable while Quant Lab is dormant read-only", async () => {
   const env = createEnv();
   const body = await executeIntent(env, "op-validation", "run_validation", {
     validation: "npm test",
   });
 
-  assert.equal(body.result.structuredContent.ok, false);
-  assert.equal(body.result.structuredContent.result.status, "not_available_in_worker_runtime");
+  assert.equal(body.error.message, "quant_lab_read_only_dormant_mode");
 });
 
 test("production market data commissioning uses the bounded ingestion dependency", async () => {
