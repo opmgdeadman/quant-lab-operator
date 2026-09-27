@@ -530,98 +530,26 @@ test("repo file list and read use bounded GitHub contents API paths", async () =
 
 test("apply_repo_patch_set dry-runs exact replacements and rejects non-unique matches", async () => {
   const env = { ...createEnv(), GITHUB_TOKEN: "server-side-test-token" };
-  const restore = mockFetch(async (url) => {
-    if (url.endsWith("/contents/README.md?ref=main")) {
-      return jsonResponse({
-        path: "README.md",
-        sha: "readme-sha",
-        content: btoa("alpha\nunique text\nomega\n"),
-      });
-    }
-    if (url.endsWith("/contents/package.json?ref=main")) {
-      return jsonResponse({
-        path: "package.json",
-        sha: "package-sha",
-        content: btoa("dup dup"),
-      });
-    }
-    throw new Error(`unexpected fetch URL: ${url}`);
+  const attempted = await executeIntent(env, "op-patch-dry-run", "apply_repo_patch_set", {
+    dry_run: true,
+    replacements: [{ path: "README.md", find: "unique text", replace: "changed text" }],
   });
-
-  try {
-    const ok = await executeIntent(env, "op-patch-dry-run", "apply_repo_patch_set", {
-      dry_run: true,
-      replacements: [{ path: "README.md", find: "unique text", replace: "changed text" }],
-    });
-    const duplicate = await executeIntent(env, "op-patch-duplicate", "apply_repo_patch_set", {
-      dry_run: true,
-      replacements: [{ path: "package.json", find: "dup", replace: "changed" }],
-    });
-    const forbidden = await executeIntent(env, "op-patch-forbidden", "apply_repo_patch_set", {
-      dry_run: true,
-      replacements: [{ path: ".env", find: "A", replace: "B" }],
-    });
-
-    assert.equal(ok.result.structuredContent.result.status, "dry_run_passed");
-    assert.equal(duplicate.result.structuredContent.ok, false);
-    assert.equal(duplicate.result.structuredContent.result.status, "exact_match_count_not_one");
-    assert.equal(forbidden.result.structuredContent.result.status, "forbidden_path");
-  } finally {
-    restore();
-  }
+  assert.equal(attempted.error.message, "quant_lab_read_only_dormant_mode");
 });
 
 test("create_repo_file and delete_repo_file use one bounded Git data commit", async () => {
   const env = { ...createEnv(), GITHUB_TOKEN: "server-side-test-token" };
-  const calls = [];
-  const restore = mockFetch(async (url, options = {}) => {
-    calls.push({ url, options });
-    if (url.endsWith("/contents/docs/test.md?ref=main")) {
-      return jsonResponse({ message: "Not Found" }, 404);
-    }
-    if (url.endsWith("/contents/docs/remove.md?ref=main")) {
-      return jsonResponse({ path: "docs/remove.md", sha: "remove-sha", content: btoa("remove me") });
-    }
-    if (url.endsWith("/git/ref/heads/main")) {
-      assert.notEqual(options.method, "PATCH");
-      return jsonResponse({ object: { sha: "head-sha" } });
-    }
-    if (url.endsWith("/git/refs/heads/main") && options.method === "PATCH") {
-      return jsonResponse({ object: { sha: "new-commit-sha" } });
-    }
-    if (url.endsWith("/git/commits/head-sha")) {
-      return jsonResponse({ tree: { sha: "base-tree-sha" } });
-    }
-    if (url.endsWith("/git/blobs")) {
-      return jsonResponse({ sha: "blob-sha" }, 201);
-    }
-    if (url.endsWith("/git/trees")) {
-      return jsonResponse({ sha: "tree-sha" }, 201);
-    }
-    if (url.endsWith("/git/commits")) {
-      return jsonResponse({ sha: "commit-sha" }, 201);
-    }
-    throw new Error(`unexpected fetch URL: ${url}`);
+  const created = await executeIntent(env, "op-create-file", "create_repo_file", {
+    path: "docs/test.md",
+    content: "# Test\n",
+    commit_message: "Create test doc",
   });
-
-  try {
-    const created = await executeIntent(env, "op-create-file", "create_repo_file", {
-      path: "docs/test.md",
-      content: "# Test\n",
-      commit_message: "Create test doc",
-    });
-    const deleted = await executeIntent(env, "op-delete-file", "delete_repo_file", {
-      path: "docs/remove.md",
-      commit_message: "Delete test doc",
-    });
-
-    assert.equal(created.result.structuredContent.result.status, "file_created");
-    assert.equal(deleted.result.structuredContent.result.status, "file_deleted");
-    assert.equal(calls.some((call) => call.url.endsWith("/git/trees")), true);
-    assert.equal(calls.some((call) => call.url.endsWith("/git/refs/heads/main") && call.options.method === "PATCH"), true);
-  } finally {
-    restore();
-  }
+  const deleted = await executeIntent(env, "op-delete-file", "delete_repo_file", {
+    path: "docs/remove.md",
+    commit_message: "Delete test doc",
+  });
+  assert.equal(created.error.message, "quant_lab_read_only_dormant_mode");
+  assert.equal(deleted.error.message, "quant_lab_read_only_dormant_mode");
 });
 
 test("GitHub Actions intents call bounded GitHub API routes", async () => {
@@ -769,17 +697,17 @@ test("actions diagnostic list result", async () => {
 
 test("actions diagnostic dispatch execution succeeds", async () => {
   const { dispatch } = await githubActionsDiagnosticResult();
-  assert.equal(dispatch.result.structuredContent.ok, true);
+  assert.equal(dispatch.error.message, "quant_lab_read_only_dormant_mode");
 });
 
 test("actions diagnostic dispatch status", async () => {
   const { dispatch } = await githubActionsDiagnosticResult();
-  assert.equal(dispatch.result.structuredContent.result.status, "dispatched");
+  assert.equal(dispatch.error.message, "quant_lab_read_only_dormant_mode");
 });
 
 test("actions diagnostic dispatch run identity", async () => {
   const { dispatch } = await githubActionsDiagnosticResult();
-  assert.equal(dispatch.result.structuredContent.result.run_id, 101);
+  assert.equal(dispatch.error.message, "quant_lab_read_only_dormant_mode");
 });
 
 test("actions diagnostic monitor result", async () => {
@@ -800,92 +728,29 @@ test("actions diagnostic response redaction", async () => {
 test("actions diagnostic dispatch request shape", async () => {
   const { calls } = await githubActionsDiagnosticResult();
   const dispatchCall = calls.find((call) => call.url.includes("/actions/workflows/ci.yml/dispatches"));
-  assert.equal(dispatchCall.options.method, "POST");
-  assert.deepEqual(JSON.parse(dispatchCall.options.body), { ref: "main", inputs: {} });
+  assert.equal(dispatchCall, undefined);
 });
 
 test("GitHub Actions intents enforce CI dispatch ref and input contract", async () => {
   const env = { ...createEnv(), GITHUB_TOKEN: "server-side-test-token" };
   const exactSha = "c".repeat(40);
-  const calls = [];
-  const restore = mockFetch(async (url, options) => {
-    calls.push({ url, options });
-    if (url.endsWith("/commits/main")) {
-      return jsonResponse({ sha: exactSha });
-    }
-    if (url.includes("/actions/workflows/ci.yml/dispatches")) {
-      assert.deepEqual(JSON.parse(options.body), { ref: "main", inputs: {} });
-      return new Response(null, { status: 204 });
-    }
-    if (url.includes("/actions/workflows/ci.yml/runs")) {
-      return jsonResponse({ workflow_runs: [{ id: 401, name: "CI", workflow_id: 7, status: "queued", conclusion: null, event: "workflow_dispatch", head_branch: "main", head_sha: exactSha, created_at: new Date().toISOString(), updated_at: new Date().toISOString(), html_url: "https://github.com/opmgdeadman/quant-lab-operator/actions/runs/401" }] });
-    }
-    throw new Error(`unexpected fetch URL: ${url}`);
+  const attempted = await executeIntent(env, "op-ci-exact-head", "trigger_github_workflow", {
+    workflow_id: "ci.yml",
+    ref: "main",
+    deploy_sha: exactSha,
   });
-  try {
-    const rawShaRef = await executeIntent(env, "op-ci-raw-sha-ref", "trigger_github_workflow", { workflow_id: "ci.yml", ref: exactSha });
-    const mismatch = await executeIntent(env, "op-ci-sha-mismatch", "trigger_github_workflow", { workflow_id: "ci.yml", ref: "main", deploy_sha: "d".repeat(40) });
-    const valid = await executeIntent(env, "op-ci-exact-head", "trigger_github_workflow", { workflow_id: "ci.yml", ref: "main", deploy_sha: exactSha });
-
-    assert.equal(rawShaRef.result.structuredContent.result.status, "workflow_dispatch_ref_must_be_branch_or_tag");
-    assert.equal(mismatch.result.structuredContent.result.status, "workflow_dispatch_ref_sha_mismatch");
-    assert.equal(valid.result.structuredContent.result.status, "dispatched");
-    const dispatchCall = calls.find((call) => call.url.includes("/actions/workflows/ci.yml/dispatches"));
-    assert.deepEqual(JSON.parse(dispatchCall.options.body), { ref: "main", inputs: {} });
-  } finally {
-    restore();
-  }
+  assert.equal(attempted.error.message, "quant_lab_read_only_dormant_mode");
 });
 
 test("deploy_cloudflare_worker and apply_d1_migrations dispatch fixed workflow with exact SHA only", async () => {
   const env = { ...createEnv(), GITHUB_TOKEN: "server-side-test-token" };
   const exactSha = "b".repeat(40);
-  const restore = mockFetch(async (url, options) => {
-    if (url.match(/\/actions\/workflows\/quant-lab-deploy\.yml\/dispatches$/)) {
-      const body = JSON.parse(options.body);
-      assert.equal(body.ref, "main");
-      assert.equal(body.inputs.deploy_sha, exactSha);
-      return new Response(null, { status: 204 });
-    }
-    if (url.includes("/actions/workflows/quant-lab-deploy.yml/runs")) {
-      return jsonResponse({
-        workflow_runs: [{
-          id: 301,
-          name: "Quant Lab deploy",
-          workflow_id: 9,
-          status: "queued",
-          conclusion: null,
-          event: "workflow_dispatch",
-          head_branch: "main",
-          head_sha: exactSha,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          html_url: "https://github.com/opmgdeadman/quant-lab-operator/actions/runs/301",
-        }],
-      });
-    }
-    throw new Error(`unexpected fetch URL: ${url}`);
-  });
-
-  try {
-    const invalid = await executeIntent(env, "op-deploy-invalid", "deploy_cloudflare_worker", {
-      deploy_sha: "main",
-    });
-    const valid = await executeIntent(env, "op-deploy-valid", "deploy_cloudflare_worker", {
-      deploy_sha: exactSha,
-    });
-    const migrations = await executeIntent(env, "op-migrations-valid", "apply_d1_migrations", {
-      deploy_sha: exactSha,
-    });
-
-    assert.equal(invalid.result.structuredContent.ok, false);
-    assert.equal(invalid.result.structuredContent.result.status, "invalid_exact_sha");
-    assert.equal(valid.result.structuredContent.result.status, "deployment_workflow_dispatched");
-    assert.equal(valid.result.structuredContent.result.workflow_id, "quant-lab-deploy.yml");
-    assert.equal(migrations.result.structuredContent.result.status, "migration_workflow_dispatched");
-  } finally {
-    restore();
-  }
+  const invalid = await executeIntent(env, "op-deploy-invalid", "deploy_cloudflare_worker", { deploy_sha: "main" });
+  const valid = await executeIntent(env, "op-deploy-valid", "deploy_cloudflare_worker", { deploy_sha: exactSha });
+  const migrations = await executeIntent(env, "op-migrations-valid", "apply_d1_migrations", { deploy_sha: exactSha });
+  assert.equal(invalid.error.message, "quant_lab_read_only_dormant_mode");
+  assert.equal(valid.error.message, "quant_lab_read_only_dormant_mode");
+  assert.equal(migrations.error.message, "quant_lab_read_only_dormant_mode");
 });
 
 test("oauth metadata and token endpoint support durable connector auth", async () => {
