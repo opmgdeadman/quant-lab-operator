@@ -1,11 +1,11 @@
 {
   "schema_version": "m-build-hub-release-v1",
   "status": "FAIL",
-  "request_id": "execution-72cc5754-d406-4f05-be36-7c0d312bd0f8",
+  "request_id": "execution-dbef5a7d-478a-4f20-8f8f-b5e82a965f15",
   "target": "quant",
   "repository": "opmgdeadman/quant-lab-operator",
   "ref": "main",
-  "source_sha": "03a7d97db49771e8de47cc1496ac5c1d28c81de0",
+  "source_sha": "1486df5877ca5323bfcdd6984fb5ee3134b0e45b",
   "work_unit_id": null,
   "runner": "M-BUILD",
   "build": "PASS",
@@ -17,5 +17,5 @@
   },
   "failure_stage": "deploy",
   "error": "m_build_deploy_failed",
-  "completed_at": "2026-09-27T13:41:38Z"
+  "completed_at": "2026-09-27T13:42:07Z"
 }
