@@ -87,48 +87,24 @@ jobs:
           const fs = require("fs");
           const before = JSON.parse(fs.readFileSync("/tmp/quant-d1-before.json", "utf8"));
           const after = JSON.parse(fs.readFileSync("/tmp/quant-d1-after.json", "utf8"));
-          function findFileSize(value) {
-            if (!value || typeof value !== "object") return null;
-            if (Number.isFinite(Number(value.file_size))) return Number(value.file_size);
-            if (Array.isArray(value)) {
-              for (const item of value) {
-                const found = findFileSize(item);
-                if (found !== null) return found;
-              }
-              return null;
-            }
-            for (const nested of Object.values(value)) {
-              const found = findFileSize(nested);
-              if (found !== null) return found;
-            }
-            return null;
-          }
-          const beforeBytes = findFileSize(before);
-          const afterBytes = findFileSize(after);
-          if (beforeBytes === null || afterBytes === null) {
-            throw new Error("d1_file_size_missing");
-          }
           let salvage = null;
           if (fs.existsSync("/tmp/quant-salvage-receipt.json")) {
             salvage = JSON.parse(fs.readFileSync("/tmp/quant-salvage-receipt.json", "utf8"));
           }
           const result = {
-            schema_version: "quant-storage-salvage-receipt-v1",
+            schema_version: "quant-storage-salvage-receipt-v2",
             source_sha: process.env.GITHUB_SHA,
-            mode: fs.existsSync("migrations/0024_dormant_storage_salvage.sql") ? "salvage" : "preflight",
-            before_bytes: beforeBytes,
-            after_bytes: afterBytes,
-            bytes_reclaimed: Math.max(0, beforeBytes - afterBytes),
-            reduction_percent: beforeBytes > 0 ? Number((((beforeBytes - afterBytes) / beforeBytes) * 100).toFixed(2)) : 0,
+            mode: "post-salvage-verification",
             quant_phase: "dormant-read-only",
             migration_present: fs.existsSync("migrations/0024_dormant_storage_salvage.sql"),
+            d1_info_before: before,
+            d1_info_after: after,
             salvage,
             captured_at: new Date().toISOString()
           };
           fs.mkdirSync("validation", { recursive: true });
           fs.writeFileSync("validation/quant-storage-salvage.json", JSON.stringify(result, null, 2) + "\n");
           NODE
-
       - name: Commit storage receipt
         run: |
           git config user.name "quant-storage-salvage"
