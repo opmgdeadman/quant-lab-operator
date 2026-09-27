@@ -552,7 +552,7 @@ test("create_repo_file and delete_repo_file use one bounded Git data commit", as
   assert.equal(deleted.error.message, "quant_lab_read_only_dormant_mode");
 });
 
-test("GitHub Actions intents call bounded GitHub API routes", async () => {
+test("GitHub Actions read intents work while dispatch stays impossible in dormant mode", async () => {
   const env = { ...createEnv(), GITHUB_TOKEN: "server-side-test-token" };
   const calls = [];
   const restore = mockFetch(async (url, options) => {
@@ -576,11 +576,6 @@ test("GitHub Actions intents call bounded GitHub API routes", async () => {
           html_url: "https://github.com/opmgdeadman/quant-lab-operator/actions/runs/101",
         }],
       });
-    }
-    if (url.includes("/actions/workflows/ci.yml/dispatches")) {
-      assert.equal(options.method, "POST");
-      assert.deepEqual(JSON.parse(options.body), { ref: "main", inputs: {} });
-      return new Response(null, { status: 204 });
     }
     if (url.includes("/actions/runs/101/jobs")) {
       return jsonResponse({ jobs: [{ id: 201, name: "validate", status: "completed", conclusion: "success" }] });
@@ -616,9 +611,10 @@ test("GitHub Actions intents call bounded GitHub API routes", async () => {
     });
 
     assert.equal(runs.result.structuredContent.result.runs.length, 1);
-    assert.equal(dispatch.result.structuredContent.result.status, "dispatched");
+    assert.equal(dispatch.error.message, "quant_lab_read_only_dormant_mode");
     assert.equal(monitor.result.structuredContent.result.jobs[0].name, "validate");
     assert.equal(calls.every((call) => call.options.headers.Authorization === "Bearer server-side-test-token"), true);
+    assert.equal(calls.some((call) => call.url.includes("/actions/workflows/ci.yml/dispatches")), false);
     assert.doesNotMatch(JSON.stringify(runs), /server-side-test-token/);
   } finally {
     restore();
