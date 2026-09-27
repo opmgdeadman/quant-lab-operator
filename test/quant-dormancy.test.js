@@ -19,7 +19,7 @@ test("Quant Lab remains dormant read-only", () => {
 
   assert.match(deployWorker, /const phase = "dormant-read-only";/);
   assert.doesNotMatch(deployWorker, /process\.env\.CURRENT_PHASE/);
-  assert.match(deployWorker, /if \(!isDryRun\) \{[\s\S]*"d1",[\s\S]*"migrations",[\s\S]*"apply",[\s\S]*"quant_lab_operator",[\s\S]*"--remote"/);
+  assert.doesNotMatch(deployWorker, /"d1"[\s\S]*"migrations"[\s\S]*"apply"/);
   assert.doesNotMatch(deployWorkflow, /CURRENT_PHASE:\s*autonomous-steady-state/);
   assert.match(deployWorkflow, /CURRENT_PHASE:\s*dormant-read-only/);
 });
