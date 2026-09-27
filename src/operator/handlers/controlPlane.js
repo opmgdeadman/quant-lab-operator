@@ -140,8 +140,43 @@ async function get_market_data_volume_audit(inputs, context) {
   } catch {
     storageSalvage = null;
   }
+
+  const [pageCount, freeList, pageSize, rowCounts] = await Promise.all([
+    context.env.DB.prepare("PRAGMA page_count").first(),
+    context.env.DB.prepare("PRAGMA freelist_count").first(),
+    context.env.DB.prepare("PRAGMA page_size").first(),
+    context.env.DB.prepare(
+      `SELECT
+         (SELECT COUNT(*) FROM market_candles) AS market_candles,
+         (SELECT COUNT(*) FROM baseline_trades) AS baseline_trades,
+         (SELECT COUNT(*) FROM strategy_candidate_runs) AS strategy_candidate_runs,
+         (SELECT COUNT(*) FROM strategy_candidate_trades) AS strategy_candidate_trades,
+         (SELECT COUNT(*) FROM directional_research_runs) AS directional_research_runs,
+         (SELECT COUNT(*) FROM institutional_research_forward_evidence) AS institutional_evidence,
+         (SELECT COUNT(*) FROM external_observations) AS external_observations`,
+    ).first(),
+  ]);
+
+  const pageCountValue = Number(pageCount?.page_count ?? 0);
+  const freeListValue = Number(freeList?.freelist_count ?? 0);
+  const pageSizeValue = Number(pageSize?.page_size ?? 0);
+  const allocatedBytes = pageCountValue * pageSizeValue;
+  const freeBytes = freeListValue * pageSizeValue;
+
   return {
     ...audit,
+    storage_footprint: {
+      page_count: pageCountValue,
+      freelist_count: freeListValue,
+      page_size: pageSizeValue,
+      allocated_bytes: allocatedBytes,
+      allocated_megabytes: Number((allocatedBytes / 1048576).toFixed(3)),
+      reusable_free_bytes: freeBytes,
+      reusable_free_megabytes: Number((freeBytes / 1048576).toFixed(3)),
+      estimated_live_bytes: Math.max(0, allocatedBytes - freeBytes),
+      estimated_live_megabytes: Number((Math.max(0, allocatedBytes - freeBytes) / 1048576).toFixed(3)),
+      row_counts: rowCounts || {},
+    },
     storage_salvage: storageSalvage,
     paper_only: true,
     live_capital_enabled: false,
