@@ -349,7 +349,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           DEPLOYMENT_SHA: ${{ inputs.deploy_sha }}
           REPOSITORY_SHA: ${{ inputs.deploy_sha }}
-          CURRENT_PHASE: autonomous-steady-state
+          CURRENT_PHASE: dormant-read-only
       - name: Verify production console and canonical branding
         if: ${{ inputs.mode == 'deploy' }}
         shell: bash
