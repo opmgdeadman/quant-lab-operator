@@ -1,0 +1,85 @@
+{
+  "schema_version": "quant-storage-salvage-receipt-v2",
+  "source_sha": "d2a7b7bd6c23eb8db6ad915312a9083269bfe7c4",
+  "mode": "post-salvage-verification",
+  "quant_phase": "dormant-read-only",
+  "migration_present": true,
+  "d1_info_before": {
+    "uuid": "d9ac1f46-8251-4184-ad35-b87be4755917",
+    "name": "quant_lab_operator",
+    "created_at": "2026-07-26T20:18:24.439Z",
+    "num_tables": 86,
+    "running_in_region": "ENAM",
+    "read_replication": {
+      "mode": "disabled"
+    },
+    "jurisdiction": null,
+    "database_size": 6684672,
+    "read_queries_24h": 480,
+    "write_queries_24h": 229,
+    "rows_read_24h": 511245,
+    "rows_written_24h": 83791
+  },
+  "d1_info_after": {
+    "uuid": "d9ac1f46-8251-4184-ad35-b87be4755917",
+    "name": "quant_lab_operator",
+    "created_at": "2026-07-26T20:18:24.439Z",
+    "num_tables": 86,
+    "running_in_region": "ENAM",
+    "read_replication": {
+      "mode": "disabled"
+    },
+    "jurisdiction": null,
+    "database_size": 6688768,
+    "read_queries_24h": 480,
+    "write_queries_24h": 229,
+    "rows_read_24h": 511245,
+    "rows_written_24h": 83791
+  },
+  "salvage": [
+    {
+      "results": [
+        {
+          "id": "dormant-salvage-20260927",
+          "applied_at": "2026-09-27T14:33:38.725Z",
+          "mode": "dormant-minimal-recovery",
+          "retained_market_candles": 168,
+          "market_candles_before": 5601,
+          "market_candles_after": 168,
+          "baseline_trades_before": 0,
+          "baseline_trades_after": 0,
+          "strategy_candidate_runs_before": 1344,
+          "strategy_candidate_runs_after": 0,
+          "strategy_candidate_trades_before": 5078,
+          "strategy_candidate_trades_after": 0,
+          "directional_research_runs_before": 3060,
+          "directional_research_runs_after": 0,
+          "institutional_evidence_before": 1376,
+          "institutional_evidence_after": 0,
+          "external_observations_before": 0,
+          "external_observations_after": 0,
+          "rows_purged": 16291
+        }
+      ],
+      "success": true,
+      "meta": {
+        "served_by": "v3-prod",
+        "served_by_region": "ENAM",
+        "served_by_colo": "IAD",
+        "served_by_primary": true,
+        "timings": {
+          "sql_duration_ms": 0.3496
+        },
+        "duration": 0.3496,
+        "changes": 0,
+        "last_row_id": 6344,
+        "changed_db": false,
+        "size_after": 6688768,
+        "rows_read": 1,
+        "rows_written": 0,
+        "total_attempts": 1
+      }
+    }
+  ],
+  "captured_at": "2026-09-27T14:37:06.662Z"
+}
