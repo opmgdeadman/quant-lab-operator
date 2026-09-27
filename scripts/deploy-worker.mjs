@@ -10,20 +10,7 @@ if (!gitSha || gitSha === "unknown") {
 }
 
 const command = process.platform === "win32" ? "node_modules\\.bin\\wrangler.cmd" : "node_modules/.bin/wrangler";
-
-if (!isDryRun) {
-  runWrangler([
-    "d1",
-    "migrations",
-    "apply",
-    "quant_lab_operator",
-    "--remote",
-    "--config",
-    "wrangler.jsonc",
-  ]);
-}
-
-const deployArgs = [
+const args = [
   "deploy",
   "--config",
   "wrangler.jsonc",
@@ -35,23 +22,28 @@ const deployArgs = [
   `CURRENT_PHASE:${phase}`,
 ];
 
-if (isDryRun) deployArgs.push("--dry-run");
-runWrangler(deployArgs);
-
-function runWrangler(args) {
-  const result = spawnSync(command, args, {
-    stdio: "inherit",
-    shell: process.platform === "win32",
-  });
-  if (result.error) throw result.error;
-  if ((result.status ?? 1) !== 0) process.exit(result.status ?? 1);
+if (isDryRun) {
+  args.push("--dry-run");
 }
+
+const result = spawnSync(command, args, {
+  stdio: "inherit",
+  shell: process.platform === "win32",
+});
+
+if (result.error) {
+  throw result.error;
+}
+
+process.exit(result.status ?? 1);
 
 function git(...args) {
   const result = spawnSync("git", args, {
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"],
   });
-  if (result.status !== 0) return "";
+  if (result.status !== 0) {
+    return "";
+  }
   return result.stdout.trim();
 }
