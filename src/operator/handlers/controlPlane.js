@@ -122,8 +122,27 @@ async function operator_status(inputs, context) {
 
 async function get_market_data_volume_audit(inputs, context) {
   const audit = await getMarketVolumeAudit(context.env, 4320);
+  let storageSalvage = null;
+  try {
+    storageSalvage = await context.env.DB.prepare(
+      `SELECT id, applied_at, mode, retained_market_candles,
+              market_candles_before, market_candles_after,
+              baseline_trades_before, baseline_trades_after,
+              strategy_candidate_runs_before, strategy_candidate_runs_after,
+              strategy_candidate_trades_before, strategy_candidate_trades_after,
+              directional_research_runs_before, directional_research_runs_after,
+              institutional_evidence_before, institutional_evidence_after,
+              external_observations_before, external_observations_after,
+              rows_purged
+       FROM quant_storage_salvage_receipts
+       WHERE id = ?`,
+    ).bind("dormant-salvage-20260927").first();
+  } catch {
+    storageSalvage = null;
+  }
   return {
     ...audit,
+    storage_salvage: storageSalvage,
     paper_only: true,
     live_capital_enabled: false,
   };
