@@ -1,21 +1,24 @@
 {
-  "schema_version": "m-build-hub-release-v1",
-  "status": "FAIL",
-  "request_id": "execution-51d14da6-5085-4df1-ae59-2619648b8844",
-  "target": "quant",
-  "repository": "opmgdeadman/quant-lab-operator",
-  "ref": "main",
-  "source_sha": "2c827cb4cf6ba7a0bacadebeedc74e13713203b7",
-  "work_unit_id": null,
-  "runner": "M-BUILD",
-  "build": "PASS",
-  "deploy": "PASS",
-  "verify": {
-    "status": "FAIL",
-    "url": "https://quant-lab-operator.briangriffin355.workers.dev/health",
-    "http_status": null
-  },
-  "failure_stage": "verify",
-  "error": "m_build_verify_failed",
-  "completed_at": "2026-09-27T14:25:41Z"
+    "schema_version":  "m-build-hub-release-v1",
+    "status":  "FAIL",
+    "request_id":  "execution-3dca4ff0-1512-4671-a56d-24c9524f4588",
+    "target":  "quant",
+    "repository":  "opmgdeadman/quant-lab-operator",
+    "ref":  "main",
+    "source_sha":  "47f060754a93727748d46b7b299447bd73d6c9e7",
+    "work_unit_id":  null,
+    "runner":  "M-BUILD",
+    "runner_mode":  "local",
+    "runner_name":  "M-BUILD",
+    "runner_os":  "Windows",
+    "build":  "PASS",
+    "deploy":  "PASS",
+    "verify":  {
+                   "status":  "FAIL",
+                   "url":  "https://quant-lab-operator.briangriffin355.workers.dev/health",
+                   "http_status":  null
+               },
+    "failure_stage":  "verify",
+    "error":  "m_build_verify_failed",
+    "completed_at":  "2026-09-28T03:26:34Z"
 }
