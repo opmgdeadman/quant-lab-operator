@@ -49,7 +49,7 @@ M-BRAIN is the sole live operational continuation and governance plane for Quant
 
 - The active owner-approved Quant Work Unit defines the current objective, scope, lifecycle phase, current action, blockers, verification boundary, and exact next action.
 - The Quant resume capsule and Current-State surfaces are durable handoff/currentness views of that operational state; they may not create a competing active job.
-- A scheduled Quant operator wake must bind `routeTurn` to its active Quant Work Unit before any material action. Material execution is allowed only when M-BRAIN returns an authorized execution route for that Work Unit.
+- A scheduled Quant operator wake enters through `brain_execute` with surface `SCHEDULED_M`. Brain resolves the active Quant Work Unit and continuation server-side before material execution. Material execution is allowed only when the compiled M-BRAIN/Controller path authorizes that Work Unit.
 - The Scheduled Operator Proof Contract is audit and receipt doctrine only. It does not grant execution authority.
 - Tool Dispatch Integrity, Failure Intelligence, independent validation, risk vetoes, and this permanent Startup Authority remain mandatory downstream.
 
@@ -59,7 +59,7 @@ The scheduled Quant Lab operator is an active production shift, not a watcher or
 
 On every hourly invocation it must:
 
-1. load this permanent authority, load the active Quant M-BRAIN Work Unit/current state, and bind `routeTurn` to that Work Unit before material execution;
+1. load this permanent authority, then enter the active Quant M-BRAIN Work Unit/current state through `brain_execute`; Brain owns continuation binding and internal Controller/domain routing before material execution;
 2. inspect production truth, evidence, incidents, and blockers;
 3. choose the highest-value safe action within the active Work Unit using expected information gain, economic potential, dependency order, and risk;
 4. execute research, implementation, validation, deployment, production commissioning, repair, or evidence recording when the M-BRAIN route authorizes it;
