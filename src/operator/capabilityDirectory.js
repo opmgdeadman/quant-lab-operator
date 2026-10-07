@@ -892,6 +892,10 @@ export function validateCapabilityLifecycle(directory = capabilityDirectory, dec
     if (declaration.canonical_handler !== entry.handler_id) errors.push(`canonical_handler_mismatch:${entry.intent}`);
     if (!Array.isArray(entry.tests) || entry.tests.length < 1) errors.push(`focused_regression_missing:${entry.intent}`);
     if (entry.input_schema?.additionalProperties !== false) errors.push(`strict_schema_missing:${entry.intent}`);
+    if (typeof entry.description !== "string" || entry.description.length < 80) errors.push(`capability_description_missing:${entry.intent}`);
+    if (typeof entry.handler_description !== "string" || entry.handler_description.length < 80) errors.push(`handler_description_missing:${entry.intent}`);
+    descriptorErrorsForSchema(entry.input_schema, `${entry.id}.input`, errors);
+    descriptorErrorsForSchema(entry.output_schema, `${entry.id}.output`, errors);
   }
   for (const declaration of declarations) {
     if (!directory.some((entry) => entry.intent === declaration.intent)) errors.push(`orphan_lifecycle_declaration:${declaration.intent}`);
@@ -908,9 +912,73 @@ export function assertCapabilityLifecycle() {
 assertCapabilityLifecycle();
 
 function capability(entry) {
+  const operationClass = entry.operation_class === "mutation" ? "mutation" : "read";
+  const systems = Array.isArray(entry.external_systems) && entry.external_systems.length
+    ? entry.external_systems.join(", ")
+    : "server-owned Quant Lab state";
+  const gates = Array.isArray(entry.risk_gates) && entry.risk_gates.length
+    ? entry.risk_gates.join(", ")
+    : "standard Quant Lab enforcement";
+  const description = entry.description || `Use ${entry.title} only for Quant Lab intent ${entry.intent}. This is a ${operationClass}-class capability executed by canonical server handler ${entry.handler_id}. Server-owned systems: ${systems}. Enforcement gates: ${gates}. Inspect this definition before use whenever any input, effect, or allowed action is uncertain.`;
+  const handler_description = entry.handler_description || `Canonical server-owned sub-call ${entry.handler_id} for ${entry.title}. The model supplies only source-declared capability inputs; handler selection, credentials, transport, persistence mechanics, retries, receipts, and enforcement remain server-owned.`;
   return {
     max_response_bytes: 12000,
     lifecycle_declaration_id: `${entry.id}.lifecycle`,
     ...entry,
+    description,
+    handler_description,
+    input_schema: describeSchema(entry.input_schema, entry.title, "input", `${entry.id}.input`),
+    output_schema: describeSchema(entry.output_schema, entry.title, "output", `${entry.id}.output`),
   };
+}
+
+function describeSchema(schema, capabilityTitle, direction, path) {
+  if (!schema || typeof schema !== "object" || Array.isArray(schema)) return schema;
+  const next = { ...schema };
+  const field = humanize(path.split(".").pop() || path);
+  if (!String(next.description || "").trim()) {
+    const shape = next.type === "object" ? "structured object" : next.type === "array" ? "array" : next.type || "value";
+    const allowed = Array.isArray(next.enum) && next.enum.length ? ` Allowed values: ${next.enum.map(String).join(", ")}.` : "";
+    const constant = Object.hasOwn(next, "const") ? ` Required constant: ${String(next.const)}.` : "";
+    next.description = `${field} ${direction} for ${capabilityTitle}. Expected ${shape} at ${path} according to the source-controlled capability contract.${allowed}${constant}`;
+  }
+  if (Array.isArray(next.enum) && next.enum.length) {
+    const existing = next.x_value_descriptions && typeof next.x_value_descriptions === "object" ? next.x_value_descriptions : {};
+    next.x_value_descriptions = Object.fromEntries(next.enum.map((value) => [
+      String(value),
+      existing[String(value)] || `Exact allowed value "${String(value)}" for ${field} in ${capabilityTitle}. Select it only when that literal value matches the requested operation; neighboring enum values are distinct choices.`,
+    ]));
+  }
+  if (Object.hasOwn(next, "const") && !String(next.x_const_description || "").trim()) {
+    next.x_const_description = `Exact required constant "${String(next.const)}" for ${field} in ${capabilityTitle}; alternatives are invalid.`;
+  }
+  if (next.properties && typeof next.properties === "object") {
+    next.properties = Object.fromEntries(Object.entries(next.properties).map(([key, value]) => [
+      key,
+      describeSchema(value, capabilityTitle, direction, `${path}.${key}`),
+    ]));
+  }
+  if (next.items && typeof next.items === "object") next.items = describeSchema(next.items, capabilityTitle, direction, `${path}[]`);
+  for (const keyword of ["anyOf", "oneOf", "allOf"]) {
+    if (Array.isArray(next[keyword])) next[keyword] = next[keyword].map((child, index) => describeSchema(child, capabilityTitle, direction, `${path}.${keyword}[${index}]`));
+  }
+  return next;
+}
+
+function humanize(value) {
+  return String(value || "value").replace(/\[\d+\]/g, "").replace(/\[\]/g, " item").replace(/[._-]+/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function descriptorErrorsForSchema(schema, path, errors) {
+  if (!schema || typeof schema !== "object" || Array.isArray(schema)) return;
+  if (!String(schema.description || "").trim()) errors.push(`schema_description_missing:${path}`);
+  if (Array.isArray(schema.enum)) {
+    for (const value of schema.enum) if (!String(schema.x_value_descriptions?.[String(value)] || "").trim()) errors.push(`enum_value_description_missing:${path}:${String(value)}`);
+  }
+  if (Object.hasOwn(schema, "const") && !String(schema.x_const_description || "").trim()) errors.push(`const_description_missing:${path}`);
+  for (const [key, child] of Object.entries(schema.properties || {})) descriptorErrorsForSchema(child, `${path}.${key}`, errors);
+  if (schema.items && typeof schema.items === "object") descriptorErrorsForSchema(schema.items, `${path}[]`, errors);
+  for (const keyword of ["anyOf", "oneOf", "allOf"]) {
+    if (Array.isArray(schema[keyword])) schema[keyword].forEach((child, index) => descriptorErrorsForSchema(child, `${path}.${keyword}[${index}]`, errors));
+  }
 }
