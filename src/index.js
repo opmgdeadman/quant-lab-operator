@@ -407,7 +407,10 @@ function quantCapabilityDefinition(selector) {
         id: capability.id,
         intent: capability.intent,
         title: capability.title,
+        description: capability.description,
         operation_class: capability.operation_class,
+        handler_id: capability.handler_id,
+        handler_description: capability.handler_description,
       })),
     };
   }
@@ -424,7 +427,10 @@ function quantCapabilityDefinition(selector) {
       id: capability.id,
       intent: capability.intent,
       title: capability.title,
+      description: capability.description,
       operation_class: capability.operation_class,
+      handler_id: capability.handler_id,
+      handler_description: capability.handler_description,
       input_schema: capability.input_schema,
       output_schema: capability.output_schema,
       risk_gates: capability.risk_gates,
